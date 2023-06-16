@@ -1,8 +1,8 @@
 <template>
-  <v-list class="row" v-if="portfolio.holdings.length>0">
-    <div class="col-md-3" v-for="(element, i) in portfolio.holdings" :key="i">
-      <PortfolioElement :element="element" />
-    </div>
+  <v-list density = "compact" v-if="portfolio.holdings.length>0">
+    <template  v-for="(element, i) in sortedPortfolio" :key="i">
+      <PortfolioElement :element="element" :totalPortfolioSize="targetSize" />
+    </template>
   </v-list>
 </template>
   
@@ -15,10 +15,24 @@ export default {
   components: {
     PortfolioElement,
   },
+  computed: {
+    // portfolioSum() {
+    //   return this.portfolio.holdings.reduce((sum, holding) => sum + holding.value.value, 0);
+    // },
+    sortedPortfolio() {
+      let local_list = this.portfolio.holdings;
+      local_list.sort((a, b) => b.value.value - a.value.value)
+      return local_list;
+    },
+  },
   props: {
     portfolio: {
       type: PortfolioModel,
       required: true,
+    },
+    targetSize: {
+      type: Number,
+      required: false,
     },
   },
 };
