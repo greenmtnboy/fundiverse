@@ -1,11 +1,11 @@
 // import { safeStorage } from 'electron';
-import Store from 'electron-store';
+// import Store from 'electron-store';
 
-const store = new Store<Record<string, string>>({
-  name: 'login-encrypted',
-  watch: true,
-  encryptionKey: 'this_only_obfuscates',
-});
+// const store = new Store<Record<string, string>>({
+//   name: 'login-encrypted',
+//   watch: true,
+//   encryptionKey: 'this_only_obfuscates',
+// });
 
 // const safeStorage =  {
 //   setPassword(key: string, password: string) {
@@ -36,10 +36,10 @@ const getters = {
 // };
 
 const actions = {
-    async setLogin({ commit }) {
+    async setLoggedIn({ commit }) {
         commit('login')
     },
-    async setLogOut({ commit }) {
+    async setLoggedOut({ commit }) {
         commit('logout')
     }
 

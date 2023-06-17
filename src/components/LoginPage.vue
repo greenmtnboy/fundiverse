@@ -48,7 +48,7 @@ export default {
   computed: {
   },
   methods: {
-    ...mapActions(['logIn']),
+    ...mapActions(['setLoggedIn']),
     required(v) {
       return !!v || 'Field is required'
     },
@@ -72,9 +72,9 @@ export default {
       this.loading = true
       return axios.post('http://localhost:3000/login',
         { 'key': this.key, 'secret': this.secret, 'provider': this.selectedProvider}).then(() => {
-          this.logIn();
+          this.setLoggedIn();
           this.loading = false;
-          local.$router.push.push({ path: 'portfolio' })
+          local.$router.push({ path: 'portfolio' })
 
         });
     },

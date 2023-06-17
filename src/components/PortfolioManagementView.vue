@@ -1,12 +1,8 @@
 <template>
-  <div id="app">
-    <div class="container">
-      <div class="text-center">
-        <h2 class="text-center mt-5">Fundiverse</h2>
-        <p>Don't pick stocks. Picks lots of stocks.</p>
-      </div>
+  <v-card>
+    <v-card-title class="d-flex justify-center align-center">Portfolio Management</v-card-title>
       <v-row class="d-flex justify-center align-center pa-2">
-        <v-col cols="6" class="d-flex justify-center align-center pa-2">
+        <v-col cols="6" class="d-flex justify-center align-center">
           <v-btn class="d-flex flex-column" @click="getPortfolio()">Refresh Portfolio
 
           </v-btn>
@@ -56,8 +52,7 @@
           </v-card>
         </v-col></v-row>
 
-    </div>
-  </div>
+      </v-card>
 </template>
 
 <script>

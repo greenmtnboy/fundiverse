@@ -1,11 +1,13 @@
 <template>
   <v-app>
-    <v-main>
-      <v-app-bar color="primary" density="compact">
+
+      <v-app-bar color="primary" density="compact" >
+        <v-app-bar-title>Fundiverse</v-app-bar-title>
+        <p>Don't pick stocks. Picks lots of stocks.</p>
 
         <template v-slot:append>
           <v-icon v-if="isLoggedIn()" color="success">mdi-check</v-icon>
-          <v-tooltip  v-else>
+          <v-tooltip v-else>
             <template v-slot:activator="{ props }">
               <v-icon v-bind="props" color="warning">mdi-exclamation</v-icon>
             </template>
@@ -13,21 +15,22 @@
           </v-tooltip>
           <!-- <v-tooltip>
             <template v-slot:activator="{ props }"> -->
-              <v-btn v-bind="props" @click="gotoLogin()" icon density="compact">
+          <v-btn v-bind="props" @click="gotoLogin()" icon density="compact">
             <v-icon>mdi-login</v-icon>
           </v-btn>
-            <!-- </template>
+          <!-- </template>
             <span>Login</span>
           </v-tooltip> -->
 
         </template></v-app-bar>
+        <v-main>
       <router-view />
     </v-main>
   </v-app>
 </template>
 
 <script>
-
+import axios from 'axios';
 export default {
   name: 'App',
 
@@ -46,6 +49,14 @@ export default {
     isLoggedIn() {
       return this.$store.getters.isLoggedIn;
     },
+    checkLogin() {
+      return axios.get('http://localhost:3000/logged_in').then((response) => {
+        if (response.data.logged_in) { this.setLoggedIn(); }
+      });
+    }
+  },
+  mounted() {
+    this.checkLogin()
   },
 }
 </script>
