@@ -3,6 +3,10 @@
 import { app, protocol, BrowserWindow } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
+import { autoUpdater } from "electron-updater"
+
+
+
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Scheme must be registered before the app is ready
@@ -64,6 +68,17 @@ app.on('ready', async () => {
   }
   createWindow()
 })
+// if (process.env.WEBPACK_DEV_SERVER_URL) {
+//   // Load the url of the dev server if in development mode
+//   win.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
+//   if (!process.env.IS_TEST) win.webContents.openDevTools()
+// } else {
+//   createProtocol('app')
+//   // Load the index.html when not in development
+//   win.loadURL('app://./index.html')
+//   autoUpdater.checkForUpdatesAndNotify()
+// }
+
 
 // Exit cleanly on request from parent process in development mode.
 if (isDevelopment) {

@@ -2,7 +2,7 @@
   <div id="app">
     <div class="container">
       <div class="text-center">
-        <h2 class="text-center mt-5">Custom Index Buddy</h2>
+        <h2 class="text-center mt-5">Fundiverse</h2>
         <p>Don't pick stocks. Picks lots of stocks.</p>
       </div>
       <v-row class="d-flex justify-center align-center pa-2">
@@ -13,7 +13,7 @@
         </v-col>
         <v-col cols="6" class="d-flex justify-center align-center pa-2">
           <v-btn class="d-flex flex-column" @click="buyIndex()">
-            Buy {{ toPurchase }} Dollars of Index
+            Buy {{ toPurchase }} Dollars
           </v-btn>
         </v-col>
       </v-row>
@@ -32,6 +32,9 @@
             <v-card-title style="min-height: 90px;" class="text-center">Owned Portfolio <v-progress-circular :size="35" :width="5"
                 :model-value="portfolioPercentOfTarget" color="deep-orange-lighten-2"><span class="text-caption">{{
                   portfolioPercentOfTarget }}%</span></v-progress-circular></v-card-title>
+                        <v-card-actions>
+              <v-btn class="d-flex flex-column">Compare</v-btn>
+            </v-card-actions>
             <v-card-text>
               <PortfolioView :portfolio="portfolio" :targetSize="portfolioTarget"/>
             </v-card-text>
@@ -39,11 +42,14 @@
         <v-col cols=6>
           <v-card>
             <v-card-title style="min-height: 90px;" class="text-center">
-
+              
               <v-select v-model="selectedIndex" :items="indexKeys" density="compact" variant="solo"
                 label="Target Portfolio"></v-select>
 
             </v-card-title>
+            <v-card-actions>
+              <v-btn class="d-flex flex-column">Tailor</v-btn>
+            </v-card-actions>
             <v-card-text>
               <TargetPortfolioView v-if="selectedIndex" :portfolio="targetPortfolio" />
             </v-card-text>
@@ -141,6 +147,7 @@ export default {
           transformedMap.set(key, transformedValue);
         });
         this.targetPortfolios = new TargetPortfolioListModel({ loaded: transformedMap });
+        this.selectedIndex = Array.from(this.targetPortfolios.loaded.keys())[0];
       });
     },
     // getStockLists() {

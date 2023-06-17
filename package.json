@@ -1,7 +1,9 @@
 {
-  "name": "index-electron-ui",
+  "name": "PyPortfolioIndexer",
   "version": "0.1.0",
   "private": true,
+  "author": "Ethan Dickinson <ethan.dickinson@gmail.com>",
+  "description": "buy all those stocks",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
@@ -14,9 +16,12 @@
   "main": "background.js",
   "dependencies": {
     "@mdi/font": "5.9.55",
+    "@vue/typescript": "^1.8.0",
     "core-js": "^3.8.3",
+    "electron-updater": "^6.1.1",
     "roboto-fontface": "*",
     "vue": "^3.2.13",
+    "vue-router": "^4.2.2",
     "vuetify": "^3.0.0-beta.0",
     "webfontloader": "^1.0.0"
   },

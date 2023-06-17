@@ -1,5 +1,5 @@
 <template>
-  <v-list density = "compact" v-if="portfolio.holdings.length>0">
+  <v-list class="pt-0" density = "compact" v-if="portfolio.holdings.length>0">
     <template  v-for="(element, i) in sortedPortfolio" :key="i">
       <PortfolioElement :element="element" :totalPortfolioSize="targetSize" />
     </template>
