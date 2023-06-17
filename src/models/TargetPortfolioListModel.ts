@@ -1,6 +1,7 @@
 
 
 export default class TargetPortfolioListModel {
+  loaded: any;
   constructor({loaded}) {
     // this.keys = new Set(keys);
     // this.base = base;

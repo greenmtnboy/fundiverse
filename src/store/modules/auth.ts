@@ -1,28 +1,28 @@
-import { safeStorage } from 'electron';
+// import { safeStorage } from 'electron';
 import Store from 'electron-store';
 
 const store = new Store<Record<string, string>>({
-  name: 'ray-encrypted',
+  name: 'login-encrypted',
   watch: true,
   encryptionKey: 'this_only_obfuscates',
 });
 
-const safeStorage =  {
-  setPassword(key: string, password: string) {
-    const buffer = safeStorage.encryptString(password);
-    store.set(key, buffer.toString('latin1'));
-  },
+// const safeStorage =  {
+//   setPassword(key: string, password: string) {
+//     const buffer = safeStorage.encryptString(password);
+//     store.set(key, buffer.toString('latin1'));
+//   },
 
-  deletePassword(key: string) {
-    store.delete(key);
-  },
+//   deletePassword(key: string) {
+//     store.delete(key);
+//   },
 
-  getCredentials(): Array<{ account: string; password: string }> {
-    return Object.entries(store.store).reduce((credentials, [account, buffer]) => {
-      return [...credentials, { account, password: safeStorage.decryptString(Buffer.from(buffer, 'latin1')) }];
-    }, [] as Array<{ account: string; password: string }>);
-  },
-};
+//   getCredentials(): Array<{ account: string; password: string }> {
+//     return Object.entries(store.store).reduce((credentials, [account, buffer]) => {
+//       return [...credentials, { account, password: safeStorage.decryptString(Buffer.from(buffer, 'latin1')) }];
+//     }, [] as Array<{ account: string; password: string }>);
+//   },
+// };
 const state = {
     loggedIn: false
 };

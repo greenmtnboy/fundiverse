@@ -1,4 +1,8 @@
 export default class StocklistInventoryResponse {
+  keys: Set<string>;
+  base: string;
+  loaded: any;
+  
     constructor(keys, base, loaded) {
       this.keys = new Set(keys);
       this.base = base;
