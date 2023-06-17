@@ -1,4 +1,4 @@
-class StocklistInventoryResponse {
+export default class StocklistInventoryResponse {
     constructor(keys, base, loaded) {
       this.keys = new Set(keys);
       this.base = base;
