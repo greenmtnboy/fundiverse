@@ -1,9 +1,10 @@
 <template>
   <v-card class="mx-auto" max-width="344" title="Login to Provider">
-    <v-form v-model="form" @submit.prevent="onSubmit">
+    <v-form v-model="form" @submit.prevent="login">
       <v-container>
 
-        <v-select :readonly="loading" :rules="[required]" v-model="first" color="primary"
+        <v-select :readonly="loading" :rules="[required]" v-model="selectedProvider" color="primary"
+          :items="providers" 
           label="Provider Type"   variant="underlined"></v-select>
 
         <v-text-field :readonly="loading" :rules="[required]" v-model="key" color="primary"
@@ -30,7 +31,7 @@
 // Views
 
 import axios from 'axios';
-
+import { mapActions } from 'vuex';
 export default {
   name: "LoginPage",
   data() {
@@ -39,26 +40,22 @@ export default {
       selectedProvider: null,
       form: false,
       key: '',
-      secret: ''
+      secret: '',
+      loading: false,
 
     };
   },
   computed: {
   },
   methods: {
-    onSubmit() {
-      if (!this.form) return
-
-      this.loading = true
-
-      setTimeout(() => (this.loading = false), 2000)
-    },
+    ...mapActions(['logIn']),
     required(v) {
       return !!v || 'Field is required'
     },
     getProviders() {
+      let local = this;
       return axios.get('http://localhost:3000/providers').then((response) => {
-        this.providers = response.data.available;
+        local.providers = response.data.available;
         // const transformedMap = new Map();
 
         // Object.keys(response.data.loaded).forEach((key) => {
@@ -70,11 +67,15 @@ export default {
       });
     },
 
-    login(username, password) {
+    login() {
       let local = this;
+      this.loading = true
       return axios.post('http://localhost:3000/login',
-        { 'key': username, 'secret': password }).then(() => {
+        { 'key': this.key, 'secret': this.secret, 'provider': this.selectedProvider}).then(() => {
+          this.logIn();
+          this.loading = false;
           local.$router.push.push({ path: 'portfolio' })
+
         });
     },
   },
