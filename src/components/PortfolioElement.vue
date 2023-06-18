@@ -1,8 +1,14 @@
 <template>
-  <v-list-item class="card-body">
-    <div class="card-text">{{ element.ticker }} {{ element.value.currency }}{{ element.value.value }} ({{ elementWeight }}%)
+  <v-list-item  :min-height="15">
+    <div >{{ element.ticker }}<p class="text-medium-emphasis">{{ element.value.currency }}{{ element.value.value }} ({{ elementWeight }}%)</p>
     </div>
-    <!-- <v-row> {{ elementWeight }}%</v-row> -->
+    <template v-slot:append>
+      <v-btn  :loading="loading" 
+       icon density="compact">
+        <!-- <v-icon  :loading="loading" color="warning">mdi-cancel</v-icon> -->
+      </v-btn>
+
+    </template>
   </v-list-item>
 </template>
 <script>

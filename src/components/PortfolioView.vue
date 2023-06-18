@@ -5,7 +5,20 @@
     </template>
   </v-list>
 </template>
-  
+<style>
+.v-list-item {
+  /* border: 1px solid black;
+  padding: 8px;
+  margin-bottom: 8px; */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.v-list-item:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+</style>
 <script>
 import PortfolioElement from "./PortfolioElement.vue";
 import PortfolioModel from '../models/PortfolioModel';

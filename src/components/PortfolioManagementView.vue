@@ -1,58 +1,56 @@
 <template>
   <v-card>
     <v-card-title class="d-flex justify-center align-center">Portfolio Management</v-card-title>
-      <v-row class="d-flex justify-center align-center pa-2">
-        <v-col cols="6" class="d-flex justify-center align-center">
-          <v-btn class="d-flex flex-column" @click="getPortfolio()">Refresh Portfolio
-
-          </v-btn>
-        </v-col>
-        <v-col cols="6" class="d-flex justify-center align-center pa-2">
-          <v-btn class="d-flex flex-column" @click="buyIndex()">
-            Buy {{ toPurchase }} Dollars
-          </v-btn>
-        </v-col>
-      </v-row>
-      <v-row class="d-flex justify-center align-center pa-2">
-        <v-col cols=6>
-          <v-text-field variant="solo" label="Target Portfolio Size" v-model="portfolioTarget"
-            :rules="numberValidationRules">
-          </v-text-field>
-        </v-col>
-        <v-col cols=6>
-          <v-text-field variant="solo" label="Purchase Amount" v-model="toPurchase" :rules="numberValidationRules">
-          </v-text-field>
-        </v-col>
-      </v-row>
-      <v-row><v-col cols=6> <v-card>
-            <v-card-title style="min-height: 90px;" class="text-center">Owned Portfolio <v-progress-circular :size="35" :width="5"
-                :model-value="portfolioPercentOfTarget" color="deep-orange-lighten-2"><span class="text-caption">{{
+    <v-row class="d-flex justify-center align-center pa-2">
+      <v-col cols="6" class="d-flex justify-center align-center">
+        <v-btn :loading="refreshLoading" class="d-flex flex-column" @click="getPortfolio()">Refresh Portfolio
+        </v-btn>
+      </v-col>
+      <v-col cols="6" class="d-flex justify-center align-center pa-2">
+        <v-btn class="d-flex flex-column" @click="buyIndex()">
+          Buy {{ toPurchase }} ({{cash.currency}}{{ cash.value }} Available)
+        </v-btn>
+      </v-col>
+    </v-row>
+    <v-row class="d-flex justify-center align-center pa-2">
+      <v-col cols=6>
+        <v-text-field variant="solo" label="Target Portfolio Size" v-model="portfolioTarget"
+          :rules="numberValidationRules">
+        </v-text-field>
+      </v-col>
+      <v-col cols=6>
+        <v-text-field variant="solo" label="Purchase Amount" v-model="toPurchase" :rules="numberValidationRules">
+        </v-text-field>
+      </v-col>
+    </v-row>
+    <v-row><v-col cols=6> <v-card>
+          <v-card-title style="min-height: 90px;" class="text-center">Owned Portfolio <v-progress-circular :size="35"
+              :width="5" :model-value="portfolioPercentOfTarget" color="deep-orange-lighten-2"><span
+                class="text-caption">{{
                   portfolioPercentOfTarget }}%</span></v-progress-circular></v-card-title>
-                        <v-card-actions>
-              <v-btn class="d-flex flex-column">Compare</v-btn>
-            </v-card-actions>
-            <v-card-text>
-              <PortfolioView :portfolio="portfolio" :targetSize="portfolioTarget"/>
-            </v-card-text>
-          </v-card></v-col>
-        <v-col cols=6>
-          <v-card>
-            <v-card-title style="min-height: 90px;" class="text-center">
-              
-              <v-select v-model="selectedIndex" :items="indexKeys" density="compact" variant="solo"
-                label="Target Portfolio"></v-select>
+          <v-card-actions>
+            <v-btn :loading="compareLoading" class="d-flex flex-column" @click="compareToIndex()">Compare</v-btn>
+          </v-card-actions>
+          <v-card-text>
+            <PortfolioView :portfolio="portfolio" :targetSize="portfolioTarget" />
+          </v-card-text>
+        </v-card></v-col>
+      <v-col cols=6>
+        <v-card>
+          <v-card-title style="min-height: 90px;" class="text-center">
+            <v-select v-model="selectedIndex" :items="indexKeys" density="compact" variant="solo"
+              label="Target Portfolio"></v-select>
+          </v-card-title>
+          <v-card-actions>
+            <v-btn class="d-flex flex-column">Tailor</v-btn>
+          </v-card-actions>
+          <v-card-text>
+            <TargetPortfolioView v-if="selectedIndex" :portfolio="targetPortfolio" />
+          </v-card-text>
+        </v-card>
+      </v-col></v-row>
 
-            </v-card-title>
-            <v-card-actions>
-              <v-btn class="d-flex flex-column">Tailor</v-btn>
-            </v-card-actions>
-            <v-card-text>
-              <TargetPortfolioView v-if="selectedIndex" :portfolio="targetPortfolio" />
-            </v-card-text>
-          </v-card>
-        </v-col></v-row>
-
-      </v-card>
+  </v-card>
 </template>
 
 <script>
@@ -66,6 +64,8 @@ import PortfolioElementModel from '../models/PortfolioElementModel';
 import TargetPortfolioModel from '../models/TargetPortfolioModel';
 import TargetPortfolioElementModel from '../models/TargetPortfolioElementModel';
 import TargetPortfolioListModel from '../models/TargetPortfolioListModel';
+
+import CurrencyModel from '../models/CurrencyModel'
 
 import axios from 'axios';
 
@@ -94,9 +94,15 @@ export default {
       portfolioTarget: 100_000,
       toPurchase: 50,
       selectedIndex: null,
+      compareLoading: false,
+      refreshLoading: false,
+      cash: new CurrencyModel({value: 0, currency: '$'})
     };
   },
   computed: {
+    loading() {
+      return this.compareLoading || this.refreshLoading;
+    },
     targetPortfolio() {
       if (!this.selectedIndex) {
         return null
@@ -125,12 +131,25 @@ export default {
     }
   },
   methods: {
-
+    compareToIndex() {
+      this.compareLoading = true;
+      return axios.post('http://localhost:3000/compare_index', { 'to_purchase': this.toPurchase, 'index': this.selectedIndex }).then((response) => {
+        console.log(response.data)
+      }).finally(() => {
+        this.compareLoading = false;
+      });
+    },
     getPortfolio() {
+      this.refreshLoading = true;
       return axios.get('http://localhost:3000/portfolio').then((response) => {
         const portfolioHoldings = response.data.holdings.map(dict => new PortfolioElementModel(dict));
         this.portfolio = new PortfolioModel(portfolioHoldings);
-      });
+        if (response.data.cash) {
+          this.cash = new CurrencyModel(response.data.cash);
+        }
+      }).finally(() => {
+        this.refreshLoading = false;
+      })
     },
     getIndexes() {
       return axios.get('http://localhost:3000/indexes').then((response) => {
@@ -154,9 +173,9 @@ export default {
 
     buyIndex() {
       return axios.post('http://localhost:3000/buy_index',
-      {'to_purchase': this.toPurchase, 'index':this.selectedIndex}).then(() => {
-        this.getPortfolio();
-      });
+        { 'to_purchase': this.toPurchase, 'index': this.selectedIndex }).then(() => {
+          this.getPortfolio();
+        });
     },
   },
   mounted() {

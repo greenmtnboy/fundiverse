@@ -15,7 +15,7 @@
           </v-tooltip>
           <!-- <v-tooltip>
             <template v-slot:activator="{ props }"> -->
-          <v-btn v-bind="props" @click="gotoLogin()" icon density="compact">
+          <v-btn v-if="showLoginNav"  @click="gotoLogin()" icon density="compact">
             <v-icon>mdi-login</v-icon>
           </v-btn>
           <!-- </template>
@@ -31,6 +31,7 @@
 
 <script>
 import axios from 'axios';
+import { mapActions } from 'vuex';
 export default {
   name: 'App',
 
@@ -41,8 +42,13 @@ export default {
     loggedIn: false,
 
   }),
-
+  computed: {
+    showLoginNav() {
+      return this.$route.name !== 'login';
+    },
+  },
   methods: {
+    ...mapActions(['setLoggedIn',]),
     gotoLogin() {
       this.$router.push({ path: '/' })
     },
@@ -51,7 +57,9 @@ export default {
     },
     checkLogin() {
       return axios.get('http://localhost:3000/logged_in').then((response) => {
-        if (response.data.logged_in) { this.setLoggedIn(); }
+        console.log(response.data)
+        
+        if (response.data.logged_in === 'true') { this.setLoggedIn(); }
       });
     }
   },

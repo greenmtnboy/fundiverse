@@ -4,7 +4,8 @@ import { app, protocol, BrowserWindow } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 // import { autoUpdater } from "electron-updater"
-
+import Store from 'electron-store';
+Store.initRenderer()
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -65,8 +66,8 @@ app.on('ready', async () => {
     } catch (e) {
       if (e instanceof Error) {
       console.error('Vue Devtools failed to install:', e.toString())
-      }
     }
+  }
   }
   createWindow()
 })

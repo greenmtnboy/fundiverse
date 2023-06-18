@@ -25,6 +25,7 @@ module.exports = defineConfig({
 			// https://github.com/vuetifyjs/vuetify-loader/tree/next/packages/vuetify-loader
 		},
     electronBuilder: {
+      nodeIntegration: true,
       builderOptions: {
         publish: ['github']
       }

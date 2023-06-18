@@ -1,34 +1,43 @@
-// import { safeStorage } from 'electron';
-// import Store from 'electron-store';
+// const { safeStorage } = require("electron");
+import Store from 'electron-store';
 
-// const store = new Store<Record<string, string>>({
-//   name: 'login-encrypted',
-//   watch: true,
-//   encryptionKey: 'this_only_obfuscates',
-// });
 
-// const safeStorage =  {
-//   setPassword(key: string, password: string) {
-//     const buffer = safeStorage.encryptString(password);
-//     store.set(key, buffer.toString('latin1'));
-//   },
 
-//   deletePassword(key: string) {
-//     store.delete(key);
-//   },
+const store = new Store<Record<string, string>>({
+    name: 'login-encrypted',
+    watch: true,
+    encryptionKey: 'this_is_always_accessible_by_user',
+});
 
-//   getCredentials(): Array<{ account: string; password: string }> {
-//     return Object.entries(store.store).reduce((credentials, [account, buffer]) => {
-//       return [...credentials, { account, password: safeStorage.decryptString(Buffer.from(buffer, 'latin1')) }];
-//     }, [] as Array<{ account: string; password: string }>);
-//   },
-// };
+const storageAPI = {
+    setCredential(key: string, value: string) {
+        // const buffer = safeStorage.encryptString(value);
+        store.set(key, value);
+        // store.set(key, buffer.toString(encoding));
+    },
+
+    deletePassword(key: string) {
+        store.delete(key);
+    },
+
+    getCredentials(): Array<{ key: string; value: string }> {
+        return Object.entries(store.store).reduce((credentials, [key, buffer]) => {
+            //   return [...credentials, { key, value: safeStorage.decryptString(Buffer.from(buffer, 'latin1')) }];
+            return [...credentials, { key, value: buffer }];
+        }, [] as Array<{ key: string; value: string }>);
+    },
+};
+
 const state = {
-    loggedIn: false
+    loggedIn: false,
+    // keys: [],
+    keys: storageAPI.getCredentials(),
 };
 
 const getters = {
-    isLoggedIn: state => state.loggedIn
+    isLoggedIn: state => state.loggedIn,
+    keys: state => state.keys
+
 };
 
 
@@ -39,6 +48,10 @@ const actions = {
     async setLoggedIn({ commit }) {
         commit('login')
     },
+    async storeSavedValue({ commit }, data) {
+        commit('storeCredential', data)
+    },
+
     async setLoggedOut({ commit }) {
         commit('logout')
     }
@@ -54,6 +67,11 @@ const mutations = {
     logout(state,) {
         state.loggedIn = false;
     },
+    storeCredential(state, data) {
+        storageAPI.setCredential(data.key, data.value);
+        state.keys.push(data)
+
+    }
 };
 
 
