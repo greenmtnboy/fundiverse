@@ -1,6 +1,6 @@
 <template>
   <v-list-item  >
-    <div >{{ element.ticker }}<p class="text-medium-emphasis">{{ elementWeight }}%</p></div>
+    <div >{{ element.ticker }}<p class="text-medium-emphasis">${{ elementValue }} ({{ elementWeight }}%)</p></div>
     <!-- <v-row> {{ elementWeight }}%</v-row> -->
     <template v-slot:append>
       <v-btn  :loading="loading" @click="onClickWrapper"
@@ -36,6 +36,10 @@ export default {
       type: TargetPortfolioElementModel,
       required: true,
     },
+    totalPortfolioSize: {
+      type: Number,
+      required: false
+    },
     onClick: {
       type: Function,
       required: false,
@@ -44,6 +48,12 @@ export default {
   computed: {
     elementWeight() {
       return Math.round(this.element.weight * 10000) / 100;
+    },
+    elementValue() {
+      if (!this.totalPortfolioSize) {
+        return null;
+      }
+      return  Math.round(this.totalPortfolioSize *this.element.weight);
     },
   }
 };

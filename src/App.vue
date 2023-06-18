@@ -3,7 +3,7 @@
 
       <v-app-bar color="primary" density="compact" >
         <v-app-bar-title>Fundiverse</v-app-bar-title>
-        <p>Don't pick stocks. Picks lots of stocks.</p>
+        <p>Don't pick a stock. Picks lots of stocks.</p>
 
         <template v-slot:append>
           <v-icon v-if="isLoggedIn()" color="success">mdi-check</v-icon>

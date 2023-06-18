@@ -1,7 +1,7 @@
 <template>
     <v-list class="pt-0" density = "compact"  v-if="portfolio.holdings.length>0">
       <template  v-for="(element, i) in sortedPortfolio" :key="i">
-        <TargetPortfolioElement :element="element" />
+        <TargetPortfolioElement :element="element" :totalPortfolioSize="targetSize" />
       </template>
     </v-list>
   </template>
@@ -20,6 +20,10 @@
         type: TargetPortfolioModel,
         required: true,
       },
+      targetSize: {
+      type: Number,
+      required: false,
+    },
     },
     computed: {
         sortedPortfolio() {

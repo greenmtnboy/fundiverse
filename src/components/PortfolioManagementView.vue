@@ -25,9 +25,11 @@
     </v-row>
     <v-row><v-col cols=6> <v-card>
           <v-card-title style="min-height: 90px;" class="text-center">Owned Portfolio <v-progress-circular :size="35"
-              :width="5" :model-value="portfolioPercentOfTarget" color="deep-orange-lighten-2"><span
+              :width="5" :model-value="portfolioPercentOfTarget" color="deep-orange-lighten-2">
+              <span
                 class="text-caption">{{
-                  portfolioPercentOfTarget }}%</span></v-progress-circular></v-card-title>
+                  portfolioPercentOfTarget }}%</span>
+                  </v-progress-circular></v-card-title>
           <v-card-actions>
             <v-btn :loading="compareLoading" class="d-flex flex-column" @click="compareToIndex()">Compare</v-btn>
           </v-card-actions>
@@ -45,7 +47,7 @@
             <v-btn class="d-flex flex-column">Tailor</v-btn>
           </v-card-actions>
           <v-card-text>
-            <TargetPortfolioView v-if="selectedIndex" :portfolio="targetPortfolio" />
+            <TargetPortfolioView v-if="selectedIndex" :portfolio="targetPortfolio" :targetSize="portfolioTarget"  />
           </v-card-text>
         </v-card>
       </v-col></v-row>
