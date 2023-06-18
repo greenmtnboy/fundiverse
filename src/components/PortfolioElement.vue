@@ -1,11 +1,10 @@
 <template>
-  <v-list-item  :min-height="15">
-    <div >{{ element.ticker }}<p class="text-medium-emphasis">{{ element.value.currency }}{{ element.value.value }} ({{ elementWeight }}%)</p>
+  <v-list-item :min-height="15">
+    <div>{{ element.ticker }}<p class="text-medium-emphasis">{{ element.value.currency }}{{ element.value.value }} ({{
+      elementWeight }}%)</p>
     </div>
     <template v-slot:append>
-      <v-btn  :loading="loading" 
-       icon density="compact">
-        <!-- <v-icon  :loading="loading" color="warning">mdi-cancel</v-icon> -->
+      <v-btn :loading="loading" icon density="compact">
       </v-btn>
 
     </template>
