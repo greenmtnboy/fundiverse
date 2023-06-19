@@ -6,11 +6,13 @@ export default class PortfolioElementModel {
   unit:string;
   value:CurrencyModel;
   weight:string;
+  unsettled:boolean;
 
-  constructor({ticker, unit, value, weight}) {
+  constructor({ticker, unit, value, weight, unsettled}) {
     this.ticker = ticker
     this.unit=unit
     this.value = new CurrencyModel(value)
     this.weight=weight
+    this.unsettled=unsettled
   }
 } 

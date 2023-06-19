@@ -32,11 +32,13 @@ const state = {
     loggedIn: false,
     // keys: [],
     keys: storageAPI.getCredentials(),
+    provider: ''
 };
 
 const getters = {
     isLoggedIn: state => state.loggedIn,
-    keys: state => state.keys
+    keys: state => state.keys,
+    provider:  state => state.provider
 
 };
 
@@ -45,32 +47,38 @@ const getters = {
 // };
 
 const actions = {
-    async setLoggedIn({ commit }) {
-        commit('login')
+    async setLoggedIn({ commit }, data) {
+        commit('login', data)
     },
     async storeSavedValue({ commit }, data) {
         commit('storeCredential', data)
     },
 
-    async setLoggedOut({ commit }) {
+    async setLoggedOut({ commit },) {
         commit('logout')
-    }
+    },
+
 
 };
 
 
 
 const mutations = {
-    login(state,) {
+    login(state,data) {
         state.loggedIn = true;
+        state.provider = data.provider;
     },
     logout(state,) {
         state.loggedIn = false;
+        state.provider = '';
     },
     storeCredential(state, data) {
         storageAPI.setCredential(data.key, data.value);
         state.keys.push(data)
 
+    },
+    setProvider(state, data) {
+        state.provider = data;
     }
 };
 

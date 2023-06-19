@@ -2,17 +2,22 @@
   <v-app>
 
       <v-app-bar color="primary" density="compact" >
-        <v-app-bar-title>Fundiverse</v-app-bar-title>
-        <p>Don't pick a stock. Picks lots of stocks.</p>
-
+        <v-app-bar-title >Fundiverse
+           <!-- <span class = "text-subtitle-1">Don't pick a stock. Picks lots of stocks. </span> -->
+        </v-app-bar-title>
+        <v-spacer></v-spacer>
+        <p class=" d-flex justify-center text-center">Don't pick a stock. Picks lots of stocks.</p>
+        <v-spacer></v-spacer>
         <template v-slot:append>
-          <v-icon v-if="isLoggedIn()" color="success">mdi-check</v-icon>
+          <v-icon v-if="isLoggedIn"  color="success">mdi-check</v-icon>
+
           <v-tooltip v-else>
             <template v-slot:activator="{ props }">
               <v-icon v-bind="props" color="warning">mdi-exclamation</v-icon>
             </template>
-            <span>Must login to use tool!</span>
+            <span>Must re-login to {{ provider }}!</span>
           </v-tooltip>
+          <p >{{provider}}</p>
           <!-- <v-tooltip>
             <template v-slot:activator="{ props }"> -->
           <v-btn v-if="showLoginNav"  @click="gotoLogin()" icon density="compact">
@@ -31,7 +36,7 @@
 
 <script>
 import axios from 'axios';
-import { mapActions } from 'vuex';
+import { mapActions, mapGetters } from 'vuex';
 export default {
   name: 'App',
 
@@ -39,27 +44,26 @@ export default {
   },
 
   data: () => ({
-    loggedIn: false,
 
   }),
   computed: {
     showLoginNav() {
       return this.$route.name !== 'login';
     },
+    provider() {
+      return this.$store.getters.provider;
+    },
+    ...mapGetters(['isLoggedIn'])
   },
   methods: {
     ...mapActions(['setLoggedIn',]),
     gotoLogin() {
       this.$router.push({ path: '/' })
     },
-    isLoggedIn() {
-      return this.$store.getters.isLoggedIn;
-    },
     checkLogin() {
       return axios.get('http://localhost:3000/logged_in').then((response) => {
-        console.log(response.data)
-        
-        if (response.data.logged_in === 'true') { this.setLoggedIn(); }
+        if (response.data) { 
+          this.setLoggedIn({'provider':response.data}); }
       });
     }
   },

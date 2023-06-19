@@ -1,7 +1,8 @@
+import TargetPortfolioElementModel from "./TargetPortfolioElementModel";
 
 
 export default class TargetPortfolio {
-  holdings:string;
+  holdings:Array<TargetPortfolioElementModel>;
   source_date:string;
   
     constructor({holdings, source_date}) {

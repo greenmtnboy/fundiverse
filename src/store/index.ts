@@ -1,5 +1,7 @@
 import { createStore } from 'vuex'
 import auth from './modules/auth';
+import portfolio from './modules/portfolio'
+import tailoring from './modules/tailoring';
 export default createStore({
   // state: {
   // },
@@ -10,6 +12,8 @@ export default createStore({
   // actions: {
   // },
   modules: {
-    auth
+    auth,
+    portfolio,
+    tailoring
   }
 })
