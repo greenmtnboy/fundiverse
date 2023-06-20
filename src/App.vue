@@ -56,7 +56,7 @@ export default {
     ...mapGetters(['isLoggedIn'])
   },
   methods: {
-    ...mapActions(['setLoggedIn',]),
+    ...mapActions(['setLoggedIn', 'loadDefaultModifications']),
     gotoLogin() {
       this.$router.push({ path: '/' })
     },
@@ -69,6 +69,7 @@ export default {
   },
   mounted() {
     this.checkLogin()
+    this.loadDefaultModifications()
   },
 }
 </script>

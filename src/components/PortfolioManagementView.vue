@@ -1,4 +1,5 @@
 <template>
+  <TailorComponent />
   <v-card>
     <v-card-title class="d-flex justify-center align-center">Portfolio Management</v-card-title>
     <v-row class="d-flex justify-center align-center px-2">
@@ -7,7 +8,7 @@
         </v-btn>
       </v-col>
       <v-col cols="6" class="d-flex justify-center align-center px-2">
-        <v-btn :disabled = "!selectedIndex" class="d-flex flex-column" @click="buyIndex()">
+        <v-btn :disabled="!selectedIndex" class="d-flex flex-column" @click="buyIndex()">
           Buy ${{ toPurchase }} ({{ cash.currency }}{{ cash.value }} Available)
         </v-btn>
       </v-col>
@@ -15,18 +16,21 @@
 
     <v-row class="d-flex justify-center align-center px-2">
       <v-col cols=4>
-        <v-text-field class="input-field" variant="solo" @input="handlePortfolioSizeInput" 
-        label="Target Portfolio Size"
+        <v-text-field class="input-field" variant="solo" @input="handlePortfolioSizeInput" label="Target Portfolio Size"
           v-model="portfolioTarget" :rules="numberValidationRules">
         </v-text-field>
       </v-col>
       <v-col cols=4>
-        <v-text-field class="input-field" variant="solo" label="Purchase Amount" v-model="toPurchase" :rules="numberValidationRules">
+        <v-text-field class="input-field" variant="solo" label="Purchase Amount" v-model="toPurchase"
+          :rules="numberValidationRules">
         </v-text-field>
       </v-col>
       <v-col cols="4">
-      <v-text-field class="input-field"  label="Filter Tickers" variant="solo"  v-model="searchQuery"
-        placeholder="AAPL" /></v-col>
+        <v-text-field 
+        @update:modelValue="newValue => handlePortfolioSearchText(newValue)"
+        class="input-field" label="Filter Tickers" 
+        variant="solo" v-model="searchQueryInternal"
+          placeholder="AAPL" /></v-col>
     </v-row>
     <v-row>
       <v-col cols=6>
@@ -37,7 +41,7 @@
             </v-progress-linear>
           </v-card-title>
           <v-card-actions>
-            <v-btn :loading="compareLoading" class="d-flex flex-column" @click="compareToIndex()">Compare</v-btn>
+            <!-- <v-btn :loading="compareLoading" class="d-flex flex-column" @click="compareToIndex()">Compare</v-btn> -->
           </v-card-actions>
           <v-card-text>
             <PortfolioView :searchQuery="searchQuery" :portfolio="portfolio" :targetSize="totalPortfolioSizeNumber" />
@@ -47,15 +51,13 @@
       <v-col cols=6>
         <v-card>
           <v-card-title style="min-height: 90px;" class="text-center">
-            <v-select 
-            @update:modelValue="newValue =>getTargetPortfolio(newValue)"
-            v-model="selectedIndex" :items="indexKeys" density="compact" variant="solo"
-              label="Target Portfolio"></v-select>
+            <v-select @update:modelValue="newValue => getTargetPortfolio(newValue)" v-model="selectedIndex"
+              :items="indexKeys" density="compact" variant="solo" label="Target Portfolio"></v-select>
           </v-card-title>
           <v-card-actions>
             <v-badge v-if="mutations" :content="mutations">
-            <v-btn class="d-flex flex-column">Tailor</v-btn>
-          </v-badge>
+              <v-btn class="d-flex flex-column">Customize</v-btn>
+            </v-badge>
             <v-btn v-else class="d-flex flex-column">Tailor</v-btn>
           </v-card-actions>
           <v-card-text>
@@ -81,7 +83,8 @@
 </template>
 <style>
 .input-field {
-  height: 48px; /* Adjust the height value as needed */
+  height: 48px;
+  /* Adjust the height value as needed */
 }
 </style>
 <script>
@@ -91,6 +94,7 @@ import { shallowRef } from 'vue';
 // Views
 import PortfolioView from "./PortfolioView.vue"
 import TargetPortfolioView from "./TargetPortfolioView.vue"
+import TailorComponent from './TailorComponent.vue';
 
 // Models
 import PortfolioModel from '../models/PortfolioModel';
@@ -126,7 +130,8 @@ export default {
   name: "App",
   components: {
     PortfolioView,
-    TargetPortfolioView
+    TargetPortfolioView,
+    TailorComponent
   },
   data() {
     const portHoldings = shallowRef([])
@@ -143,6 +148,7 @@ export default {
       selectedIndex: null,
       compareLoading: false,
       refreshLoading: false,
+      searchQueryInternal: '',
       searchQuery: '',
       cash: new CurrencyModel({
         value: 0,
@@ -152,7 +158,7 @@ export default {
   },
   computed: {
     mutations() {
-      return this.$store.getters.excludedTickers.size
+      return this.$store.getters.totalModifications
     },
     loading() {
       return this.compareLoading || this.refreshLoading;
@@ -181,27 +187,34 @@ export default {
     }
   },
   methods: {
-    ...mapActions(['setDisplayLength']),
+    ...mapActions(['setDisplayLength', 'setStockLists']),
+    handlePortfolioSearchText: debounce(function () {
+      // Code to execute after the debounce delay
+      this.searchQuery = this.searchQueryInternal
+    }, 300),
     handlePortfolioSizeInput: debounce(function () {
       // Code to execute after the debounce delay
       this.totalPortfolioSizeNumber = Number(this.portfolioTarget)
     }, 300), // Debounce delay in milliseconds
-    compareToIndex() {
-      this.compareLoading = true;
-      return instance.post('http://localhost:3000/compare_index', {
-        'to_purchase': this.toPurchase,
-        'index': this.selectedIndex
-      }).then((response) => {
-        console.log(response.data)
-      }).finally(() => {
-        this.compareLoading = false;
-      });
-    },
+    // compareToIndex() {
+    //   this.compareLoading = true;
+    //   return instance.post('http://localhost:3000/compare_index', {
+    //     'to_purchase': this.toPurchase,
+    //     'index': this.selectedIndex
+    //   }).then((response) => {
+    //     console.log(response.data)
+    //   }).finally(() => {
+    //     this.compareLoading = false;
+    //   });
+    // },
     getTargetPortfolio(newValue) {
       const target = newValue || this.selectedIndex;
       return instance.post('http://localhost:3000/generate_index', {
         'index': target,
-        'exclusions': Array.from(this.$store.getters.excludedTickers)
+        'stock_exclusions': Array.from(this.$store.getters.excludedTickers),
+        'list_exclusions': Array.from(this.$store.getters.excludedLists),
+        'stock_modifications': this.$store.getters.stockModifications,
+        'list_modifications': this.$store.getters.listModifications
       }).then((response) => {
         const portfolioHoldings = response.data.holdings.map(
           dict => new TargetPortfolioElementModel(dict));
@@ -209,19 +222,8 @@ export default {
           'holdings': portfolioHoldings,
           'source_date': response.data.source_date
         });
-        // const transformedMap = new Map();
-
-        // Object.keys(response.data.loaded).forEach((key) => {
-        //   const transformedValue = parse_target_portfolio_model(response.data.loaded[key])
-        //   transformedMap.set(key, transformedValue);
-        // });
-        // this.targetPortfolios.loaded = transformedMap;
-        //  = new TargetPortfolioListModel({
-        //   loaded: transformedMap
-        // });
-        // this.selectedIndex = Array.from(this.targetPortfolios.loaded.keys())[0];
       });
-        
+
     },
     getPortfolio() {
       this.refreshLoading = true;
@@ -245,27 +247,14 @@ export default {
     },
     getIndexes() {
       return instance.get('http://localhost:3000/indexes').then((response) => {
-        
         this.indexKeys = response.data;
-        // const transformedMap = new Map();
-
-        // Object.keys(response.data.loaded).forEach((key) => {
-        //   const transformedValue = parse_target_portfolio_model(response.data.loaded[key])
-        //   transformedMap.set(key, transformedValue);
-        // });
-        // this.targetPortfolios.loaded = transformedMap;
-        //  = new TargetPortfolioListModel({
-        //   loaded: transformedMap
-        // });
-        // this.selectedIndex = Array.from(this.targetPortfolios.loaded.keys())[0];
       });
     },
-    // getStockLists() {
-    //   return axios.get('http://localhost:3000/stock_lists').then((response) => {
-    //     const portfolioHoldings = response.data.holdings.map(dict => new PortfolioElementModel(dict));
-    //     this.portfolio = new StockListModel(portfolioHoldings);
-    //   });
-    // },
+    getStockLists() {
+      return instance.get('http://localhost:3000/stock_lists').then((response) => {
+        this.setStockLists(response.data.loaded)
+      });
+    },
 
     buyIndex() {
       return instance.post('http://localhost:3000/buy_index', {
@@ -277,17 +266,25 @@ export default {
     },
     expandList() {
       this.setDisplayLength(this.$store.getters.displayLength + 50)
-      console.log('EXPANDED LIST')
     }
   },
   mounted() {
     this.getPortfolio()
     this.getIndexes()
+    this.getStockLists()
     this.$store.watch(
-      (_state, getters) => getters.excludedTickers, // Specify the getter to watch
+      (_state, getters) => [
+      getters.excludedTickers,
+      getters.excludedLists,
+      getters.stockModifications,
+      getters.listModifications],
       () => {
-        // Action to be performed when the store is modified
-        this.getTargetPortfolio();
+        console.log('SOMETHING CHANGED')
+        if (this.selectedIndex) {
+          console.log('Updating target portfolio')
+          this.getTargetPortfolio();
+        }
+
       }
     );
   },
