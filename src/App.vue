@@ -1,34 +1,29 @@
 <template>
   <v-app>
 
-      <v-app-bar color="primary" density="compact" >
-        <v-app-bar-title >Fundiverse
-           <!-- <span class = "text-subtitle-1">Don't pick a stock. Picks lots of stocks. </span> -->
-        </v-app-bar-title>
-        <v-spacer></v-spacer>
-        <p class=" d-flex justify-center text-center">Don't pick a stock. Picks lots of stocks.</p>
-        <v-spacer></v-spacer>
-        <template v-slot:append>
-          <v-icon v-if="isLoggedIn"  color="success">mdi-check</v-icon>
+    <v-app-bar color="primary" density="compact">
+      <v-app-bar-title>Fundiverse
+      </v-app-bar-title>
+      <v-spacer></v-spacer>
+      <p class=" d-flex justify-center text-center">Don't pick a stock. Picks lots of stocks.</p>
+      <v-spacer></v-spacer>
+      <template v-slot:append>
+        <v-icon v-if="isLoggedIn" color="success">mdi-check</v-icon>
 
-          <v-tooltip v-else>
-            <template v-slot:activator="{ props }">
-              <v-icon v-bind="props" color="warning">mdi-exclamation</v-icon>
-            </template>
-            <span>Must re-login to {{ provider }}!</span>
-          </v-tooltip>
-          <p >{{provider}}</p>
-          <!-- <v-tooltip>
-            <template v-slot:activator="{ props }"> -->
-          <v-btn v-if="showLoginNav"  @click="gotoLogin()" icon density="compact">
-            <v-icon>mdi-login</v-icon>
-          </v-btn>
-          <!-- </template>
-            <span>Login</span>
-          </v-tooltip> -->
+        <v-tooltip v-else>
+          <template v-slot:activator="{ props }">
+            <v-icon v-bind="props" color="warning">mdi-exclamation</v-icon>
+          </template>
+          <span>Must re-login to {{ provider }}!</span>
+        </v-tooltip>
+        <p>{{ provider }}</p>
+        <v-btn v-if="showLoginNav" @click="gotoLogin()" icon density="compact">
+          <v-icon>mdi-login</v-icon>
+        </v-btn>
 
-        </template></v-app-bar>
-        <v-main>
+      </template>
+    </v-app-bar>
+    <v-main>
       <router-view />
     </v-main>
   </v-app>
@@ -62,8 +57,9 @@ export default {
     },
     checkLogin() {
       return axios.get('http://localhost:3000/logged_in').then((response) => {
-        if (response.data) { 
-          this.setLoggedIn({'provider':response.data}); }
+        if (response.data) {
+          this.setLoggedIn({ 'provider': response.data });
+        }
       });
     }
   },

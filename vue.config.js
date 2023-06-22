@@ -27,7 +27,8 @@ module.exports = defineConfig({
     electronBuilder: {
       nodeIntegration: true,
       builderOptions: {
-        publish: ['github']
+        publish: ['github'],
+        // extraResources: "background",
       }
     }
   },

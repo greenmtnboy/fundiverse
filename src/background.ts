@@ -3,6 +3,9 @@
 import { app, protocol, BrowserWindow } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
+const { spawn } = require('child_process');
+const path = require('path');
+
 // import { autoUpdater } from "electron-updater"
 import Store from 'electron-store';
 Store.initRenderer()
@@ -15,7 +18,7 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } }
 ])
 
-async function createWindow() {
+async function createWindow(process) {
   // Create the browser window.
   const win = new BrowserWindow({
     width: 800,
@@ -38,6 +41,12 @@ async function createWindow() {
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
   }
+   win.on('closed', () => {
+    // Terminate the Python process when the Electron app is closed
+    if (process) {
+      process.kill();
+    }
+  });
 }
 
 // Quit when all windows are closed.
@@ -52,7 +61,7 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  if (BrowserWindow.getAllWindows().length === 0) createWindow(process)
 })
 
 // This method will be called when Electron has finished
@@ -69,7 +78,12 @@ app.on('ready', async () => {
     }
   }
   }
-  createWindow()
+  // console.log(path.join(app.getAppPath(), '..','/src/background/py-portfolio-ui-backend.exe'))
+  let backgroundService = spawn(path.join(app.getAppPath(), '..', '/src/background/py-portfolio-ui-backend.exe'))
+  backgroundService.on('close', (code) => {
+    console.log(`Background process exited with code ${code}`);
+  });
+  createWindow(backgroundService)
 })
 // if (process.env.WEBPACK_DEV_SERVER_URL) {
 //   // Load the url of the dev server if in development mode
