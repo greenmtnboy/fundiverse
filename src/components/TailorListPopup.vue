@@ -13,17 +13,15 @@
                     You can exclude a list of stocks entirely with the below toggle, or scale the weighting of all stocks in
                     the list in the index by some percent. The default 100% would not change the weight in the index.
                 </p>
-                <v-select v-model="list" :items="indexKeys" density="compact"
-                 variant="solo" label="Stock List"></v-select>
-                 <v-chip-group active-class="primary">
-    <v-chip v-for="tag in listMembers" :key="tag" :value="tag" label>
-      {{ tag }}
-    </v-chip>
-  </v-chip-group>
+                <v-select v-model="list" :items="indexKeys" density="compact" variant="solo" label="Stock List"></v-select>
+                <v-chip-group active-class="primary">
+                    <v-chip v-for="tag in listMembers" :key="tag" :value="tag" label>
+                        {{ tag }}
+                    </v-chip>
+                </v-chip-group>
                 <v-divider />
                 <v-switch v-model="excluded" :label="excluded ? 'Exclude' : 'Keep'" color="blue-darken-4" density="compact"
                     hide-details inline inset></v-switch>
-
                 <v-text-field v-model="weight" :disabled="excluded" label="Weighting %" variant="solo" color="blue-darken-4"
                     density="compact" :rules="numberValidationRules" hide-details inline inset></v-text-field>
                 <!-- <v-text-field v-model="minWeight" :disabled="excluded" :rules="numberValidationRules" color="blue-darken-4" label="Minimum Weighting" density="compact" variant="solo" hide-details inline inset></v-text-field> -->
@@ -52,7 +50,7 @@ import {
 export default {
     name: "TailorListPopup",
     data: () => ({
-        list:'',
+        list: '',
         excluded: false,
         dialog: false,
         weight: 100,

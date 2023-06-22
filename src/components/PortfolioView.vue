@@ -1,9 +1,9 @@
 <template>
-<v-list class="pt-0" density="compact" v-if="portfolio.holdings.length>0">
-    <template v-for="element in shortList" :key="element.ticker">
-        <PortfolioElement :element="element" :totalPortfolioSize="targetSize" />
-    </template>
-</v-list>
+    <v-list class="pt-0" density="compact" v-if="portfolio.holdings.length > 0">
+        <template v-for="element in shortList" :key="element.ticker">
+            <PortfolioElement :element="element" :totalPortfolioSize="targetSize" />
+        </template>
+    </v-list>
 </template>
 
 <style>
@@ -40,10 +40,10 @@ export default {
             return local_list;
         },
         shortList() {
-          const query = this.searchQuery.toLowerCase();
-          const filtered= this.sortedPortfolio.filter(item => item.ticker.toLowerCase().includes(query));
-          const shortenedList = filtered.slice(0, this.$store.getters.displayLength);
-          return shortenedList
+            const query = this.searchQuery.toLowerCase();
+            const filtered = this.sortedPortfolio.filter(item => item.ticker.toLowerCase().includes(query));
+            const shortenedList = filtered.slice(0, this.$store.getters.displayLength);
+            return shortenedList
 
         }
     },
@@ -57,9 +57,9 @@ export default {
             required: false,
         },
         searchQuery: {
-          type: String,
-          required: false,
-          default:''
+            type: String,
+            required: false,
+            default: ''
         }
     },
 };

@@ -6,7 +6,7 @@
     <template v-slot:append>
       <v-tooltip>
         <template v-slot:activator="{ props }">
-          <v-btn :disabled = "excluded" v-bind="props" @click="onClickWrapper" icon density="compact">
+          <v-btn :disabled="excluded" v-bind="props" @click="onClickWrapper" icon density="compact">
             <v-icon :loading="loading" color="warning">mdi-cancel</v-icon>
           </v-btn>
         </template>
@@ -18,7 +18,7 @@
 
 <script>
 import TargetPortfolioElementModel from '../models/TargetPortfolioElementModel';
-import {mapActions} from 'vuex';
+import { mapActions } from 'vuex';
 
 export default {
   name: "TargetPortfolioElement",

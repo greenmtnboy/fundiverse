@@ -1,19 +1,6 @@
 <template>
-  <TailorComponent />
   <v-card>
     <v-card-title class="d-flex justify-center align-center">Portfolio Management</v-card-title>
-    <v-row class="d-flex justify-center align-center px-2">
-      <v-col cols="6" class="d-flex justify-center align-center">
-        <v-btn :loading="refreshLoading" class="d-flex flex-column" @click="getPortfolio()">Refresh Portfolio
-        </v-btn>
-      </v-col>
-      <v-col cols="6" class="d-flex justify-center align-center px-2">
-        <v-btn :disabled="!selectedIndex" class="d-flex flex-column" @click="buyIndex()">
-          Buy ${{ toPurchase }} ({{ cash.currency }}{{ cash.value }} Available)
-        </v-btn>
-      </v-col>
-    </v-row>
-
     <v-row class="d-flex justify-center align-center px-2">
       <v-col cols=4>
         <v-text-field class="input-field" variant="solo" @input="handlePortfolioSizeInput" label="Target Portfolio Size"
@@ -26,11 +13,8 @@
         </v-text-field>
       </v-col>
       <v-col cols="4">
-        <v-text-field 
-        @update:modelValue="newValue => handlePortfolioSearchText(newValue)"
-        class="input-field" label="Filter Tickers" 
-        variant="solo" v-model="searchQueryInternal"
-          placeholder="AAPL" /></v-col>
+        <v-text-field @update:modelValue="newValue => handlePortfolioSearchText(newValue)" class="input-field"
+          label="Filter Tickers" variant="solo" v-model="searchQueryInternal" placeholder="AAPL" /></v-col>
     </v-row>
     <v-row>
       <v-col cols=6>
@@ -42,6 +26,14 @@
           </v-card-title>
           <v-card-actions>
             <!-- <v-btn :loading="compareLoading" class="d-flex flex-column" @click="compareToIndex()">Compare</v-btn> -->
+            <v-col cols="4" class="d-flex justify-center align-center px-2 py-0">
+              <v-btn :loading="refreshLoading" class="d-flex flex-column" @click="getPortfolio()">Refresh
+              </v-btn>
+            </v-col>
+            <v-col cols="8" class="d-flex justify-center align-center px-2 py-0">
+              <ConfirmPurchase :selectedIndex="selectedIndex" :toPurchase="toPurchase"
+                :targetSize="totalPortfolioSizeNumber" :cash="cash" :refreshCallback="getPortfolio" />
+            </v-col>
           </v-card-actions>
           <v-card-text>
             <PortfolioView :searchQuery="searchQuery" :portfolio="portfolio" :targetSize="totalPortfolioSizeNumber" />
@@ -55,10 +47,10 @@
               :items="indexKeys" density="compact" variant="solo" label="Target Portfolio"></v-select>
           </v-card-title>
           <v-card-actions>
-            <v-badge v-if="mutations" :content="mutations">
-              <v-btn class="d-flex flex-column">Customize</v-btn>
-            </v-badge>
-            <v-btn v-else class="d-flex flex-column">Tailor</v-btn>
+            <TailorComponent />
+            <v-spacer />
+            <IconTooltip
+              text="Further customize the selected index by excluding or reweighting individual stocks or lists of stocks" />
           </v-card-actions>
           <v-card-text>
             <TargetPortfolioView v-if="targetPortfolio" :portfolio="targetPortfolio" :searchQuery="searchQuery"
@@ -91,10 +83,12 @@
 //Vue
 import { shallowRef } from 'vue';
 
-// Views
+//Components
 import PortfolioView from "./PortfolioView.vue"
 import TargetPortfolioView from "./TargetPortfolioView.vue"
 import TailorComponent from './TailorComponent.vue';
+import IconTooltip from './generic/IconTooltip.vue'
+import ConfirmPurchase from './purchase/ConfirmPurchase.vue'
 
 // Models
 import PortfolioModel from '../models/PortfolioModel';
@@ -131,7 +125,9 @@ export default {
   components: {
     PortfolioView,
     TargetPortfolioView,
-    TailorComponent
+    TailorComponent,
+    IconTooltip,
+    ConfirmPurchase
   },
   data() {
     const portHoldings = shallowRef([])
@@ -157,9 +153,7 @@ export default {
     };
   },
   computed: {
-    mutations() {
-      return this.$store.getters.totalModifications
-    },
+
     loading() {
       return this.compareLoading || this.refreshLoading;
     },
@@ -274,10 +268,10 @@ export default {
     this.getStockLists()
     this.$store.watch(
       (_state, getters) => [
-      getters.excludedTickers,
-      getters.excludedLists,
-      getters.stockModifications,
-      getters.listModifications],
+        getters.excludedTickers,
+        getters.excludedLists,
+        getters.stockModifications,
+        getters.listModifications],
       () => {
         console.log('SOMETHING CHANGED')
         if (this.selectedIndex) {

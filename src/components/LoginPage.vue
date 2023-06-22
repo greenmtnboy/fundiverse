@@ -1,24 +1,29 @@
 <template>
-<v-card class="mx-auto" max-width="344" title="Login to Provider">
-    <v-form v-model="form" @submit.prevent="login">
-        <v-container>
-            <v-select :readonly="loading" :rules="[required]" v-model="selectedProvider" color="primary" :items="providers" @update:modelValue="providerSelected" label="Provider Type" variant="underlined"></v-select>
-            <v-text-field :readonly="loading" :rules="[required]" v-model="key" color="primary" label="API Key" variant="underlined"></v-text-field>
-            <v-text-field :readonly="loading" :rules="[required]" v-model="secret" color="primary" label="API Secret" :append-icon="showPass ? 'mdi-eye' : 'mdi-eye-off'" :type="showPass ? 'text' : 'password'" @click:append="showPass = !showPass" variant="underlined"></v-text-field>
-            <v-checkbox v-model="saveCredentials" color="secondary" label="Save Login Credentials"></v-checkbox>
-        </v-container>
+    <v-card class="mx-auto" max-width="344" title="Login to Provider">
+        <v-form v-model="form" @submit.prevent="login">
+            <v-container>
+                <v-select :readonly="loading" :rules="[required]" v-model="selectedProvider" color="primary"
+                    :items="providers" @update:modelValue="providerSelected" label="Provider Type"
+                    variant="underlined"></v-select>
+                <v-text-field :readonly="loading" :rules="[required]" v-model="key" color="primary" label="API Key"
+                    variant="underlined"></v-text-field>
+                <v-text-field :readonly="loading" :rules="[required]" v-model="secret" color="primary" label="API Secret"
+                    :append-icon="showPass ? 'mdi-eye' : 'mdi-eye-off'" :type="showPass ? 'text' : 'password'"
+                    @click:append="showPass = !showPass" variant="underlined"></v-text-field>
+                <v-checkbox v-model="saveCredentials" color="secondary" label="Save Login Credentials"></v-checkbox>
+            </v-container>
 
-        <v-divider></v-divider>
+            <v-divider></v-divider>
 
-        <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn :disabled="!form" :loading="loading" color="success" type="submit">
-                Authenticate
-                <v-icon icon="mdi-chevron-right" end></v-icon>
-            </v-btn>
-        </v-card-actions>
-    </v-form>
-</v-card>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn :disabled="!form" :loading="loading" color="success" type="submit">
+                    Authenticate
+                    <v-icon icon="mdi-chevron-right" end></v-icon>
+                </v-btn>
+            </v-card-actions>
+        </v-form>
+    </v-card>
 </template>
 
 <script>
@@ -88,7 +93,7 @@ export default {
                 'secret': this.secret,
                 'provider': this.selectedProvider
             }).then(() => {
-                this.setLoggedIn({'provider':this.selectedProvider});
+                this.setLoggedIn({ 'provider': this.selectedProvider });
 
                 if (this.saveCredentials) {
                     this.storeSavedValue({

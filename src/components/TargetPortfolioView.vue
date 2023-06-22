@@ -1,6 +1,6 @@
 <template>
-<v-list class="pt-0" density="compact" v-if="portfolio.holdings.length>0">
-  <!-- <v-pagination
+    <v-list class="pt-0" density="compact" v-if="portfolio.holdings.length > 0">
+        <!-- <v-pagination
       v-model="portfolio.holdings"
       :total-items="portfolio.holdings.length"
       :items-per-page="itemsPerPage"
@@ -11,7 +11,7 @@
         <TargetPortfolioElement :element="item" :totalPortfolioSize="targetSize" />
     </template></v-pagination>
    -->
-  <!-- <v-virtual-scroll
+        <!-- <v-virtual-scroll
   :items="portfolio.holdings"
   height="320"
       item-height="48"
@@ -21,10 +21,10 @@
     </template>
 </v-virtual-scroll> -->
 
-    <template v-for="element in shortList" :key="element.ticker">
-        <TargetPortfolioElement :element="element" :totalPortfolioSize="targetSize" />
-    </template>
-</v-list>
+        <template v-for="element in shortList" :key="element.ticker">
+            <TargetPortfolioElement :element="element" :totalPortfolioSize="targetSize" />
+        </template>
+    </v-list>
 </template>
 
 <script>
@@ -46,23 +46,18 @@ export default {
             required: false,
         },
         searchQuery: {
-          type: String,
-          required: false,
-          default:''
+            type: String,
+            required: false,
+            default: ''
         }
     },
     computed: {
-        // sortedPortfolio() {
-        //     let local_list = this.portfolio.holdings;
-        //     local_list.sort((a, b) => b.weight - a.weight);
-        //     return local_list;
-        // },
         shortList() {
-          const query = this.searchQuery.toLowerCase();
-          const filtered= this.portfolio.holdings.filter(item => item.ticker.toLowerCase().includes(query));
-    
-          const shortenedList = filtered.slice(0, this.$store.getters.displayLength);
-          return shortenedList
+            const query = this.searchQuery.toLowerCase();
+            const filtered = this.portfolio.holdings.filter(item => item.ticker.toLowerCase().includes(query));
+
+            const shortenedList = filtered.slice(0, this.$store.getters.displayLength);
+            return shortenedList
 
         }
     }
