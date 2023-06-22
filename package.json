@@ -4,7 +4,6 @@
   "private": true,
   "description": "Buy all those stocks",
   "author": "Ethan Dickinson <ethan.dickinson@gmail.com>",
-
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
@@ -13,6 +12,12 @@
     "electron:serve": "vue-cli-service electron:serve",
     "postinstall": "electron-builder install-app-deps",
     "postuninstall": "electron-builder install-app-deps"
+  },
+  "main": "background.js",
+  "browser": {
+    "fs": false,
+    "path": false,
+    "os": false
   },
   "dependencies": {
     "@mdi/font": "5.9.55",
@@ -34,6 +39,7 @@
   "devDependencies": {
     "@babel/core": "^7.12.16",
     "@babel/eslint-parser": "^7.12.16",
+    "@types/electron-devtools-installer": "^2.2.0",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
     "@vue/cli-plugin-babel": "~5.0.0",
@@ -66,11 +72,6 @@
       "parser": "@typescript-eslint/parser"
     },
     "rules": {}
-  },
-  "browser": {
-    "fs": false,
-    "path": false,
-    "os": false
   },
   "browserslist": [
     "> 1%",

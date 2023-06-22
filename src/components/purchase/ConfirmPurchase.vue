@@ -17,7 +17,7 @@
                     The default purchase order will go largest first, but you can select alternative options.</p>
                 <v-chip-group v-model="selectedMode" mandatory selected-class="text-primary"
                     @update:modelValue="newValue => planPurchase()">
-                    <v-chip v-for="mode in modes" :key="mode.id" :value="mode.id" :label="mode.name" :item-text="mode.name">
+                    <v-chip v-for="mode in modes" :key="mode.id" :value="mode.id" label="true" :item-text="mode.name">
                         {{ mode.name }}
                     </v-chip>
                 </v-chip-group>

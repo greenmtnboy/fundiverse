@@ -18,7 +18,15 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } }
 ])
 
-async function createWindow(process) {
+const startBackgroundService = () => {
+  const backgroundService = spawn(path.join(app.getAppPath(), '..', '/src/background/py-portfolio-ui-backend.exe'))
+  backgroundService.on('close', (code) => {
+    console.log(`Background process exited with code ${code}`);
+  });
+  return backgroundService
+}
+
+async function createWindow() {
   // Create the browser window.
   const win = new BrowserWindow({
     width: 800,
@@ -27,14 +35,15 @@ async function createWindow(process) {
       
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
-      nodeIntegration: !!process.env.ELECTRON_NODE_INTEGRATION,
+      nodeIntegration: !!(process.env
+          .ELECTRON_NODE_INTEGRATION as unknown) as boolean,
       contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
     }
   })
-
+  const pythonProcess = startBackgroundService()
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
-    await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
+    await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL as string)
     if (!process.env.IS_TEST) win.webContents.openDevTools()
   } else {
     createProtocol('app')
@@ -43,8 +52,8 @@ async function createWindow(process) {
   }
    win.on('closed', () => {
     // Terminate the Python process when the Electron app is closed
-    if (process) {
-      process.kill();
+    if (pythonProcess) {
+      pythonProcess.kill();
     }
   });
 }
@@ -58,10 +67,11 @@ app.on('window-all-closed', () => {
   }
 })
 
+
 app.on('activate', () => {
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) createWindow(process)
+  if (BrowserWindow.getAllWindows().length === 0) createWindow()
 })
 
 // This method will be called when Electron has finished
@@ -79,11 +89,8 @@ app.on('ready', async () => {
   }
   }
   // console.log(path.join(app.getAppPath(), '..','/src/background/py-portfolio-ui-backend.exe'))
-  let backgroundService = spawn(path.join(app.getAppPath(), '..', '/src/background/py-portfolio-ui-backend.exe'))
-  backgroundService.on('close', (code) => {
-    console.log(`Background process exited with code ${code}`);
-  });
-  createWindow(backgroundService)
+
+  createWindow()
 })
 // if (process.env.WEBPACK_DEV_SERVER_URL) {
 //   // Load the url of the dev server if in development mode
