@@ -20,7 +20,12 @@ npm run build
 npm run lint
 ```
 
+### Publishes to Github
+```
+npm run electron:build -- -p always
+```
+
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
 
-# run with $env:NODE_OPTIONS="--openssl-legacy-provider"
+Debugging: run with $env:NODE_OPTIONS="--openssl-legacy-provider"
