@@ -16,8 +16,8 @@
         <v-text-field @update:modelValue="newValue => handlePortfolioSearchText(newValue)" class="input-field"
           label="Filter Tickers" variant="solo" v-model="searchQueryInternal" placeholder="AAPL" /></v-col>
     </v-row>
-    <v-row>
-      <v-col cols=6>
+    <v-row class="min-display">
+      <v-col cols=6 >
         <v-card>
           <v-card-title style="min-height: 90px;" class="text-center">Owned Portfolio
             <v-progress-linear color="blue-lighten-3" v-model="portfolioPercentOfTarget" height="15">
@@ -78,6 +78,11 @@
   height: 48px;
   /* Adjust the height value as needed */
 }
+
+.custom-card {
+  min-width: 600px; /* Adjust the value as per your requirement */
+}
+
 </style>
 <script>
 //Vue

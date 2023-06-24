@@ -21,16 +21,52 @@ protocol.registerSchemesAsPrivileged([
 const startBackgroundService = () => {
   const backgroundService = spawn(path.join(app.getAppPath(), '..', '/src/background/py-portfolio-ui-backend.exe'))
   backgroundService.on('close', (code) => {
-    console.log(`Background process exited with code ${code}`);
+    console.log(`Background python process exited with code ${code}`);
+  });
+  backgroundService.stdout.on('data', (data) => {
+    console.log(`Child background python stdout: ${data}`);
+  });
+  
+
+  backgroundService.on('error', (error) => {
+    console.error(`Error occurred in background python process: ${error.message}`);
+  });
+
+  process.on('exit', () => {
+    // Terminate the child process when the parent process exits
+    backgroundService.kill();
   });
   return backgroundService
 }
 
+function pollServer() {
+  const pollInterval = 500; // Interval between each poll in milliseconds
+  const serverUrl = 'http://localhost:3000'; // Replace with your Python server URL
+
+  fetch(serverUrl)
+    .then(response => {
+      if (response.ok) {
+        console.log('Background service alive!')
+        // Handle the valid response here
+        // ...
+      } else {
+        // Retry polling after the specified interval
+        setTimeout(pollServer, pollInterval);
+      }
+    })
+    .catch(error => {
+      // Retry polling after the specified interval
+      setTimeout(pollServer, pollInterval);
+    });
+}
+
+
 async function createWindow() {
   // Create the browser window.
   const win = new BrowserWindow({
-    width: 800,
+    width: 1000,
     height: 600,
+    minWidth: 1000, // Set the minimum width here
     webPreferences: {
       
       // Use pluginOptions.nodeIntegration, leave this alone
@@ -41,6 +77,8 @@ async function createWindow() {
     }
   })
   const pythonProcess = startBackgroundService()
+
+  pollServer();
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
     await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL as string)
@@ -50,6 +88,15 @@ async function createWindow() {
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
   }
+  app.on('before-quit', () => {
+    // Terminate the background process
+    pythonProcess.kill();
+  });
+
+
+  
+  
+  
    win.on('closed', () => {
     // Terminate the Python process when the Electron app is closed
     if (pythonProcess) {
@@ -57,6 +104,7 @@ async function createWindow() {
     }
   });
 }
+
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {

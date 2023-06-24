@@ -1,10 +1,10 @@
 <template>
     <v-dialog v-model="visible" fullscreen hide-overlay :scrim="false">
-        <template v-slot:activator="{ on }">
+        <template v-slot:activator="{ props }">
             <v-badge v-if="mutations" :content="mutations">
-                <v-btn @click="visible = !visible" v-on="on">Customize</v-btn>
+                <v-btn @click="visible = !visible" v-on="props">Customize</v-btn>
             </v-badge>
-            <v-btn @click="visible = !visible" v-on="on" v-else>Customize</v-btn>
+            <v-btn @click="visible = !visible" v-on="props" v-else>Customize</v-btn>
         </template>
         <v-card>
             <v-toolbar dark color="primary">

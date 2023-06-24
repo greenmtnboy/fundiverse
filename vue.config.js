@@ -28,7 +28,12 @@ module.exports = defineConfig({
       nodeIntegration: true,
       builderOptions: {
         publish: ['github'],
-        // extraResources: "background",
+        extraResources: [
+        {
+          "from": "./src/background",
+          "to": "src/background",
+          "filter": "**/*"
+        }]
       }
     }
   },
