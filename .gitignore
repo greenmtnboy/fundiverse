@@ -29,7 +29,7 @@ pnpm-debug.log*
 *.code-workspace
 
 #Electron-builder output
-/dist_electron
+frontend/dist_electron
 
 #pyinstaller output
 backend/build
