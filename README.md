@@ -18,6 +18,15 @@ Besides just being more fun than being an index, customization can enable you to
 
 Fundiverse also makes it easy to exclude companies you can't trade in, such as your employer or companies you have a conflict of interest with. 
 
+## Installation
+Currently only supported on Windows. Open an issue for Linux or Mac. 
+
+Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases)
+
+[Direct Download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.2/fundiverse-Setup-0.1.2.exe)
+
+Run to install. You'll have to accept the unsafe publisher + potentially allow firewall access.
+
 ## How does it work?
 
 Fundiverse is built on an [open-source python framework](https://github.com/greenmtnboy/py-portfolio-index) for building ideal and real portfolios and purchasing large amounts of stocks against various backends to bring the real portfolio in line with the ideal. Fundiverse wraps this in an Electron desktop app, which simplifies the process of creating curated indices and understanding how your changes adjust the composition of the stocks. 
