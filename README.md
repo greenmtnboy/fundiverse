@@ -21,9 +21,7 @@ Fundiverse also makes it easy to exclude companies you can't trade in, such as y
 ## Installation
 Currently only supported on Windows. Open an issue for Linux or Mac. 
 
-Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases)
-
-[Direct Download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.2/fundiverse-Setup-0.1.2.exe)
+Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases), or click for [direct download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.2/fundiverse-Setup-0.1.2.exe).
 
 Run to install. You'll have to accept the unsafe publisher + potentially allow firewall access.
 
