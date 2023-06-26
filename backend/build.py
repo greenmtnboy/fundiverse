@@ -49,4 +49,6 @@ if __name__ == "__main__":
     os.makedirs(destination_folder, exist_ok=True)
     pyinstaller_output_file = root / "dist" / "py-portfolio-ui-backend.exe"
     # Copy the PyInstaller output file to the destination folder
+    print('copying to final location')
     shutil.copy(pyinstaller_output_file, destination_folder)
+    print('file copied')

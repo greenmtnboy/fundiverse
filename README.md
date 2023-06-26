@@ -12,6 +12,8 @@ Fundiverse is a platform to enable you to have fun diversifying your index. Take
 ## What is it not?
 Fundiverse is not an effective tool for day trading or short-term holding in general.
 
+## Installation
+
 
 ## Why would you do this?
 Besides just being more fun than being an index, customization can enable you to weigh specific factors that are either morally important to you - such as not investing in oil companies - or that you believe will outperform the market - such as investing in companies with a high ESG score or in a sector you think will outperform.
