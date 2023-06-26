@@ -1,5 +1,6 @@
-from enum import Enum
 from typing import List
+import os
+import sys
 import multiprocessing
 import uvicorn
 from uvicorn.config import LOGGING_CONFIG
@@ -11,20 +12,20 @@ from py_portfolio_index import (
     STOCK_LISTS,
     AlpacaProvider,
     PurchaseStrategy,
-    RobinhoodProvider,
-    compare_portfolios,
     generate_order_plan,
     AVAILABLE_PROVIDERS,
 )
 from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
-from py_portfolio_index.enums import Currency, Provider
-from py_portfolio_index.bin.indexes.inventory import IndexInventory
-from py_portfolio_index.bin.lists.inventory import StocklistInventory
+from py_portfolio_index.enums import Provider
 from copy import deepcopy
 # from py_portfolio_index.models import RealPortfolio
 from pydantic import BaseModel, Field
-
+from fastapi.responses import PlainTextResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.background import BackgroundTask
+import asyncio
+import traceback
 
 app = FastAPI()
 
@@ -37,6 +38,7 @@ app.add_middleware(
         "http://localhost:8080",
         "http://localhost:8081",
         "http://localhost:8090",
+        "app://."
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -44,14 +46,7 @@ app.add_middleware(
 )
 
 
-class Provider(str, Enum):
-    ALPACA = "alpaca"
-    ROBINHOOD = "robinhood"
-
-
 ## BEGIN REQUESTS
-
-
 class LoginRequest(BaseModel):
     key: str
     secret: str
@@ -94,6 +89,12 @@ class BuyRequestFinal(BaseModel):
 
 ## Begin Endpoints
 router = APIRouter()
+
+
+
+@router.get("/")
+async def healthcheck():
+    return 'healthy'
 
 
 @router.get("/providers")
@@ -179,12 +180,16 @@ async def plan_purchase(input: BuyRequest):
         raise HTTPException(401, "Provider is missing required auth information")
     real_port = provider.get_holdings()
     ideal_port = index_to_processed_index(input)
-    plan = generate_order_plan(real_port, ideal_port, purchase_power = input.to_purchase,
+    plan = generate_order_plan(real_port, ideal_port, 
+                               purchase_power = input.to_purchase,
                                target_size = input.target_size,
                                buy_order=input.purchase_strategy
                                )
     return plan
 
+@router.get("/terminate")
+async def terminate():
+    raise HTTPException(503, "Terminating server")
 
 @router.post("/buy_index_from_plan")
 async def buy_index_from_plan(input: BuyRequestFinal):
@@ -199,21 +204,62 @@ async def buy_index_from_plan(input: BuyRequestFinal):
 
 app.include_router(router)
 
-if __name__ == "__main__":
-    multiprocessing.freeze_support()
+@app.on_event('shutdown')
+def shutdown_event():
+    print('Shutting down...!')
+
+def _get_last_exc():
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    sTB = '\n'.join(traceback.format_tb(exc_traceback))
+    return f"{exc_type}\n - msg: {exc_value}\n stack: {sTB}"
+
+async def exit_app():
+    if asyncio.Task:
+        for task in asyncio.all_tasks():
+            print(f'cancelling task: {task}')
+            try:
+                task.cancel()
+            except Exception:
+                print(f"Task kill failed: {_get_last_exc()}")
+                pass
+    asyncio.gather(asyncio.all_tasks())
+    loop = asyncio.get_running_loop()
+    loop.stop()
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request, exc):
+    if exc.status_code == 503:
+        task = BackgroundTask(exit_app)
+        return PlainTextResponse('Server is shutting down', 
+                                 status_code=exc.status_code, background=task)
+    return request
+ 
+def run():
     LOGGING_CONFIG["disable_existing_loggers"] = True
     import sys
 
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         print("running in a PyInstaller bundle, setting sys.stdout to devnull")
-        import os
-        import sys
+
 
         f = open(os.devnull, "w")
         sys.stdout = f
     else:
         print("running in a normal Python process")
+    try:
+        uvicorn.run(
+            app, host="0.0.0.0", port=3000, log_level="info", log_config=LOGGING_CONFIG
+        )
+    except Exception:
+        print('GOT AN ERROR RUNNING')
+        print('Server is shutting down')
+        exit(0)
 
-    uvicorn.run(
-        app, host="0.0.0.0", port=3000, log_level="info", log_config=LOGGING_CONFIG
-    )
+if __name__ == "__main__":
+    multiprocessing.freeze_support()
+    try:
+        run()
+        sys.exit(0)
+    except:  # noqa: E722
+        sys.exit(0)
+        
