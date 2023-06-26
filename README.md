@@ -13,19 +13,16 @@ Fundiverse is a platform to enable you to have fun diversifying your index. Take
 Fundiverse is not an effective tool for day trading or short-term holding in general.
 
 ## Installation
+Currently only supported on Windows. Open an issue for Linux or Mac. 
 
+Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases), or click for [direct download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.2/fundiverse-Setup-0.1.2.exe).
+
+Run the downloaded exe to install, then start it as a standard application. You'll have to accept the unsafe publisher + potentially allow firewall access. Fundiverse needs to communicate with itself and with your brokerage provider. 
 
 ## Why would you do this?
 Besides just being more fun than being an index, customization can enable you to weigh specific factors that are either morally important to you - such as not investing in oil companies - or that you believe will outperform the market - such as investing in companies with a high ESG score or in a sector you think will outperform.
 
 Fundiverse also makes it easy to exclude companies you can't trade in, such as your employer or companies you have a conflict of interest with. 
-
-## Installation
-Currently only supported on Windows. Open an issue for Linux or Mac. 
-
-Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases), or click for [direct download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.2/fundiverse-Setup-0.1.2.exe).
-
-Run to install. You'll have to accept the unsafe publisher + potentially allow firewall access.
 
 ## How does it work?
 
@@ -39,6 +36,6 @@ Fundiverse requires you to have an account sent up with one of the following pla
 - TD Ameritrade [WIP]
 
 ## Trying it out
-We recommend you start out with an Alpaca paper trading account, which will let you experiment without placing any real money in.
+We recommend you start out with an Alpaca paper trading account, which will let you experiment without exposing any real money to the platform. You can log into your production account at any point to try out ideas for real. 
 
 
