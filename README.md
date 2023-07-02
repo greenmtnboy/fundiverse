@@ -1,5 +1,9 @@
 
-## Fundiverse is Stock Accumulation Platform
+## Fundiverse is Your UI For Building Custom Index Funds
+
+- Money never leaves your brokerage.
+- Customize to your priorities, knowledge, or beliefs
+- Index the SP500 with as little as $500 dollars.
 
 Indexing has been a gospel of long-term investing for years. The central tenet of buying diverse funds that capture large portions of the market and holding them for a long-duration has proven it's value again and again.
 
@@ -32,10 +36,14 @@ Fundiverse is built on an [open-source python framework](https://github.com/gree
 Fundiverse requires you to have an account sent up with one of the following platforms.
 
 - Alpaca
-- Robinhood [WIP]
+- Robinhood
 - TD Ameritrade [WIP]
 
 ## Trying it out
 We recommend you start out with an Alpaca paper trading account, which will let you experiment without exposing any real money to the platform. You can log into your production account at any point to try out ideas for real. 
+
+### Alpaca Onboarding
+
+1. Create an account at [Alpaca](https://alpaca.markets/).
 
 
