@@ -34,7 +34,7 @@ app = FastAPI()
 
 
 class ActiveConfig:
-    logged_in: bool = False
+    logged_in: str | None = None
     provider: Provider | None = None
     provider_cache: Dict[Provider, BaseProvider] = dict()
 
@@ -108,11 +108,17 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
     _provider = iprovider or IN_APP_CONFIG.provider
     try:
         if _provider == Provider.ALPACA:
-            provider = IN_APP_CONFIG.provider_cache.get(Provider.ALPACA, AlpacaProvider())
+            provider = IN_APP_CONFIG.provider_cache.get(
+                Provider.ALPACA, AlpacaProvider()
+            )
             IN_APP_CONFIG.provider_cache[Provider.ALPACA] = provider
         elif _provider == Provider.ROBINHOOD:
-            provider = IN_APP_CONFIG.provider_cache.get(Provider.ROBINHOOD, RobinhoodProvider())
+            provider = IN_APP_CONFIG.provider_cache.get(
+                Provider.ROBINHOOD, RobinhoodProvider()
+            )
             IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = provider
+        elif _provider is None:
+            raise HTTPException(401, "No logged in provider specified")
         else:
             raise HTTPException(404, f"Provider type {_provider} not found")
     except ConfigurationError:
@@ -142,6 +148,7 @@ async def logged_in_handler():
 @router.post("/login")
 async def login_handler(input: LoginRequest):
     from os import environ
+
     try:
         if input.provider == Provider.ALPACA:
             environ["ALPACA_API_KEY"] = input.key
@@ -163,6 +170,7 @@ async def login_handler(input: LoginRequest):
         raise e
     except Exception as e:
         raise HTTPException(400, f"Error logging in: {e}")
+
 
 @router.get("/portfolio/")
 async def get_portfolio_bare():
@@ -197,7 +205,9 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
     ideal_port.exclude(input.stock_exclusions)
 
     if input.reweight:
+
         provider = get_provider_safe(input.provider)
+
         ideal_port.reweight_to_present(provider=provider)
     for item in input.list_exclusions:
         ideal_port.exclude(STOCK_LISTS[item])

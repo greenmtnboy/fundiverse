@@ -1,5 +1,3 @@
-
-
 def get_service_name(port):
     import psutil
 
@@ -15,7 +13,6 @@ def get_service_name(port):
 
 
 if __name__ == "__main__":
-
     # Specify the port you want to check
     port = 3000
 
