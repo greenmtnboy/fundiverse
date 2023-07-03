@@ -33,7 +33,7 @@ if __name__ == "__main__":
         "--noconfirm",
         "--clean",
         "--additional-hooks-dir",
-        "extra-hooks"
+        "extra-hooks",
     ]
 
     try:
@@ -44,11 +44,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Move the executable to the root directory
-        # Create the destination folder if it doesn't exist
-    destination_folder = base / 'frontend' / 'src' / 'background'
+    # Create the destination folder if it doesn't exist
+    destination_folder = base / "frontend" / "src" / "background"
     os.makedirs(destination_folder, exist_ok=True)
     pyinstaller_output_file = root / "dist" / "py-portfolio-ui-backend.exe"
     # Copy the PyInstaller output file to the destination folder
-    print('copying to final location')
+    print("copying to final location")
     shutil.copy(pyinstaller_output_file, destination_folder)
-    print('file copied')
+    print("file copied")
