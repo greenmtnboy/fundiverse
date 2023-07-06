@@ -6,8 +6,17 @@ import uvicorn
 from uvicorn.config import LOGGING_CONFIG
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from py_portfolio_index.exceptions import OrderError
+from dataclasses import dataclass, field
+from py_portfolio_index.exceptions import OrderError, ExtraAuthenticationStepException
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
+from py_portfolio_index.portfolio_providers.helpers.robinhood import login as rh_login
+from py_portfolio_index.models import (
+    CompositePortfolio,
+    RealPortfolio,
+    LoginResponse,
+    RealPortfolioElement,
+    Money,
+)
 from py_portfolio_index import (
     INDEXES,
     STOCK_LISTS,
@@ -20,10 +29,12 @@ from py_portfolio_index import (
 from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
 from py_portfolio_index.enums import Provider
+from pydantic import BaseModel, Field
+
+
 from copy import deepcopy
 
 # from py_portfolio_index.models import RealPortfolio
-from pydantic import BaseModel, Field
 from fastapi.responses import PlainTextResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.background import BackgroundTask
@@ -33,10 +44,12 @@ import traceback
 app = FastAPI()
 
 
+@dataclass
 class ActiveConfig:
     logged_in: str | None = None
     provider: Provider | None = None
-    provider_cache: Dict[Provider, BaseProvider] = dict()
+    provider_cache: Dict[Provider, BaseProvider] = field(default_factory=dict)
+    pending_auth_response: LoginResponse | None = None
 
 
 IN_APP_CONFIG = ActiveConfig()
@@ -60,6 +73,7 @@ class LoginRequest(BaseModel):
     key: str
     secret: str
     provider: Provider
+    extra_factor: str | int | None = None
 
 
 class ListMutation(BaseModel):
@@ -113,9 +127,12 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
             )
             IN_APP_CONFIG.provider_cache[Provider.ALPACA] = provider
         elif _provider == Provider.ROBINHOOD:
-            provider = IN_APP_CONFIG.provider_cache.get(
-                Provider.ROBINHOOD, RobinhoodProvider()
-            )
+            # Robinhood requires potential two factor auth
+            # cannot safely instantiate default handler
+            # even in dev
+            provider = IN_APP_CONFIG.provider_cache.get(Provider.ROBINHOOD, None)
+            if not provider:
+                raise HTTPException(401, "No logged in robinhood provider found")
             IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = provider
         elif _provider is None:
             raise HTTPException(401, "No logged in provider specified")
@@ -160,15 +177,28 @@ async def login_handler(input: LoginRequest):
         elif input.provider == Provider.ROBINHOOD:
             environ["ROBINHOOD_USERNAME"] = input.key
             environ["ROBINHOOD_PASSWORD"] = input.secret
-            provider = RobinhoodProvider()
+            # login using RH helper to handle
+            # two factor auth
+            rh_login(
+                challenge_response=input.extra_factor,
+                prior_response=IN_APP_CONFIG.pending_auth_response,
+            )
+            provider = RobinhoodProvider(external_auth=True)
             IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = provider
         else:
             raise HTTPException(404, "Selected provider not supported yet")
         IN_APP_CONFIG.logged_in = input.provider.value
         IN_APP_CONFIG.provider = input.provider
+        IN_APP_CONFIG.pending_auth_response = None
+    except ExtraAuthenticationStepException as e:
+        IN_APP_CONFIG.pending_auth_response = e.response
+        raise HTTPException(412, f"Additional authentication required: {e}")
     except HTTPException as e:
         raise e
     except Exception as e:
+        IN_APP_CONFIG.pending_auth_response = None
+        print(e)
+        raise e
         raise HTTPException(400, f"Error logging in: {e}")
 
 
@@ -185,6 +215,51 @@ async def get_portfolio(_provider: Provider):
     provider = get_provider_safe(_provider)
 
     return provider.get_holdings()
+
+class RealPortfolioOutput(BaseModel):
+    name: str
+    holdings: List[RealPortfolioElement]
+    cash: Money
+
+class ComposePortfolioOutput(BaseModel):
+    name: str
+    holdings: List[RealPortfolioElement]
+    cash: Money
+    components: Dict[str, RealPortfolioOutput]
+
+
+@router.get("/composite_portfolios")
+async def list_composite_portfolios():
+    active: Dict[Provider, RealPortfolio] = {}
+    raw = []
+    for key, item in IN_APP_CONFIG.provider_cache.items():
+        rport = item.get_holdings()
+        active[key] = RealPortfolioOutput(name=f'sub-{key}', holdings = rport.holdings, cash=rport.cash )
+        raw.append(rport)
+    internal = CompositePortfolio(raw)
+    return [ComposePortfolioOutput(
+        name="default",
+        holdings=internal.holdings,
+        cash=internal.cash,
+        components=active,
+    )]
+
+
+@router.get("/composite_portfolio/default")
+async def get_composite_portfolio():
+    active: Dict[Provider, RealPortfolio] = {}
+    raw = []
+    for key, item in IN_APP_CONFIG.provider_cache.items():
+        rport = item.get_holdings()
+        active[key] = RealPortfolioOutput(name=f'sub-{key}', holdings = rport.holdings, cash=rport.cash )
+        raw.append(rport)
+    internal = CompositePortfolio(raw)
+    return ComposePortfolioOutput(
+        name="default",
+        holdings=internal.holdings,
+        cash=internal.cash,
+        components=active,
+    )
 
 
 @router.get("/indexes")
@@ -205,7 +280,6 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
     ideal_port.exclude(input.stock_exclusions)
 
     if input.reweight:
-
         provider = get_provider_safe(input.provider)
 
         ideal_port.reweight_to_present(provider=provider)
@@ -227,6 +301,21 @@ async def generate_index(input: TargetPortfolioRequest):
 
 @router.post("/plan_purchase")
 async def plan_purchase(input: BuyRequest):
+    provider = get_provider_safe(input.provider)
+    real_port = provider.get_holdings()
+    ideal_port = index_to_processed_index(input)
+    plan = generate_order_plan(
+        real_port,
+        ideal_port,
+        purchase_power=input.to_purchase,
+        target_size=input.target_size,
+        buy_order=input.purchase_strategy,
+    )
+    return plan
+
+
+@router.post("/plan_composite_purchase")
+async def plan_composite_purchase(input: BuyRequest):
     provider = get_provider_safe(input.provider)
     real_port = provider.get_holdings()
     ideal_port = index_to_processed_index(input)
@@ -289,7 +378,6 @@ async def http_exception_handler(request, exc):
         return PlainTextResponse(
             "Server is shutting down", status_code=exc.status_code, background=task
         )
-    print(exc)
     return Response(status_code=exc.status_code, headers=exc.headers)
 
 
