@@ -221,11 +221,12 @@ class RealPortfolioOutput(BaseModel):
     holdings: List[RealPortfolioElement]
     cash: Money
 
-class ComposePortfolioOutput(BaseModel):
+class CompositePortfolioOutput(BaseModel):
     name: str
     holdings: List[RealPortfolioElement]
     cash: Money
     components: Dict[str, RealPortfolioOutput]
+    target_size: float = 250_000
 
 
 @router.get("/composite_portfolios")
@@ -237,11 +238,12 @@ async def list_composite_portfolios():
         active[key] = RealPortfolioOutput(name=f'sub-{key}', holdings = rport.holdings, cash=rport.cash )
         raw.append(rport)
     internal = CompositePortfolio(raw)
-    return [ComposePortfolioOutput(
+    return [CompositePortfolioOutput(
         name="default",
         holdings=internal.holdings,
         cash=internal.cash,
         components=active,
+        target_size = 250_000
     )]
 
 
@@ -254,7 +256,7 @@ async def get_composite_portfolio():
         active[key] = RealPortfolioOutput(name=f'sub-{key}', holdings = rport.holdings, cash=rport.cash )
         raw.append(rport)
     internal = CompositePortfolio(raw)
-    return ComposePortfolioOutput(
+    return CompositePortfolioOutput(
         name="default",
         holdings=internal.holdings,
         cash=internal.cash,
@@ -378,7 +380,7 @@ async def http_exception_handler(request, exc):
         return PlainTextResponse(
             "Server is shutting down", status_code=exc.status_code, background=task
         )
-    return Response(status_code=exc.status_code, headers=exc.headers)
+    return Response(status_code=exc.status_code, headers=exc.headers, content=exc.detail)
 
 
 def run():
