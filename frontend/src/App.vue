@@ -33,7 +33,6 @@
 </template>
 
 <script>
-import axios from 'axios';
 import { mapActions, mapGetters } from 'vuex';
 export default {
   name: 'App',
@@ -54,25 +53,14 @@ export default {
     ...mapGetters(['isLoggedIn'])
   },
   methods: {
-    ...mapActions(['setLoggedIn', 'loadDefaultModifications']),
+    ...mapActions(['loadDefaultModifications']),
     gotoLogin() {
       this.$router.push({ path: 'login' })
     },
     gotoLists() {
       this.$router.push({ path: 'portfolio_list' })
     },
-    checkLogin() {
-      return axios.get('http://localhost:3000/logged_in').then((response) => {
-        if (response.data) {
-          this.setLoggedIn({ 'provider': response.data });
-        }
-      }).catch(() => {
-        this.setLoggedIn({ 'provider': null });
-      })
-    }
-  },
-  mounted() {
-    this.checkLogin()
-  },
+  }
 }
+
 </script>
