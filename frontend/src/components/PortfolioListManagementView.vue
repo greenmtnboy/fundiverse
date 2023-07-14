@@ -1,20 +1,35 @@
 <template>
   <v-card>
-    <v-card-title class="d-flex justify-center align-center">Portfolio List</v-card-title>
-    <v-container>
-      <v-row dense>
-      <v-col cols=12 min-width="300px">
-        <template v-for="portfolio in portfolios" :key="portfolio.name" >
-          <CompositePortfolio :portfolio="portfolio" />
-        </template>
-      </v-col>
-    </v-row>
-    </v-container>
+    <v-card-title>Portfolio Management</v-card-title>
     <v-card-actions>
-      <v-btn variant="outlined">
-        New Portfolio
+      <AddPortfolioPopup />
+      <v-btn v-if="showSaveSuccess" transition="fade-transition">
+        <v-icon>mdi-check</v-icon>
+      </v-btn>
+      <v-btn v-else transition="fade-transition" :loading="saving" @click="savePortfolios">
+        Save Portfolios
+      </v-btn>
+      <v-btn v-if="showLoadSuccess" transition="fade-transition">
+        <v-icon>mdi-check</v-icon>
+      </v-btn>
+      <v-btn v-else transition="fade-transition" :loading="saving" @click="loadPortfolios">
+        Undo Changes
       </v-btn>
     </v-card-actions>
+    <v-divider />
+    <v-container>
+      <v-row dense>
+        <v-col cols=12 min-width="300px">
+          <template v-if="portfolioLoadingStatus">
+            <v-progress-linear height="10" indeterminate color="primary"></v-progress-linear>
+          </template>
+          <template v-for="portfolio in compositePortfolios" :key="portfolio.name">
+            <CompositePortfolio :portfolio="portfolio" />
+          </template>
+        </v-col>
+      </v-row>
+    </v-container>
+
   </v-card>
 </template>
 <style>
@@ -32,42 +47,31 @@
 
 //Components
 //API
-import instance from '../api/instance'
-import exceptions from '../api/exceptions'
 
-import CompositePortfolioModel from '@/models/CompositePortfolioModel';
 import CompositePortfolio from '@/components/portfolio/CompositePortfolio';
-
-// function parse_target_portfolio_model({
-//   holdings,
-//   source_date
-// }) {
-//   return new TargetPortfolioModel({
-//     'holdings': holdings.map(holding => new TargetPortfolioElementModel(holding)),
-//     'source_date': source_date
-//   });
-// }
+import AddPortfolioPopup from './portfolio/AddPortfolioPopup.vue';
+import { mapGetters, mapActions } from 'vuex';
 
 export default {
   name: "ManagePortfolioListView",
   components: {
-    CompositePortfolio
+    CompositePortfolio,
+    AddPortfolioPopup
   },
   data() {
     return {
       indexKeys: [],
-      refreshLoading: false,
-      portfolios: []
+      portfolios: [],
+      showSaveSuccess: false,
+      showLoadSucces: false,
+      saving:false
     };
   },
   computed: {
-
-    loading() {
-      return this.compareLoading || this.refreshLoading;
-    },
-    provider() {
-      return this.$store.getters.provider;
-    },
+    ...mapGetters(['compositePortfolios', 'portfolioLoadingStatus', 'provider']),
+    // provider() {
+    //   return this.$store.getters.provider;
+    // },
     // portfolioSum() {
     //   return 0.0
     //   // return this.portfolio.holdings.reduce((sum, holding) => sum + holding.value.value, 0);
@@ -96,30 +100,46 @@ export default {
     }
   },
   methods: {
-    getPortfolios() {
-      this.refreshLoading = true;
-      return instance.get(`http://localhost:3000/composite_portfolios`).then((response) => {
-        this.portfolios = response.data.map(dict => new CompositePortfolioModel(dict));
-        // const portfolioHoldings = response.data.holdings.map(
-        //   dict => new PortfolioElementModel(dict));
-        // this.portfolio.holdings = portfolioHoldings; //= new PortfolioModel(portfolioHoldings);
-        // if (response.data.cash) {
-        //   this.cash = new CurrencyModel(response.data.cash);
-        // }
-      }).catch(error => {
-        if (error instanceof exceptions.auth) {
-          // Handle the custom exception
-          console.log('Authentication error, redirecting')
-        } else {
-          throw error
-        }
-      }).finally(() => {
-        this.refreshLoading = false;
-      })
+    // ...mapActions(['refreshCompositePortfolios']),
+    ...mapActions(['saveCompositePortfolios', 'loadCompositePortfolios']),
+    async savePortfolios() {
+      this.saving=true;
+      await this.saveCompositePortfolios();
+      // Reset the success state after a delay
+      setTimeout(() => {
+        this.saving = false;
+        this.showSaveSuccess = true;
+      }, 1000);
+      setTimeout(() => {
+        this.showSaveSuccess = false;
+      }, 2500);
+    },
+    async getPortfolios() {
+      this.saving = true;
+      await this.loadCompositePortfolios();
+      // Reset the success state after a delay
+      setTimeout(() => {
+        this.saving = false;
+        this.showLoadSuccess = true;
+      }, 1000);
+      setTimeout(() => {
+        this.showLoadSuccess = false;
+      }, 2500);
+      // await this.refreshCompositePortfolios();
+      // this.refreshLoading = true;
+      // return this.refreshCompositePortfolios.then(() => {
+      // }).catch(error => {
+      //   if (error instanceof exceptions.auth) {
+      //     // Handle the custom exception
+      //     console.log('Authentication error, redirecting')
+      //   } else {
+      //     throw error
+      //   }
+      // })
     },
   },
-  mounted() {
-    this.getPortfolios();
+  async mounted() {
+    await this.getPortfolios();
   },
 };
 </script>

@@ -2,8 +2,11 @@ import axios from 'axios';
 import router from '../router';
 import exceptions from './exceptions';
 
-const instance = axios.create();
 
+const instance = axios.create({
+  baseURL: 'http://localhost:3000',
+}
+);
 
 instance.interceptors.response.use(
   response => {
@@ -17,10 +20,11 @@ instance.interceptors.response.use(
 
       // Redirect based on the error code
       if (status === 401) {
+        // remove in new composite view
         // Redirect to a specific URL for 401 error
-        router.push({
-          name: 'login'
-        })
+        // router.push({
+        //   name: 'login'
+        // })
         return Promise.reject(new exceptions.auth('User is not authenticated'))
       }
       else if (status === 412) {

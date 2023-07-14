@@ -37,7 +37,7 @@ export default {
             return axios.get('http://localhost:3000/', {
             }).then(() => {
                 local.$router.push({
-                    path: 'composte_portfolio'
+                    path: 'composite_portfolio'
                 })
 
             }).catch(() => {

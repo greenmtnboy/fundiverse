@@ -74,6 +74,7 @@ class LoginRequest(BaseModel):
     secret: str
     provider: Provider
     extra_factor: str | int | None = None
+    force:bool = False
 
 
 class ListMutation(BaseModel):
@@ -115,8 +116,12 @@ class BuyRequestFinal(BaseModel):
     provider: Provider | None = None
 
 
-## Shared Functions
+class CompositePortfolioRefreshRequest(BaseModel):
+    key:str
+    providers:List[Provider]
+    providers_to_refresh:List[Provider]
 
+## Shared Functions
 
 def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
     _provider = iprovider or IN_APP_CONFIG.provider
@@ -157,15 +162,18 @@ async def providers_handler():
     return ProviderResponse(available=AVAILABLE_PROVIDERS)
 
 
-@router.get("/logged_in")
-async def logged_in_handler():
-    return IN_APP_CONFIG.logged_in
+@router.get("/logged_in/{provider}")
+async def logged_in_handler(provider):
+    provider_enum = Provider(provider)
+    return provider_enum in IN_APP_CONFIG.provider_cache
 
 
 @router.post("/login")
 async def login_handler(input: LoginRequest):
     from os import environ
-
+    # early exit if we have already logged in
+    if not input.force and input.provider in IN_APP_CONFIG.provider_cache:
+        return True
     try:
         if input.provider == Provider.ALPACA:
             environ["ALPACA_API_KEY"] = input.key
@@ -197,8 +205,6 @@ async def login_handler(input: LoginRequest):
         raise e
     except Exception as e:
         IN_APP_CONFIG.pending_auth_response = None
-        print(e)
-        raise e
         raise HTTPException(400, f"Error logging in: {e}")
 
 
@@ -216,10 +222,13 @@ async def get_portfolio(_provider: Provider):
 
     return provider.get_holdings()
 
+
 class RealPortfolioOutput(BaseModel):
     name: str
     holdings: List[RealPortfolioElement]
     cash: Money
+    provider: Provider | None
+
 
 class CompositePortfolioOutput(BaseModel):
     name: str
@@ -229,35 +238,48 @@ class CompositePortfolioOutput(BaseModel):
     target_size: float = 250_000
 
 
-@router.get("/composite_portfolios")
-async def list_composite_portfolios():
-    active: Dict[Provider, RealPortfolio] = {}
-    raw = []
-    for key, item in IN_APP_CONFIG.provider_cache.items():
-        rport = item.get_holdings()
-        active[key] = RealPortfolioOutput(name=f'sub-{key}', holdings = rport.holdings, cash=rport.cash )
-        raw.append(rport)
-    internal = CompositePortfolio(raw)
-    return [CompositePortfolioOutput(
-        name="default",
-        holdings=internal.holdings,
-        cash=internal.cash,
-        components=active,
-        target_size = 250_000
-    )]
+# @router.get("/composite_portfolios")
+# async def list_composite_portfolios():
+#     active: Dict[Provider, RealPortfolio] = {}
+#     raw = []
+#     for key, item in IN_APP_CONFIG.provider_cache.items():
+#         rport = item.get_holdings()
+#         active[key] = RealPortfolioOutput(
+#             name=f"{key.name}", holdings=rport.holdings, provider=key, 
+#             cash = rport.cash
+#         )
+#         raw.append(rport)
+#     internal = CompositePortfolio(raw)
+#     return [
+#         CompositePortfolioOutput(
+#             name="Default",
+#             holdings=internal.holdings,
+#             cash=internal.cash,
+#             components=active,
+#             target_size=250_000,
+#         )
+#     ]
 
 
-@router.get("/composite_portfolio/default")
-async def get_composite_portfolio():
+@router.post("/composite_portfolio/refresh")
+async def refresh_composite_portfolio(input:CompositePortfolioRefreshRequest):
     active: Dict[Provider, RealPortfolio] = {}
     raw = []
-    for key, item in IN_APP_CONFIG.provider_cache.items():
+    for key in input.providers:
+        item = IN_APP_CONFIG.provider_cache.get(key,None)
+        if not item:
+            raise HTTPException(404, f"Must log into {key} to refresh this portfolio.")
+    #key, item in IN_APP_CONFIG.provider_cache.items():
         rport = item.get_holdings()
-        active[key] = RealPortfolioOutput(name=f'sub-{key}', holdings = rport.holdings, cash=rport.cash )
+        print(sum([x.value.value for x in rport.holdings]))
+        active[key] = RealPortfolioOutput(
+            name=f"{key.name}", holdings=rport.holdings, cash=rport.cash,
+            provider=key, 
+        )
         raw.append(rport)
     internal = CompositePortfolio(raw)
     return CompositePortfolioOutput(
-        name="default",
+        name=input.key,
         holdings=internal.holdings,
         cash=internal.cash,
         components=active,
@@ -380,7 +402,9 @@ async def http_exception_handler(request, exc):
         return PlainTextResponse(
             "Server is shutting down", status_code=exc.status_code, background=task
         )
-    return Response(status_code=exc.status_code, headers=exc.headers, content=exc.detail)
+    return Response(
+        status_code=exc.status_code, headers=exc.headers, content=exc.detail
+    )
 
 
 def run():
