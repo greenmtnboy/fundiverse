@@ -11,7 +11,6 @@ const storageAPI = {
             excludedTickers: [...value.excludedTickers]
         }
         store.set('defaultModifications', storageObject);
-        // store.set(key, buffer.toString(encoding));
     },
 
 
