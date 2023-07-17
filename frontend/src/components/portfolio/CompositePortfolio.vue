@@ -2,13 +2,31 @@
     <v-card class="ma-4">
         <v-card-title :key="portfolio.name" class="text-left">
             {{ portfolio.name }}
-            <!-- <v-progress-circular v-if="portfolio.loading" indeterminate color="primary"></v-progress-circular> -->
-            <v-progress-linear color="blue-lighten-3" v-model="portfolioPercentOfTarget" height="15">
-                <span class="text-caption">{{ portfolioPercentOfTarget }}%</span>
-            </v-progress-linear>
         </v-card-title>
-        <v-card-text>
+        <v-card-text class="text-high-emphasis text--primary ">
+            <div>
+                <p class="text-high-emphasis font-weight-black text--primary">A portfolio across {{
+                    portfolio.components.length }} providers with target size
+                    <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolio.target_size }" />
+                </p>
+                <p>Based on index <span class = "font-weight-black" :style="{color:'purple'}">{{this.selectedIndex}}</span> with 22 customizations.</p>
+            </div>
+            <div>
+            </div>
             <v-divider class="pb-4"></v-divider>
+            <v-progress-linear v-if="portfolio.loading" indeterminate color="blue-lighten-3" height="20">
+            </v-progress-linear>
+            <v-progress-linear v-else-if="!portfolio.loading" color="blue-lighten-3" v-model="portfolioPercentOfTarget"
+                height="20">
+                <p class="text-high-emphasis font-weight-black">
+                    <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" />, {{
+                        portfolioPercentOfTarget }}% of target
+                </p>
+
+            </v-progress-linear>
+        </v-card-text>
+        <v-card-text class="pt-0">
+            <v-divider class="pb-4 pt-0"></v-divider>
 
             <template v-for="sportfolio in portfolio.components" :key="sportfolio.name">
                 <SubPortfolio :id="sportfolio.name" :portfolio="sportfolio" :parentName="portfolio.name" />
@@ -17,10 +35,17 @@
                 {{ sportfolio.holdings }}</div> -->
         </v-card-text>
         <v-card-actions>
-            <ProviderLoginPopup :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
-            <v-btn>
+            <ConfirmPurchase 
+            :selectedIndex="selectedIndex" 
+            :targetSize="portfolio.target_size"
+             :cash="portfolio.cash"
+             :refreshCallback="refreshCompositePortfolio"
+                   />
+            <v-btn @click="navigatePortfolio">
                 Configure
             </v-btn>
+            <ProviderLoginPopup :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
+
             <v-btn @click="refresh">
                 Refresh
             </v-btn>
@@ -32,12 +57,16 @@
 import CompositePortfolioModel from "@/models/CompositePortfolioModel";
 import ProviderLoginPopup from "@/components/portfolio/ProviderLoginPopup.vue";
 import SubPortfolio from './SubPortfolio.vue'
-import { mapActions } from 'vuex';
+import CurrencyItem from '../generic/CurrencyItem.vue';
+import ConfirmPurchase from "../purchase/ConfirmPurchase.vue";
+import { mapActions, mapGetters } from 'vuex';
 export default {
     name: "CompositePortfolioView",
     components: {
         SubPortfolio,
-        ProviderLoginPopup
+        ProviderLoginPopup,
+        CurrencyItem,
+        ConfirmPurchase
     },
     data() {
         return {
@@ -47,12 +76,26 @@ export default {
         }
     },
     computed: {
+        ...mapGetters(['portfolioCustomizations']),
+        customizations() {
+            return this.portfolioCustomizations.get(this.portfolio.name);
+        },
+        selectedIndex() {
+            if (!this.customizations){
+                return null
+            }
+            console.log(this.customizations.indexPortfolio)
+            return this.customizations.indexPortfolio
+        },
         portfolioSum() {
             return this.portfolio.holdings.reduce((sum, holding) => sum + holding.value.value, 0);
         },
         portfolioPercentOfTarget() {
             return Math.round((this.portfolioSum / this.portfolio.target_size) * 100);
         },
+        // selectedIndex() {
+        //     return this.$store.getters.selectedIndex;
+        // }
     },
     props: {
         portfolio: {
@@ -62,6 +105,9 @@ export default {
     },
     methods: {
         ...mapActions(["refreshCompositePortfolio"]),
+        navigatePortfolio() {
+            this.$router.push({ path: `composite_portfolio/${this.portfolio.name}` })
+        },
         async refresh() {
             await this.refreshCompositePortfolio({ portfolioName: this.portfolio.name, keys: this.portfolio.keys })
         },

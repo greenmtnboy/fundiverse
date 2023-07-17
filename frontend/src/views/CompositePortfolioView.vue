@@ -1,5 +1,5 @@
 <template>
-    <CompositePortfolioManagementView/>
+    <CompositePortfolioManagementView :portfolioName="portfolioName"/>
   </template>
   
   <script>
@@ -10,6 +10,9 @@
     name: 'CompositePortfolioView',
     components: {
       CompositePortfolioManagementView
+    },
+    props: {
+      portfolioName: String
     }
   }
   </script>

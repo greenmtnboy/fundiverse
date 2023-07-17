@@ -26,8 +26,9 @@ const routes = [
     // component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
   },
   {
-    path: '/composite_portfolio',
+    path: '/composite_portfolio/:portfolioName',
     name: 'composite_portfolio',
+    props: true, // Pass route.params as props to the component
     component: CompositePortfolioView
     // route level code-splitting
     // this generates a separate chunk (about.[hash].js) for this route

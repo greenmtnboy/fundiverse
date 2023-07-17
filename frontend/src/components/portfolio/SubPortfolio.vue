@@ -4,9 +4,9 @@
             <ProviderIcon :iconType="portfolio.provider" />
         </template>
         <v-list-item-title>{{ portfolio.name }}</v-list-item-title>
-        <CurrencyItemVue :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" />
+<span><CurrencyItemVue :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" /> in {{ portfolioLength }} stocks</span>
         <v-spacer></v-spacer>
-        <span class="text-medium-emphasis" >(<CurrencyItemVue :loading="portfolio.loading" :value="portfolio.cash"/> cash) </span>
+        <span class="text-medium-emphasis" ><CurrencyItemVue :loading="portfolio.loading" :value="portfolio.cash"/> cash</span>
         <template v-slot:append>
             <v-spacer/>
             <ProviderLoginPopup stateful :provider="portfolio.provider" :portfolioName ="parentName" ></ProviderLoginPopup>
@@ -50,7 +50,10 @@ export default {
     },
     computed: {
         portfolioSum() {
-            return this.portfolio.holdings.reduce((sum, holding) => sum + holding.value.value, 0);
+            return this.portfolio.holdings.reduce((sum, holding) => sum + holding.value.value,0);
+        },
+        portfolioLength() {
+            return this.portfolio.holdings.length;
         },
     }
 }

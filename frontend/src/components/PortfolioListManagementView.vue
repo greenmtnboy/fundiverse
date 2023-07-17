@@ -63,7 +63,7 @@ export default {
       indexKeys: [],
       portfolios: [],
       showSaveSuccess: false,
-      showLoadSucces: false,
+      showLoadSuccess: false,
       saving:false
     };
   },
@@ -114,7 +114,7 @@ export default {
         this.showSaveSuccess = false;
       }, 2500);
     },
-    async getPortfolios() {
+    async loadPortfolios() {
       this.saving = true;
       await this.loadCompositePortfolios();
       // Reset the success state after a delay
@@ -139,7 +139,7 @@ export default {
     },
   },
   async mounted() {
-    await this.getPortfolios();
+    await this.loadPortfolios();
   },
 };
 </script>

@@ -268,10 +268,9 @@ async def refresh_composite_portfolio(input:CompositePortfolioRefreshRequest):
     for key in input.providers:
         item = IN_APP_CONFIG.provider_cache.get(key,None)
         if not item:
-            raise HTTPException(404, f"Must log into {key} to refresh this portfolio.")
+            raise HTTPException(401, f"Must log into {key} to refresh this portfolio.")
     #key, item in IN_APP_CONFIG.provider_cache.items():
         rport = item.get_holdings()
-        print(sum([x.value.value for x in rport.holdings]))
         active[key] = RealPortfolioOutput(
             name=f"{key.name}", holdings=rport.holdings, cash=rport.cash,
             provider=key, 

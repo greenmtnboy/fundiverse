@@ -1,5 +1,5 @@
 import axios from 'axios';
-import router from '../router';
+import store from '@/store'
 import exceptions from './exceptions';
 
 
@@ -20,11 +20,12 @@ instance.interceptors.response.use(
 
       // Redirect based on the error code
       if (status === 401) {
-        // remove in new composite view
-        // Redirect to a specific URL for 401 error
-        // router.push({
-        //   name: 'login'
-        // })
+        console.log('NEED TO USE STORE')
+        store.getters.providers.forEach((provider: string) => {
+          console.log('checking if logged in for')
+          console.log(provider)
+          store.dispatch('probeLogin', { provider: provider })
+        })
         return Promise.reject(new exceptions.auth('User is not authenticated'))
       }
       else if (status === 412) {

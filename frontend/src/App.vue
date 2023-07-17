@@ -8,7 +8,7 @@
       <p class=" d-flex justify-center text-center">Don't pick a stock. Picks lots of stocks.</p>
       <v-spacer></v-spacer>
       <template v-slot:append>
-        <v-icon v-if="isLoggedIn" color="success">mdi-check</v-icon>
+        <!-- <v-icon v-if="isLoggedIn" color="success">mdi-check</v-icon>
 
         <v-tooltip v-else>
           <template v-slot:activator="{ props }">
@@ -16,12 +16,9 @@
           </template>
           <span>Must re-login to {{ provider }}!</span>
         </v-tooltip>
-        <p>{{ provider }}</p>
-        <v-btn v-if="showLoginNav" @click="gotoLists()" icon density="compact">
-          <v-icon>mdi-login</v-icon>
-        </v-btn>
-        <v-btn v-if="showLoginNav" @click="gotoLogin()" icon density="compact">
-          <v-icon>mdi-login</v-icon>
+        <p>{{ provider }}</p> -->
+        <v-btn  @click="gotoHome()" icon density="compact">
+          <v-icon>mdi-home</v-icon>
         </v-btn>
 
       </template>
@@ -54,11 +51,9 @@ export default {
   },
   methods: {
     ...mapActions(['loadDefaultModifications']),
-    gotoLogin() {
-      this.$router.push({ path: 'login' })
-    },
-    gotoLists() {
-      this.$router.push({ path: 'portfolio_list' })
+    gotoHome() {
+      console.log('Going to portfolio list')
+      this.$router.push({ path: '/portfolio_list' })
     },
   }
 }

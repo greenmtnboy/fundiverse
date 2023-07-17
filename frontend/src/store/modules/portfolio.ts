@@ -2,6 +2,7 @@ import Store from 'electron-store';
 import CompositePortfolioModel from '@/models/CompositePortfolioModel';
 import instance from '@/api/instance'
 import SubPortfolioModel from '@/models/SubPortfolioModel';
+import PortfolioCustomization from '@/models/PortfolioCustomization'
 
 const store = new Store<Record<string, Object>>({
     name: 'portfolios',
@@ -11,24 +12,14 @@ const store = new Store<Record<string, Object>>({
 const storageAPI = {
     setPortfolios(value: Array<CompositePortfolioModel>) {
         // const buffer = safeStorage.encryptString(value);
-        console.log('setting stored data')
-        value.forEach(element => {
-            console.log(element.keys)
-        })
         store.set('compositePortfolios', value);
         // store.set(key, buffer.toString(encoding));
     },
 
 
     getPortfolios(): Array<Object> {
-        //response.data.map(dict => new CompositePortfolioModel(dict));
-
         const data = store.get('compositePortfolios', []) as Array<any>
-        console.log('got stored data')
         const parsed = data.map(dict => new CompositePortfolioModel(dict));
-        parsed.forEach(element => {
-            console.log(element.keys)
-        })
         return parsed
     },
 };
@@ -38,19 +29,36 @@ function defaults() {
     return data
 }
 
+function mappings() {
+    const data: Map<String, PortfolioCustomization> = new Map();
+    return data
+}
+
 
 const state = {
     displayLength: 50,
     compositePortfolios: defaults(),
     portfolioLoadingStatus: false,
+    compositePortfolioSettings: mappings(),
     error: null
 };
 
 const getters = {
     displayLength: state => state.displayLength,
     compositePortfolios: state => state.compositePortfolios,
-    portfolioLoadingStatus: state => state.portfolioLoadingStatus
-
+    portfolioLoadingStatus: state => state.portfolioLoadingStatus,
+    portfolioCustomizations: state => {
+        const map = new Map()
+        state.compositePortfolios.forEach(element => {
+            const customization = new PortfolioCustomization({
+                indexPortfolio: 'sp500_2023_q3', excludedLists: [],
+                excludedTickers: [], stockModifications: [], listModifications: []
+            })
+            map.set(element.name, customization)
+        }
+        )
+        return map
+    }
 };
 
 
@@ -67,7 +75,9 @@ const actions = {
     async pushEmptyProvider({ commit }, data) {
         commit('pushNewProvider', data)
     },
-
+    async setPortfolioSize({ commit }, data) {
+        commit('setPortfolioSize', data)
+    },
     async refreshCompositePortfolio({ commit }, data) {
         const portfolioName = data.portfolioName;
         let keys = data.keys;
@@ -86,6 +96,7 @@ const actions = {
         }
         try {
             const response = await instance.post(`composite_portfolio/refresh`, args)
+
             const parsed = new CompositePortfolioModel(response.data)
             commit('updateCompositePortfolio', parsed);
             commit('setPortfolioLoadingStatus', false)
@@ -128,6 +139,10 @@ const mutations = {
     setCompositePortfolios(state, data) {
         state.compositePortfolios = data;
     },
+    setPortfolioSize(state, data) {
+        const existingIndex = state.compositePortfolios.findIndex(item => item.name === data.portfolioName);
+        state.compositePortfolios[existingIndex].target_size = data.size
+    },
     setPortfolioLoadingStatus(state, data) {
         if (!data.name) {
             state.portfolioLoadingStatus = data.status;
@@ -135,8 +150,8 @@ const mutations = {
         else {
             const existingIndex = state.compositePortfolios.findIndex(item => item.name === data.name);
             state.compositePortfolios[existingIndex].components.forEach((element, index) => {
-                element.loading=data.status;
-              });
+                element.loading = data.status;
+            });
             state.compositePortfolios[existingIndex].loading = data.status;
         }
     },
@@ -161,7 +176,7 @@ const mutations = {
         }
         current.keys.push(data.key);
         const newSub = new SubPortfolioModel({ provider: data.key, name: data.key, target_size: 0, holdings: [], cash: { currency: '$', value: 1000.0 } })
-        newSub.loading=true;
+        newSub.loading = true;
         current.components.push(newSub)
         state.compositePortfolios[existingIndex] = current;
     },

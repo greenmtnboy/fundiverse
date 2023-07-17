@@ -17,7 +17,7 @@
                 </template>
                 <span>Unable to automatically authenticate</span>
             </v-tooltip>
-            <v-btn v-else :loading="loading" class="text-none pa-2" color="primary" size="compact" v-bind="props">
+            <v-btn v-else :loading="loading"  v-bind="props">
                 {{ label }}
             </v-btn>
         </template>
@@ -65,7 +65,7 @@ import instance from '@/api/instance'
 import axiosHelpers from '@/api/helpers';
 import exceptions from '@/api/exceptions'
 import {
-    mapActions
+    mapActions, mapGetters
 } from 'vuex';
 export default {
     name: "LoginPage",
@@ -86,7 +86,6 @@ export default {
             error: '',
             extraLogin: false,
             dialog: false,
-            loginSuccess: false
         };
     },
     props: {
@@ -108,11 +107,12 @@ export default {
         }
     },
     computed: {
-        keys() {
-            return this.$store.getters.keys;
+        ...mapGetters(['activeProviders', 'keys']),
+        loginSuccess() {
+            return this.activeProviders.includes(this.provider)
         },
         label() {
-            return this.provider == null ? 'Add Provider' : 'Login'
+            return this.provider == null ? 'Connect Provider' : 'Login'
         },
         availableProviders() {
             return this.providers.filter(item => !this.providerKeys.includes(item));
@@ -138,13 +138,9 @@ export default {
     },
     methods: {
 
-        ...mapActions(['setLoggedIn', 'storeSavedValue', 'refreshCompositePortfolio', 'pushEmptyProvider']),
+        ...mapActions(['setLoggedIn', 'probeLogin', 'storeSavedValue', 'refreshCompositePortfolio', 'pushEmptyProvider']),
         required(v) {
             return !!v || 'Field is required'
-        },
-        async probeLogin() {
-            const response = await instance.get(`/logged_in/${this.provider}`)
-            this.loginSuccess = Boolean(response.data)
         },
         getDefaults(provider) {
             let key_key = 'key-'.concat(provider)
@@ -213,13 +209,14 @@ export default {
                 const newKeys = this.providerKeys.concat([this.selectedProvider])
                 if (this.provider == null) {
                     this.pushEmptyProvider({ portfolioName: this.portfolioName, key: this.selectedProvider })
+                    this.probeLogin({provider: this.selectedProvider})
                     if (refresh) {
                         return this.refreshCompositePortfolio({ portfolioName: this.portfolioName })
                     }
 
                 }
                 else {
-                    this.loginSuccess = true;
+                    this.probeLogin({provider: this.provider})
                     if (refresh) {
                         return this.refreshCompositePortfolio({ portfolioName: this.portfolioName, keys: newKeys })
                     }
@@ -244,7 +241,11 @@ export default {
     async mounted() {
         this.getProviders().then(() => {
             if (this.provider) {
-                Promise.all([this.probeLogin(), this.getDefaults(this.provider)]).then(() => {
+                if (this.loginSuccess) {
+                    return
+                }
+
+                Promise.all([this.probeLogin({provider:this.provider}), this.getDefaults(this.provider)]).then(() => {
                     if (this.key && this.secret && !this.loginSuccess) {
                         this.login(false)
                     }

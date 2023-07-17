@@ -1,6 +1,7 @@
 import PortfolioElementModel from "./PortfolioElementModel"; 
 import CashModel from "./CashModel";
 import SubPortfolioModel from "./SubPortfolioModel"
+import { reactive } from 'vue';
 
 export default class CompositePortfolioModel {
     name: string;
@@ -18,9 +19,9 @@ export default class CompositePortfolioModel {
         this.holdings = holdings;
         this.cash = new CashModel(cash);
         this.target_size = target_size;
-        const scomponents:Array<any> =components as Array<any>
-        this.keys = Object.entries(scomponents).map(([key, component]) => component.provider)
-        this.components = Object.entries(scomponents).map(([key, component]) => new SubPortfolioModel(component))
+        const scomponents:Array<any> = components as Array<any>
+        this.keys = reactive(Object.entries(scomponents).map(([key, component]) => component.provider))
+        this.components = reactive(Object.entries(scomponents).map(([key, component]) => new SubPortfolioModel(component)))
         
     }
 } 

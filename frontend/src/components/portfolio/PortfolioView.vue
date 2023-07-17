@@ -24,6 +24,7 @@
 
 <script>
 import PortfolioElement from "./PortfolioElement.vue";
+import CompositePortfolioModel from '../../models/CompositePortfolioModel';
 import PortfolioModel from '../../models/PortfolioModel';
 
 export default {
@@ -50,7 +51,7 @@ export default {
     },
     props: {
         portfolio: {
-            type: PortfolioModel,
+            type: [PortfolioModel, CompositePortfolioModel],
             required: true,
         },
         targetSize: {

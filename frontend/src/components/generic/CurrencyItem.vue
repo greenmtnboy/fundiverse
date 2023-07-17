@@ -1,7 +1,7 @@
 <template>
 
     <span v-if="loading" class="box-placeholder">
-        {{ value.currency }}<span class="text"> {{ Math.round(value.value * 100) / 100 }}</span>
+        {{ value.currency }}<span class="text">xxxxxxx</span>
     </span>
     <span v-else>
         {{ value.currency }}{{ Math.round(value.value * 100) / 100 }}
