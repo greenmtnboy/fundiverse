@@ -452,6 +452,7 @@ async def exit_app():
     asyncio.gather(asyncio.all_tasks())
     loop = asyncio.get_running_loop()
     loop.stop()
+    raise ValueError("Server is shutting down")
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -499,7 +500,7 @@ def run():
         run()
     except Exception as e:
         print(f"Server is shutting down due to {e}")
-        exit(1)
+        exit(0)
 
 
 if __name__ == "__main__":

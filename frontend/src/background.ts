@@ -202,6 +202,7 @@ async function createWindow() {
     height: 600,
     minWidth: 800, // Set the minimum width here
     autoHideMenuBar: true,
+    icon: path.join(__dirname, 'assets', 'appicon.png'),
     webPreferences: {
 
       // Use pluginOptions.nodeIntegration, leave this alone
