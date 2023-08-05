@@ -13,12 +13,15 @@
                     You can exclude a stock entirely with the below toggle, or scale the weighting of the stock in the index
                     by some percent. The default 100% would not change the weight in the index.
                 </p>
-                <v-text-field v-model="ticker" label="Ticker" color="blue-darken-4" density="compact" hide-details
+                
+                <v-text-field
+                class="pb-2"
+                v-model="ticker" label="Ticker" color="blue-darken-4" density="compact" hide-details
                     variant="solo" inline inset></v-text-field>
-                <v-divider />
-                <v-switch v-model="excluded" :label="excluded ? 'Exclude' : 'Keep'" color="blue-darken-4" density="compact"
+                <v-switch v-model="excluded" 
+                class = "pb-2"
+                :label="excluded ? 'Toggle inclusion. Currently this stock will be excluded.' : 'Toggle inclusion. Currently this stock will be included.'" color="blue-darken-4" density="compact"
                     hide-details inline inset></v-switch>
-
                 <v-text-field v-model="weight" :disabled="excluded" label="Weighting %" variant="solo" color="blue-darken-4"
                     density="compact" :rules="numberValidationRules" hide-details inline inset></v-text-field>
                 <!-- <v-text-field v-model="minWeight" :disabled="excluded" :rules="numberValidationRules" color="blue-darken-4" label="Minimum Weighting" density="compact" variant="solo" hide-details inline inset></v-text-field> -->
@@ -54,6 +57,12 @@ export default {
             ticker: '',
         }
     },
+    props: {
+        portfolioName: {
+            type: String,
+            required: true,
+        },
+    },
     computed: {
         hasValidChanges() {
             return this.excluded || this.weight != 100 || this.minWeight != 0;
@@ -71,12 +80,12 @@ export default {
     },
     methods: {
         ...mapActions(['excludeStock', 'modifyStock']),
-
         submit() {
             if (this.excluded) {
-                this.excludeStock(this.ticker);
+                this.excludeStock({portfolioName:this.portfolioName,ticker:this.ticker})
             } else {
                 this.modifyStock({
+                    'portfolioName': this.portfolioName,
                     'ticker': this.ticker,
                     'scale': this.weight / 100,
                     // 'minWeight': this.minWeight
