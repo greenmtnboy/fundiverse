@@ -152,7 +152,7 @@ export default {
             if (customizations) { return customizations }
             return new PortfolioCustomization({
                 reweightIndex: true,
-                indexPortfolio: 'sp500_2023_q3',
+                indexPortfolio: null,
                 excludedLists: new Set(), excludedTickers: new Set(),
                 stockModifications: [], listModifications: []
             })

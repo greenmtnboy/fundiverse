@@ -83,6 +83,13 @@ const actions = {
     async setStockLists({ commit }, data) {
         commit('setStockLists', data)
     },
+    async setPortfolioTargetIndex({ commit }, data) {
+        if (!data.index) {
+        return
+        }
+        commit('setPortfolioTargetIndex', data)
+        commit('saveCustomizations')
+    },
     async excludeStock({ commit }, data) {
         commit('excludeStock', data)
         commit('saveCustomizations')
@@ -139,7 +146,7 @@ function safeGetCustomization(state, name: String) {
     }
     const newPortfolio = new PortfolioCustomization({
         reweightIndex: true,
-        indexPortfolio: 'sp500_2023_q3',
+        indexPortfolio: null,
         excludedLists: new Set(), excludedTickers: new Set(),
         stockModifications: [], listModifications: []
     });
@@ -181,12 +188,7 @@ const mutations = {
         customization.listModifications = customization.listModifications.filter(item => item.ticker !== data.ticker)
     },
     saveCustomizations(state) {
-        console.log('saving customizations')
         storageAPI.setDefaults(state.customizations)
-        console.log(state.customizations)
-        console.log('checking what we saved')
-        const recovered = storageAPI.getDefaults()
-        console.log(recovered)
     },
     commitCustomizations(state, data) {
         if (data === undefined) return
@@ -203,6 +205,10 @@ const mutations = {
         customization.stockModifications = []
         customization.excludedLists = new Set()
         customization.excludedTickers = new Set()
+    },
+    setPortfolioTargetIndex(state, data) {
+        const customization = safeGetCustomization(state, data.portfolioName)
+        customization.indexPortfolio=data.index
     }
 };
 

@@ -18,14 +18,24 @@
             <v-divider class="pb-4"></v-divider>
             <v-progress-linear v-if="portfolio.loading" indeterminate color="blue-lighten-3" height="20">
             </v-progress-linear>
-            <v-progress-linear v-else-if="!portfolio.loading" color="blue-lighten-3" v-model="portfolioPercentOfTarget"
+            <template v-else >
+            <v-progress-linear color="green-lighten-3" v-model="portfolioInTargetPercent"
                 height="20">
                 <p class="text-high-emphasis font-weight-black">
-                    <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" />, {{
-                        portfolioPercentOfTarget }}% of target
+                    <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioInTargetSum }" />, {{
+                        portfolioInTargetPercent }}% of target with index stocks
                 </p>
 
             </v-progress-linear>
+            <v-progress-linear color="blue-lighten-3" v-model="portfolioPercentOfTarget"
+                height="20">
+                <p class="text-high-emphasis font-weight-black">
+                    <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" />, {{
+                        portfolioPercentOfTarget }}% of target including all stocks
+                </p>
+
+            </v-progress-linear>
+        </template>
         </v-card-text>
         <v-card-text class="pt-0">
             <v-divider class="pb-4 pt-0"></v-divider>
@@ -74,7 +84,7 @@ export default {
         }
     },
     computed: {
-        ...mapGetters(['portfolioCustomizations']),
+        ...mapGetters(['portfolioCustomizations', 'indexes']),
         // TODO: disable buy button when not logged in
         // canPurchase() {
         //     for x in this.portfolio.components {
@@ -107,12 +117,27 @@ export default {
             }
             return this.customizations.indexPortfolio
         },
+        portfolioMatchedHoldings() {
+            const index = this.indexes.find((element) => element.name == this.selectedIndex)
+            if (!index) {
+                return []
+            }
+            const indexTickers = index.holdings.reduce((set, holding) => set.add(holding.ticker), new Set())
+            return this.portfolio.holdings.filter((element) => indexTickers.has(element.ticker));
+        },
+        portfolioInTargetSum() {
+            return this.portfolioMatchedHoldings.reduce((sum, holding) => sum + holding.value.value, 0);
+        },
+        portfolioInTargetPercent() {
+            return Math.round((this.portfolioInTargetSum / this.portfolio.target_size) * 100);
+        },
         portfolioSum() {
             return this.portfolio.holdings.reduce((sum, holding) => sum + holding.value.value, 0);
         },
         portfolioPercentOfTarget() {
             return Math.round((this.portfolioSum / this.portfolio.target_size) * 100);
         },
+        
         // selectedIndex() {
         //     return this.$store.getters.selectedIndex;
         // }

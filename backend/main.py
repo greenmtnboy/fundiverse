@@ -17,7 +17,7 @@ from py_portfolio_index.models import (
     LoginResponse,
     RealPortfolioElement,
     Money,
-    OrderType
+    OrderType,
 )
 from pytz import UTC
 
@@ -82,6 +82,7 @@ class LoginRequest(BaseModel):
     extra_factor: str | int | None = None
     force: bool = False
 
+
 class RealPortfolioOutput(BaseModel):
     name: str
     holdings: List[RealPortfolioElement]
@@ -97,16 +98,18 @@ class CompositePortfolioOutput(BaseModel):
     target_size: float = 250_000
     refreshed_at: int
 
+
 class OrderItem(BaseModel):
     ticker: str
     order_type: OrderType
     value: Money | None
     qty: int | None
-    provider:Provider
+    provider: Provider
 
 
 class PurchaseOrderOutput(BaseModel):
-    to_buy:List[OrderItem]
+    to_buy: List[OrderItem]
+
 
 class ListMutation(BaseModel):
     list: str
@@ -264,8 +267,6 @@ async def get_portfolio(_provider: Provider):
     return provider.get_holdings()
 
 
-
-
 @router.post("/composite_portfolio/refresh")
 async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     active: Dict[Provider, RealPortfolio] = {}
@@ -298,6 +299,13 @@ async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
 async def list_indexes():
     _ = [INDEXES[x] for x in INDEXES.keys]
     return sorted(INDEXES.keys, reverse=True)
+
+
+@router.get("/indexes_full")
+async def list_indexes_full():
+    # ensure we loaded
+    _ = [INDEXES[x] for x in INDEXES.keys]
+    return INDEXES
 
 
 @router.get("/stock_lists")
@@ -347,18 +355,20 @@ async def plan_composite_purchase(input: BuyRequest):
         ideal_port,
         # purchase_power=input.to_purchase,
         target_size=input.target_size,
-        purchase_order_maps=buy_orders
+        purchase_order_maps=buy_orders,
     )
     final = []
     for key, order_items in plan.items():
         for order in order_items.to_buy:
-            final.append(OrderItem(
-                ticker=order.ticker,
-                order_type=order.order_type,
-                value=order.value,
-                qty=order.qty,
-                provider=key
-            ))
+            final.append(
+                OrderItem(
+                    ticker=order.ticker,
+                    order_type=order.order_type,
+                    value=order.value,
+                    qty=order.qty,
+                    provider=key,
+                )
+            )
     output = PurchaseOrderOutput(to_buy=final)
     return output
 
@@ -399,12 +409,10 @@ async def buy_index_from_plan(input: BuyRequestFinal):
 
 @router.post("/buy_index_from_plan_multi_provider")
 async def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
-    providers = {p:IN_APP_CONFIG.provider_cache[p] for p in input.providers}
+    providers = {p: IN_APP_CONFIG.provider_cache[p] for p in input.providers}
     # check each of our p
-    successful = []
     for order in input.plan.to_buy:
         providers[order.provider].handle_order_element(order)
-    
 
 
 app.include_router(router)
@@ -451,27 +459,36 @@ def run():
     LOGGING_CONFIG["disable_existing_loggers"] = True
     import sys
 
-    dev = True
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        print("running in a PyInstaller bundle, setting sys.stdout to devnull")
+        print("running in a PyInstaller bundle")
 
         f = open(os.devnull, "w")
         sys.stdout = f
-        dev = False
-    else:
-        print("Running in a normal Python process, assuming dev")
-    try:
-        uvicorn.run(
-            "main:app",
+        run = uvicorn.run(
+            app,
             host="0.0.0.0",
             port=3000,
             log_level="info",
             log_config=LOGGING_CONFIG,
-            reload=dev,
         )
+    else:
+        print("Running in a normal Python process, assuming dev")
+
+        def run():
+            return uvicorn.run(
+                "main:app",
+                host="0.0.0.0",
+                port=3000,
+                log_level="info",
+                log_config=LOGGING_CONFIG,
+                reload=True,
+            )
+
+    try:
+        run()
     except Exception as e:
         print(f"Server is shutting down due to {e}")
-        exit(0)
+        exit(1)
 
 
 if __name__ == "__main__":

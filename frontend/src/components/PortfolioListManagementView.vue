@@ -104,7 +104,7 @@ export default {
   },
   methods: {
     // ...mapActions(['refreshCompositePortfolios']),
-    ...mapActions(['saveCompositePortfolios', 'loadCompositePortfolios', 'loadCustomizations']),
+    ...mapActions(['saveCompositePortfolios', 'loadCompositePortfolios', 'loadCustomizations', 'loadIndexes']),
     async savePortfolios() {
       this.saving=true;
       await this.saveCompositePortfolios();
@@ -133,6 +133,7 @@ export default {
   async mounted() {
     await this.loadPortfolios();
     await this.loadCustomizations();
+    await this.loadIndexes()
   },
 };
 </script>

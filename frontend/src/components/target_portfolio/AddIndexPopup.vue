@@ -1,7 +1,7 @@
 <template>
     <v-dialog v-model="dialog" max-width="500" min-width=400>
         <template v-slot:activator="{ props }">
-            <v-btn disabled="true" class="text-none" variant="outlined" v-bind="props">
+            <v-btn :disabled="true" class="text-none" variant="outlined" v-bind="props">
                 Add New Index
             </v-btn>
         </template>
