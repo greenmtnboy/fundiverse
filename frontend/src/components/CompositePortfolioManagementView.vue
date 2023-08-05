@@ -226,6 +226,7 @@ export default {
   methods: {
     ...mapActions(['setDisplayLength', 'setStockLists', 'loadDefaultModifications', 'loadCompositePortfolios',
       'saveCompositePortfolios', 'saveCustomizations', 'loadCustomizations', 'getStockLists',
+      'setPortfolioTargetIndex',
       'setPortfolioSize']),
     handlePortfolioSearchText: debounce(function () {
       // Code to execute after the debounce delay
@@ -265,6 +266,7 @@ export default {
           'holdings': portfolioHoldings,
           'source_date': response.data.source_date
         });
+        this.setPortfolioTargetIndex({portfolioName:this.portfolioName, index:target})
         this.updatedPortfolioWithTargets();
 
       }).catch(error => {
