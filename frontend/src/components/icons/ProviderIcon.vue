@@ -1,6 +1,7 @@
 <template>
     <v-avatar>
-        <AlpacaIcon v-if="iconType === 'alpaca'"></AlpacaIcon>
+        <AlpacaIcon v-if="iconType === 'alpaca'" color="goldenrod"></AlpacaIcon>
+        <AlpacaIcon v-else-if="iconType === 'alpaca_paper'" color="gray"></AlpacaIcon>
         <template v-else-if="iconType === 'robinhood'">
             <v-img :src="robinhoodSrc" alt="'Robinhood Logo'" />
         </template>

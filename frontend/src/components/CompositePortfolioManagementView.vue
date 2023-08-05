@@ -42,9 +42,9 @@
       <v-col cols=6 min-width="300px">
         <v-card>
           <v-card-title style="min-height: 90px;" class="text-center">
-            <v-select @update:modelValue="newValue => getTargetPortfolio(newValue)" v-model="selectedIndex"
+            <v-autocomplete @update:modelValue="newValue => getTargetPortfolio(newValue)" v-model="selectedIndex"
               :items="indexKeys" density="compact" variant="solo" label="Target Portfolio"
-              :disabled="compareLoading"></v-select>
+              :disabled="compareLoading"></v-autocomplete>
           </v-card-title>
           <v-card-actions>
             <TailorComponent :portfolioName="portfolioName" />
@@ -134,7 +134,6 @@ export default {
   },
   data() {
     return {
-      indexKeys: [],
       targetPortfolio: null,
       // targetPortfolios: new TargetPortfolioListModel({
       //   'loaded': initHoldings
@@ -157,9 +156,13 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['compositePortfolios', 'portfolioCustomizations']),
+    ...mapGetters(['compositePortfolios', 'portfolioCustomizations', 'indexNames',
+     'getCustomizationByName']),
     routerDebug() {
       return this.$route.params;
+    },
+    indexKeys() {
+      return this.indexNames
     },
     subPortfolioKeys() {
       const keys = [...this.portfolio.keys];
@@ -177,8 +180,7 @@ export default {
       }
     },
     portfolioCustomization() {
-      const customization = this.portfolioCustomizations.get(this.portfolio.name)
-      return customization
+      return this.getCustomizationByName(this.portfolio.name)
     },
     portfolio() {
       const matched = this.compositePortfolios.find((portfolio) => portfolio.name === this.portfolioName)
@@ -226,6 +228,7 @@ export default {
   methods: {
     ...mapActions(['setDisplayLength', 'setStockLists', 'loadDefaultModifications', 'loadCompositePortfolios',
       'saveCompositePortfolios', 'saveCustomizations', 'loadCustomizations', 'getStockLists',
+      'loadIndexes',
       'setPortfolioTargetIndex',
       'setPortfolioSize']),
     handlePortfolioSearchText: debounce(function () {
@@ -249,6 +252,9 @@ export default {
     // },
 
     getTargetPortfolio(newValue) {
+      if (!newValue) {
+        return
+      }
       this.targetLoading = true;
       const target = newValue || this.selectedIndex;
       return instance.post('generate_index', {
@@ -319,11 +325,6 @@ export default {
         this.showSaveSuccess = false;
       }, 2500);
     },
-    getIndexes() {
-      return instance.get('indexes').then((response) => {
-        this.indexKeys = response.data;
-      });
-    },
     buyIndex() {
       return instance.post('buy_index', {
         'to_purchase': this.toPurchase,
@@ -343,7 +344,7 @@ export default {
     await this.getPortfolio()
 
     // this.getPortfolio()
-    this.getIndexes()
+    this.loadIndexes()
 
     this.getStockLists()
     // this.loadDefaultModifications()

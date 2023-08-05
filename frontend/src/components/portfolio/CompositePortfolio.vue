@@ -10,32 +10,33 @@
                     portfolio.components.length }} providers with target size
                     <CurrencyItem :value="{ currency: '$', value: portfolio.target_size }" />
                 </p>
-                <p>Based on index <span class="font-weight-black" :style="{ color: 'purple' }">{{ this.selectedIndex }}</span>
+                <p v-if="selectedIndex">Based on index <span class="font-weight-black" :style="{ color: 'purple' }">{{
+                    this.selectedIndex }}</span>
                     with {{ customizationCount }} customizations.</p>
+                <p v-else :style="{color: 'orange'}"> No target index selected. Click customize to set.</p>
             </div>
             <div>
             </div>
             <v-divider class="pb-4"></v-divider>
             <v-progress-linear v-if="portfolio.loading" indeterminate color="blue-lighten-3" height="20">
             </v-progress-linear>
-            <template v-else >
-            <v-progress-linear color="green-lighten-3" v-model="portfolioInTargetPercent"
-                height="20">
-                <p class="text-high-emphasis font-weight-black">
-                    <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioInTargetSum }" />, {{
-                        portfolioInTargetPercent }}% of target with index stocks
-                </p>
+            <template v-else>
+                <v-progress-linear color="green-lighten-3" v-model="portfolioInTargetPercent" height="20">
+                    <p class="text-high-emphasis font-weight-black">
+                        <CurrencyItem :loading="portfolio.loading"
+                            :value="{ currency: '$', value: portfolioInTargetSum }" />, {{
+                                portfolioInTargetPercent }}% of target with index stocks
+                    </p>
 
-            </v-progress-linear>
-            <v-progress-linear color="blue-lighten-3" v-model="portfolioPercentOfTarget"
-                height="20">
-                <p class="text-high-emphasis font-weight-black">
-                    <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" />, {{
-                        portfolioPercentOfTarget }}% of target including all stocks
-                </p>
+                </v-progress-linear>
+                <v-progress-linear color="blue-lighten-3" v-model="portfolioPercentOfTarget" height="20">
+                    <p class="text-high-emphasis font-weight-black">
+                        <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" />, {{
+                            portfolioPercentOfTarget }}% of target including all stocks
+                    </p>
 
-            </v-progress-linear>
-        </template>
+                </v-progress-linear>
+            </template>
         </v-card-text>
         <v-card-text class="pt-0">
             <v-divider class="pb-4 pt-0"></v-divider>
@@ -137,7 +138,7 @@ export default {
         portfolioPercentOfTarget() {
             return Math.round((this.portfolioSum / this.portfolio.target_size) * 100);
         },
-        
+
         // selectedIndex() {
         //     return this.$store.getters.selectedIndex;
         // }

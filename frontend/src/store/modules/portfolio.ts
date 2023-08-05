@@ -68,6 +68,18 @@ const getters = {
 // };
 
 const actions = {
+    async addNewCompositePortfolio({ commit }, data) {
+        const newPortfolio: CompositePortfolioModel = new CompositePortfolioModel({
+            name: data.name,
+            holdings: [],
+            cash: { currency: '$', value: 0.0 },
+            target_size: data.target_size,
+            components: [],
+            refreshed_at: Math.floor(Date.now() / 1000)
+        });
+        commit('addCompositePortfolios', newPortfolio);
+        commit('savePortfolio')
+    },
     async setDisplayLength({ commit }, data) {
         commit('setDisplayLength', data)
     },
@@ -79,6 +91,7 @@ const actions = {
     },
     async setPortfolioSize({ commit }, data) {
         commit('setPortfolioSize', data)
+        commit('savePortfolio')
     },
     async refreshCompositePortfolio({ commit }, data) {
         const portfolioName = data.portfolioName;
@@ -103,6 +116,7 @@ const actions = {
             const parsed = new CompositePortfolioModel(response.data)
             commit('updateCompositePortfolio', parsed);
             commit('setPortfolioLoadingStatus', false)
+            commit('savePortfolio')
         }
         catch (error) {
             commit('setError', error)
@@ -126,6 +140,7 @@ const actions = {
                 }
             });
             commit('setPortfolioLoadingStatus', false)
+            commit('savePortfolio')
         }
         catch (error) {
             commit('setError', error)

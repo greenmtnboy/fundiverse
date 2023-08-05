@@ -25,6 +25,7 @@ from py_portfolio_index import (
     INDEXES,
     STOCK_LISTS,
     AlpacaProvider,
+    PaperAlpacaProvider,
     RobinhoodProvider,
     PurchaseStrategy,
     generate_order_plan,
@@ -173,6 +174,11 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
                 Provider.ALPACA, AlpacaProvider()
             )
             IN_APP_CONFIG.provider_cache[Provider.ALPACA] = provider
+        elif _provider == Provider.ALPACA_PAPER:
+            provider = IN_APP_CONFIG.provider_cache.get(
+                Provider.ALPACA_PAPER, PaperAlpacaProvider()
+            )
+            IN_APP_CONFIG.provider_cache[Provider.ALPACA_PAPER] = provider
         elif _provider == Provider.ROBINHOOD:
             # Robinhood requires potential two factor auth
             # cannot safely instantiate default handler
@@ -219,12 +225,17 @@ async def login_handler(input: LoginRequest):
         return True
     try:
         if input.provider == Provider.ALPACA:
-            environ["ALPACA_API_KEY"] = input.key
-            environ["ALPACA_API_SECRET"] = input.secret
+            environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
+            environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
             # ensure we can login
             provider = AlpacaProvider()
-            IN_APP_CONFIG.provider_cache[Provider.ALPACA] = provider
-
+            IN_APP_CONFIG.provider_cache[input.provider] = provider
+        elif input.provider == Provider.ALPACA_PAPER:
+            environ[PaperAlpacaProvider.API_KEY_VARIABLE] = input.key
+            environ[PaperAlpacaProvider.API_SECRET_VARIABLE] = input.secret
+            # ensure we can login
+            provider =  PaperAlpacaProvider()
+            IN_APP_CONFIG.provider_cache[input.provider] = provider
         elif input.provider == Provider.ROBINHOOD:
             environ["ROBINHOOD_USERNAME"] = input.key
             environ["ROBINHOOD_PASSWORD"] = input.secret
@@ -235,7 +246,7 @@ async def login_handler(input: LoginRequest):
                 prior_response=IN_APP_CONFIG.pending_auth_response,
             )
             provider = RobinhoodProvider(external_auth=True)
-            IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = provider
+            IN_APP_CONFIG.provider_cache[input.provider] = provider
         else:
             raise HTTPException(404, "Selected provider not supported yet")
         IN_APP_CONFIG.logged_in = input.provider.value

@@ -66,6 +66,9 @@ const getters = {
     // stockModifications: state => state.stockModifications,
     // listModifications: state => state.listModifications,
     stockLists: state => state.stockLists,
+    getCustomizationByName: (state) => (name) => {
+        return safeGetCustomization(state, name);
+      }
     // totalModifications: state => state.stockModifications.length + state.listModifications.length + state.excludedLists.size + state.excludedTickers.size,
 };
 

@@ -255,7 +255,7 @@ app.on('ready', async () => {
     }
   }
 
-  startBackgroundServiceSafe();
+  // startBackgroundServiceSafe();
   createWindow()
 })
 // if (process.env.WEBPACK_DEV_SERVER_URL) {

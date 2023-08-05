@@ -3,14 +3,15 @@
         <template v-slot:activator="{ props }">
             <v-tooltip v-if="loginSuccess">
                 <template v-slot:activator="{ props }">
-                    <v-btn v-bind="props" transition="fade-transition" class="text-none" color="green" size="compact" icon>
+                    <v-btn v-bind="props" transition="fade-transition" class="text-none"
+                     color="green" size="compact" icon>
                         <v-icon>mdi-check</v-icon>
                     </v-btn>
                 </template>
                 <span>You are authenticated to this provider</span>
             </v-tooltip>
             <v-tooltip v-else-if="error">
-                <template v-slot:activator="{ props }">
+                <template>
                     <v-btn v-bind="props" size="compact"  color="primary" >
                         {{ label }}
                     </v-btn>
