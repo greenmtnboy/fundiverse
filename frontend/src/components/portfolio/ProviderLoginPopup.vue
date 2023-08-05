@@ -10,14 +10,14 @@
                 <span>You are authenticated to this provider</span>
             </v-tooltip>
             <v-tooltip v-else-if="error">
-                <template v-slot:activator="{ ttip }">
-                    <v-btn v-bind="ttip" size="compact" prepend-icon="mdi-exclamation" color="primary">
+                <template v-slot:activator="{ props }">
+                    <v-btn v-bind="props" size="compact"  color="primary" >
                         {{ label }}
                     </v-btn>
                 </template>
                 <span>Unable to automatically authenticate</span>
             </v-tooltip>
-            <v-btn v-else :loading="loading"  v-bind="props">
+            <v-btn v-else :loading="loading" @click="loadDefaults" v-bind="props">
                 {{ label }}
             </v-btn>
         </template>
@@ -167,6 +167,9 @@ export default {
                 setTimeout(local.getProviders, 1000)
             });
         },
+        async loadDefaults() {
+            this.getDefaults(this.provider)
+        },
         async autoLogin() {
             const defaults = this.getDefaults(this.provider)
             if (defaults) {
@@ -206,19 +209,18 @@ export default {
                     });
                 }
                 this.dialog = false;
-                const newKeys = this.providerKeys.concat([this.selectedProvider])
                 if (this.provider == null) {
                     this.pushEmptyProvider({ portfolioName: this.portfolioName, key: this.selectedProvider })
                     this.probeLogin({provider: this.selectedProvider})
                     if (refresh) {
-                        return this.refreshCompositePortfolio({ portfolioName: this.portfolioName })
+                        return this.refreshCompositePortfolio({ portfolioName: this.portfolioName})
                     }
 
                 }
                 else {
                     this.probeLogin({provider: this.provider})
                     if (refresh) {
-                        return this.refreshCompositePortfolio({ portfolioName: this.portfolioName, keys: newKeys })
+                        return this.refreshCompositePortfolio({ portfolioName: this.portfolioName })
                     }
 
                 }

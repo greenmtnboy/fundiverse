@@ -56,6 +56,15 @@ export default {
         weight: 100,
         minWeight: 0,
     }),
+    props: {
+        portfolioName: {
+            type: String,
+            required: true,
+        },
+    },
+    mounted() {
+        this.getStockLists()
+    },
     computed: {
         ...mapGetters(['stockLists']),
         listMembers() {
@@ -80,13 +89,14 @@ export default {
         },
     },
     methods: {
-        ...mapActions(['excludeList', 'modifyList']),
+        ...mapActions(['excludeList', 'modifyList', 'getStockLists']),
 
         submit() {
             if (this.excluded) {
-                this.excludeList(this.list);
+                this.excludeList({portfolioName:this.portfolioName, list:this.list});
             } else {
                 this.modifyList({
+                    'portfolioName': this.portfolioName,
                     'list': this.list,
                     'scale': this.weight / 100,
                     // 'minWeight': this.minWeight

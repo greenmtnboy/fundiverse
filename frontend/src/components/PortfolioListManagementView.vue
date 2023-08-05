@@ -3,10 +3,11 @@
     <v-card-title>Portfolio Management</v-card-title>
     <v-card-actions>
       <AddPortfolioPopup />
-      <v-btn v-if="showSaveSuccess" transition="fade-transition">
+      <AddIndexPopup />
+      <!-- <v-btn v-if="showSaveSuccess" transition="fade-transition">
         <v-icon>mdi-check</v-icon>
-      </v-btn>
-      <v-btn v-else transition="fade-transition" :loading="saving" @click="savePortfolios">
+      </v-btn> -->
+      <!-- <v-btn v-else transition="fade-transition" :loading="saving" @click="savePortfolios">
         Save Portfolios
       </v-btn>
       <v-btn v-if="showLoadSuccess" transition="fade-transition">
@@ -14,7 +15,7 @@
       </v-btn>
       <v-btn v-else transition="fade-transition" :loading="saving" @click="loadPortfolios">
         Undo Changes
-      </v-btn>
+      </v-btn> -->
     </v-card-actions>
     <v-divider />
     <v-container>
@@ -50,13 +51,15 @@
 
 import CompositePortfolio from '@/components/portfolio/CompositePortfolio';
 import AddPortfolioPopup from './portfolio/AddPortfolioPopup.vue';
+import AddIndexPopup from './target_portfolio/AddIndexPopup.vue';
 import { mapGetters, mapActions } from 'vuex';
 
 export default {
   name: "ManagePortfolioListView",
   components: {
     CompositePortfolio,
-    AddPortfolioPopup
+    AddPortfolioPopup,
+    AddIndexPopup
   },
   data() {
     return {
@@ -101,7 +104,7 @@ export default {
   },
   methods: {
     // ...mapActions(['refreshCompositePortfolios']),
-    ...mapActions(['saveCompositePortfolios', 'loadCompositePortfolios']),
+    ...mapActions(['saveCompositePortfolios', 'loadCompositePortfolios', 'loadCustomizations']),
     async savePortfolios() {
       this.saving=true;
       await this.saveCompositePortfolios();
@@ -125,21 +128,11 @@ export default {
       setTimeout(() => {
         this.showLoadSuccess = false;
       }, 2500);
-      // await this.refreshCompositePortfolios();
-      // this.refreshLoading = true;
-      // return this.refreshCompositePortfolios.then(() => {
-      // }).catch(error => {
-      //   if (error instanceof exceptions.auth) {
-      //     // Handle the custom exception
-      //     console.log('Authentication error, redirecting')
-      //   } else {
-      //     throw error
-      //   }
-      // })
     },
   },
   async mounted() {
     await this.loadPortfolios();
+    await this.loadCustomizations();
   },
 };
 </script>

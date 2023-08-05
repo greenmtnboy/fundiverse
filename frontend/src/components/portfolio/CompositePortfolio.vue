@@ -1,15 +1,17 @@
 <template>
     <v-card class="ma-4">
         <v-card-title :key="portfolio.name" class="text-left">
-            {{ portfolio.name }}
+            {{ portfolio.name }} <span style="opacity: 0.5; font-size:small;" class="text-low-emphasis">(Refreshed {{
+                timeDisplay }})</span>
         </v-card-title>
         <v-card-text class="text-high-emphasis text--primary ">
             <div>
                 <p class="text-high-emphasis font-weight-black text--primary">A portfolio across {{
                     portfolio.components.length }} providers with target size
-                    <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolio.target_size }" />
+                    <CurrencyItem :value="{ currency: '$', value: portfolio.target_size }" />
                 </p>
-                <p>Based on index <span class = "font-weight-black" :style="{color:'purple'}">{{this.selectedIndex}}</span> with 22 customizations.</p>
+                <p>Based on index <span class="font-weight-black" :style="{ color: 'purple' }">{{ this.selectedIndex }}</span>
+                    with {{ customizationCount }} customizations.</p>
             </div>
             <div>
             </div>
@@ -35,18 +37,14 @@
                 {{ sportfolio.holdings }}</div> -->
         </v-card-text>
         <v-card-actions>
-            <ConfirmPurchase 
-            :selectedIndex="selectedIndex" 
-            :targetSize="portfolio.target_size"
-             :cash="portfolio.cash"
-             :refreshCallback="refreshCompositePortfolio"
-                   />
+            <ConfirmPurchase :selectedIndex="selectedIndex" :targetSize="portfolio.target_size" :cash="portfolio.cash"
+                :providers="portfolio.keys" :portfolioName="portfolio.name" :disabled="portfolio.loading" />
             <v-btn @click="navigatePortfolio">
                 Configure
             </v-btn>
             <ProviderLoginPopup :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
 
-            <v-btn @click="refresh">
+            <v-btn :disabled="portfolio.loading" @click="refresh">
                 Refresh
             </v-btn>
         </v-card-actions>
@@ -77,14 +75,36 @@ export default {
     },
     computed: {
         ...mapGetters(['portfolioCustomizations']),
+        // TODO: disable buy button when not logged in
+        // canPurchase() {
+        //     for x in this.portfolio.components {
+        //         if (x.holdings.length == 0) {
+        //             return false
+        //         }
+        //     }
+        // },
+        timeDisplay() {
+            const options = {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                hour: 'numeric', minute: 'numeric'
+            };
+            return new Date(this.portfolio.refreshed_at * 1000).toLocaleDateString(undefined, options)
+        },
         customizations() {
-            return this.portfolioCustomizations.get(this.portfolio.name);
+            const custom = this.portfolioCustomizations.get(this.portfolio.name);
+            return custom
+        },
+        customizationCount() {
+            if (this.customizations) {
+                return this.customizations.customizationCount
+
+            }
+            return 0;
         },
         selectedIndex() {
-            if (!this.customizations){
+            if (!this.customizations) {
                 return null
             }
-            console.log(this.customizations.indexPortfolio)
             return this.customizations.indexPortfolio
         },
         portfolioSum() {
@@ -104,29 +124,13 @@ export default {
         },
     },
     methods: {
-        ...mapActions(["refreshCompositePortfolio"]),
+        ...mapActions(["refreshCompositePortfolio", "saveCompositePortfolios"]),
         navigatePortfolio() {
             this.$router.push({ path: `composite_portfolio/${this.portfolio.name}` })
         },
         async refresh() {
             await this.refreshCompositePortfolio({ portfolioName: this.portfolio.name, keys: this.portfolio.keys })
-        },
-        async loadPortfolios() {
-            this.saving = true;
-            await this.loadCompositePortfolios();
-
-            // Reset the success state after a delay
-            setTimeout(() => {
-                this.saving = false;
-                this.showLoadSuccess = true;
-            }, 1000);
-            setTimeout(() => {
-                this.showLoadSuccess = false;
-            }, 2500);
-
-        },
-        async getPortfolios() {
-            await this.refreshCompositePortfolios();
+            await this.saveCompositePortfolios();
         },
     }
 

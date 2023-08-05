@@ -38,7 +38,6 @@
 <script>
 // Views
 
-import axios from 'axios';
 import instance from '../api/instance'
 import axiosHelpers from '../api/helpers';
 import exceptions from '../api/exceptions'
@@ -106,7 +105,7 @@ export default {
         },
         getProviders() {
             let local = this;
-            return axios.get('http://localhost:3000/providers').then((response) => {
+            return instance.get('providers').then((response) => {
                 local.providers = response.data.available;
             }).catch((err) => {
                 console.log(err);
@@ -132,9 +131,7 @@ export default {
                     'extra_factor': this.factor
                 }
             }
-            return instance.post('http://localhost:3000/login', command).then(() => {
-                this.setLoggedIn({ 'provider': this.selectedProvider });
-
+            return instance.post('login', command).then(() => {
                 if (this.saveCredentials) {
                     this.storeSavedValue({
                         'key': 'key-'.concat(this.selectedProvider),
@@ -145,16 +142,12 @@ export default {
                         'value': this.secret
                     });
                 }
-
                 local.$router.push({
-                    path: 'composite_portfolio'
+                    path: 'portfolio_list'
                 })
 
             }).catch((exc) => {
-                console.log(exc)
-                console.log('catching login error')
                 if (exc instanceof exceptions.auth_extra) {
-                    console.log('showing factor field')
                     this.extraLogin = true;
                     this.error = axiosHelpers.getErrorMessage('Extra authentication info required, provide and re-login');
                 } else {

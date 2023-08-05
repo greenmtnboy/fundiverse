@@ -21,6 +21,8 @@ instance.interceptors.response.use(
       // Redirect based on the error code
       if (status === 401) {
         console.log('NEED TO USE STORE')
+        console.log(store.getters)
+        console.log(store.getters.providers)
         store.getters.providers.forEach((provider: string) => {
           console.log('checking if logged in for')
           console.log(provider)

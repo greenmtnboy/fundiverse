@@ -50,9 +50,7 @@ export default {
     ...mapGetters(['isLoggedIn'])
   },
   methods: {
-    ...mapActions(['loadDefaultModifications']),
     gotoHome() {
-      console.log('Going to portfolio list')
       this.$router.push({ path: '/portfolio_list' })
     },
   }

@@ -9,7 +9,7 @@
       </v-col>
       <v-col cols="6">
         <v-text-field @update:modelValue="newValue => handlePortfolioSearchText(newValue)" class="input-field"
-          label="Filter Tickers" variant="solo" v-model="searchQueryInternal" placeholder="AAPL" /></v-col>
+          label="Search Tickers" variant="solo" v-model="searchQueryInternal" placeholder="AAPL" /></v-col>
     </v-row>
     <v-row class="min-display">
       <v-col cols=6 min-width="300px">
@@ -47,11 +47,11 @@
               :disabled="compareLoading"></v-select>
           </v-card-title>
           <v-card-actions>
-            <TailorComponent />
+            <TailorComponent :portfolioName="portfolioName" />
             <IconTooltip
               text="Further customize the selected index by excluding or reweighting individual stocks or lists of stocks" />
-            <v-checkbox-btn :disabled = "!selectedIndex" v-model="reweightTarget" @update:modelValue="newValue => getTargetPortfolio(selectedIndex)"
-              label="Reweight" />
+            <v-checkbox-btn :disabled="!selectedIndex" v-model="reweightTarget"
+              @update:modelValue="newValue => getTargetPortfolio(selectedIndex)" label="Reweight" />
             <IconTooltip
               text="Scale the weights of stocks in the index by the changes in their prices from the date of the index (ex Q3 20203)" />
             <v-spacer />
@@ -104,32 +104,17 @@ import IconTooltip from './generic/IconTooltip.vue'
 // Models
 import TargetPortfolioModel from '../models/TargetPortfolioModel';
 import TargetPortfolioElementModel from '../models/TargetPortfolioElementModel';
-
 import CurrencyModel from '../models/CurrencyModel'
+import CompositePortfolioModel from "@/models/CompositePortfolioModel";
 
 //API
 import instance from '../api/instance'
 import exceptions from '../api/exceptions'
 
-
 import { mapActions, mapGetters } from 'vuex';
 
+import { debounce } from 'lodash';
 
-import {
-  debounce
-} from 'lodash';
-import CompositePortfolioModel from "@/models/CompositePortfolioModel";
-
-
-// function parse_target_portfolio_model({
-//   holdings,
-//   source_date
-// }) {
-//   return new TargetPortfolioModel({
-//     'holdings': holdings.map(holding => new TargetPortfolioElementModel(holding)),
-//     'source_date': source_date
-//   });
-// }
 
 export default {
   name: "CompositePortfolioManagementView",
@@ -172,7 +157,7 @@ export default {
     };
   },
   computed: {
-    ...mapGetters(['compositePortfolios']),
+    ...mapGetters(['compositePortfolios', 'portfolioCustomizations']),
     routerDebug() {
       return this.$route.params;
     },
@@ -190,6 +175,10 @@ export default {
       else {
         return this.portfolio.components.find((portfolio) => portfolio.provider === local.selectedSubPortfolio)
       }
+    },
+    portfolioCustomization() {
+      const customization = this.portfolioCustomizations.get(this.portfolio.name)
+      return customization
     },
     portfolio() {
       const matched = this.compositePortfolios.find((portfolio) => portfolio.name === this.portfolioName)
@@ -236,7 +225,7 @@ export default {
   },
   methods: {
     ...mapActions(['setDisplayLength', 'setStockLists', 'loadDefaultModifications', 'loadCompositePortfolios',
-      'saveCompositePortfolios',
+      'saveCompositePortfolios', 'saveCustomizations', 'loadCustomizations', 'getStockLists',
       'setPortfolioSize']),
     handlePortfolioSearchText: debounce(function () {
       // Code to execute after the debounce delay
@@ -257,16 +246,17 @@ export default {
     //     this.compareLoading = false;
     //   });
     // },
+
     getTargetPortfolio(newValue) {
       this.targetLoading = true;
       const target = newValue || this.selectedIndex;
       return instance.post('generate_index', {
         'provider': this.provider,
         'index': target,
-        'stock_exclusions': Array.from(this.$store.getters.excludedTickers),
-        'list_exclusions': Array.from(this.$store.getters.excludedLists),
-        'stock_modifications': this.$store.getters.stockModifications,
-        'list_modifications': this.$store.getters.listModifications,
+        'stock_exclusions': Array.from(this.portfolioCustomization.excludedTickers),
+        'list_exclusions': Array.from(this.portfolioCustomization.excludedLists),
+        'stock_modifications': this.portfolioCustomization.stockModifications,
+        'list_modifications': this.portfolioCustomization.listModifications,
         'reweight': this.reweightTarget
       }).then((response) => {
         const portfolioHoldings = response.data.holdings.map(
@@ -304,8 +294,14 @@ export default {
     getPortfolio() {
       // shim in current getter
       // TODO: clean up later
-      if (!this.portfolioTarget){
+      if (!this.portfolioTarget) {
         this.portfolioTarget = this.portfolio.target_size
+      }
+      if (!this.selectedIndex && this.portfolioCustomization) {
+        this.selectedIndex = this.portfolioCustomization.indexPortfolio;
+        this.reweightTarget = this.portfolioCustomization.reweightTarget;
+        this.getTargetPortfolio()
+
       }
       return this.compositePortfolios
     },
@@ -326,12 +322,6 @@ export default {
         this.indexKeys = response.data;
       });
     },
-    getStockLists() {
-      return instance.get('stock_lists').then((response) => {
-        this.setStockLists(response.data.loaded)
-      });
-    },
-
     buyIndex() {
       return instance.post('buy_index', {
         'to_purchase': this.toPurchase,
@@ -345,17 +335,19 @@ export default {
       this.setDisplayLength(next)
     }
   },
-  mounted() {
-    this.getPortfolio()
+  async mounted() {
+    await this.loadCustomizations();
+    await this.loadCompositePortfolios();
+    await this.getPortfolio()
+
+    // this.getPortfolio()
     this.getIndexes()
+
     this.getStockLists()
-    this.loadDefaultModifications()
+    // this.loadDefaultModifications()
     this.$store.watch(
       (_state, getters) => [
-        getters.excludedTickers,
-        getters.excludedLists,
-        getters.stockModifications,
-        getters.listModifications],
+        getters.portfolioCustomizations],
       () => {
         if (this.selectedIndex) {
           this.getTargetPortfolio();

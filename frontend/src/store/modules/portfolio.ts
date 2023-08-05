@@ -43,22 +43,24 @@ const state = {
     error: null
 };
 
+function flattenProviders(portfolios: Array<CompositePortfolioModel>): Array<string> {
+    const flatArray: Array<string> = [];
+
+    portfolios.forEach((portfolio) => {
+        portfolio.keys.forEach((k: string) => {
+
+            flatArray.push(k);
+        });
+    });
+    return flatArray;
+}
+
 const getters = {
+    providers: state => flattenProviders(state.compositePortfolios),
     displayLength: state => state.displayLength,
     compositePortfolios: state => state.compositePortfolios,
     portfolioLoadingStatus: state => state.portfolioLoadingStatus,
-    portfolioCustomizations: state => {
-        const map = new Map()
-        state.compositePortfolios.forEach(element => {
-            const customization = new PortfolioCustomization({
-                indexPortfolio: 'sp500_2023_q3', excludedLists: [],
-                excludedTickers: [], stockModifications: [], listModifications: []
-            })
-            map.set(element.name, customization)
-        }
-        )
-        return map
-    }
+
 };
 
 
@@ -95,6 +97,7 @@ const actions = {
             providers_to_refresh: keys,
         }
         try {
+
             const response = await instance.post(`composite_portfolio/refresh`, args)
 
             const parsed = new CompositePortfolioModel(response.data)
@@ -111,8 +114,17 @@ const actions = {
         commit('setPortfolioLoadingStatus', { name: null, status: true })
         try {
             const response = await instance.get(`http://localhost:3000/composite_portfolios`)
-            const parsed = response.data.map(dict => new CompositePortfolioModel(dict));
-            commit('setCompositePortfolios', parsed);
+            response.data.forEach((element, _) => {
+                const newPortfolio: CompositePortfolioModel = new CompositePortfolioModel(element);
+                const existingIndex = state.compositePortfolios.findIndex(item => item.name === element.name);
+                if (existingIndex === -1) {
+                    commit('addCompositePortfolios', newPortfolio);
+                }
+                else {
+                    const current = state.compositePortfolios[existingIndex];
+                    this.refreshCompositePortfolio({ commit }, { portfolioName: current.name, keys: current.keys })
+                }
+            });
             commit('setPortfolioLoadingStatus', false)
         }
         catch (error) {
@@ -138,6 +150,9 @@ const mutations = {
     },
     setCompositePortfolios(state, data) {
         state.compositePortfolios = data;
+    },
+    addCompositePortfolios(state, data) {
+        state.compositePortfolios.push(data);
     },
     setPortfolioSize(state, data) {
         const existingIndex = state.compositePortfolios.findIndex(item => item.name === data.portfolioName);

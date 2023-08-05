@@ -15,7 +15,7 @@
           >
             <v-icon>mdi-close</v-icon> -->
                 <!-- </v-btn> -->
-                <v-toolbar-title>Customizations</v-toolbar-title>
+                <v-toolbar-title>Customizations for {{ portfolioName }}</v-toolbar-title>
                 <v-spacer></v-spacer>
                 <v-toolbar-items>
                     <v-btn variant="text" @click="visible = false">
@@ -28,12 +28,16 @@
                 <v-btn min-width="132" v-if="showSaveSuccess" class="text-none" variant="outlined">
                     <v-icon>mdi-check</v-icon>
                 </v-btn>
-                <v-btn v-else :loading="isSaving" class="text-none" variant="outlined"
-                    @click="saveDefaultModificationsLocal()">
+                <!-- <v-btn v-else :loading="isSaving" class="text-none" variant="outlined"
+                    @click="saveCustomizations()">
                     Save as Default
                 </v-btn>
-                <TailorStockPopup />
-                <TailorListPopup />
+                <v-btn :loading="isSaving" class="text-none" variant="outlined"
+                    @click="loadCustomizations()">
+                    Load Saved
+                </v-btn> -->
+                <TailorStockPopup :portfolioName="portfolioName" />
+                <TailorListPopup :portfolioName="portfolioName" />
                 <v-btn min-width="132" v-if="showClearSuccess" class="text-none" variant="outlined">
                     <v-icon>mdi-check</v-icon>
                 </v-btn>
@@ -49,8 +53,8 @@
                             text="Excluded stocks will be removed from the index, and the index is then recomputed to have all weights sum to 100" />
                     </v-card-title>
                     <v-card-text>
-                        <template v-for="element in excludedTickers" :key="element">
-                            <TailorStockListItem :ticker="element" />
+                        <template v-for="ticker in excludedTickers" :key="ticker">
+                            <TailorStockListItem :ticker="ticker" :portfolioName="portfolioName" />
                         </template>
                     </v-card-text>
                 </v-card>
@@ -72,7 +76,7 @@
                     </v-card-title>
                     <v-card-text>
                         <template v-for="element in stockModifications" :key="element.ticker">
-                            <TailorStockListItem :ticker="element" :weight="element.scale" />
+                            <TailorStockListItem :portfolioName="portfolioName" :ticker="element" :weight="element.scale" />
                         </template>
                     </v-card-text>
                 </v-card>
@@ -119,6 +123,7 @@ import TailorListPopup from './TailorListPopup.vue';
 import TailorComponentListItem from './TailorComponentListItem.vue';
 import TailorStockListItem from './TailorStockListItem.vue';
 import IconTooltip from '../generic/IconTooltip.vue'
+import PortfolioCustomization from '@/models/PortfolioCustomization';
 export default {
     name: "TailorComponent",
     components: {
@@ -138,18 +143,43 @@ export default {
         }
     },
     computed: {
-        ...mapGetters(['excludedTickers', 'excludedLists', 'stockModifications', 'listModifications', 'stockLists']),
+        ...mapGetters(['portfolioCustomizations', 'stockLists']),
         mutations() {
-            return this.$store.getters.totalModifications
+            return this.customizations.stockModifications.length + this.customizations.listModifications.length + this.customizations.excludedLists.size + this.customizations.excludedTickers.size
+        },
+        customizations() {
+            const customizations = this.portfolioCustomizations.get(this.portfolioName)
+            if (customizations) { return customizations }
+            return new PortfolioCustomization({
+                reweightIndex: true,
+                indexPortfolio: 'sp500_2023_q3',
+                excludedLists: new Set(), excludedTickers: new Set(),
+                stockModifications: [], listModifications: []
+            })
+        },
+        excludedTickers() {
+            return this.customizations.excludedTickers
+        },
+        excludedLists() {
+            return this.customizations.excludedLists
+        },
+        stockModifications() {
+            return this.customizations.stockModifications
+        },
+        listModifications() {
+            return this.customizations.listModifications
         },
     },
     methods: {
-        ...mapActions(['excludeStock', 'clearAllModifications', 'removeStockExclusion', 'removeStockModification', 'removeListExclusion', 'removeListModification',
+        ...mapActions(['clearAllModifications',
+            'removeStockExclusion', 'removeStockModification',
+            'removeListExclusion', 'removeListModification',
+            'saveCustomizations', 'loadCustomizations',
             'saveDefaultModifications']),
         saveDefaultModificationsLocal() {
             this.isSaving = true;
             setTimeout(() => {
-                this.saveDefaultModifications().then(() => {
+                this.saveDefaultModifications({ portfolioName: this.portfolioName }).then(() => {
                     this.showSaveSuccess = true;
                     // Reset the success state after a delay
                     setTimeout(() => {
@@ -162,7 +192,7 @@ export default {
         },
         clearAllModificationsLocal() {
             this.isClearing = true;
-            this.clearAllModifications().then(() => {
+            this.clearAllModifications({ portfolioName: this.portfolioName }).then(() => {
                 this.showClearSuccess = true;
                 // Reset the success state after a delay
                 setTimeout(() => {
@@ -174,6 +204,10 @@ export default {
         }
     },
     props: {
+        portfolioName: {
+            type: String,
+            required: true
+        }
     },
 
 };

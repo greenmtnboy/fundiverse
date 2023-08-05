@@ -6,7 +6,7 @@
         <template v-slot:append>
             <v-tooltip>
                 <template v-slot:activator="{ props }">
-                    <v-btn v-bind="props" @click="removeStockExclusion(ticker)" icon density="compact">
+                    <v-btn v-bind="props" @click="localRemoveStockExclusion(ticker)" icon density="compact">
                         <v-icon color="warning">mdi-cancel</v-icon>
                     </v-btn>
                 </template>
@@ -35,12 +35,19 @@ export default {
         weight: {
             type: Number,
             required: false
+        },
+        portfolioName: {
+            type: String,
+            required: true
         }
     },
     computed: {
     },
     methods: {
         ...mapActions(['removeStockExclusion']),
+        localRemoveStockExclusion(data) {
+            this.removeStockExclusion({portfolioName:this.portfolioName,ticker:data})
+        },
     },
 };
 </script>
