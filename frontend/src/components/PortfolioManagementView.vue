@@ -207,21 +207,10 @@ export default {
       // Code to execute after the debounce delay
       this.totalPortfolioSizeNumber = Number(this.portfolioTarget)
     }, 300), // Debounce delay in milliseconds
-    // compareToIndex() {
-    //   this.compareLoading = true;
-    //   return instance.post('http://localhost:3000/compare_index', {
-    //     'to_purchase': this.toPurchase,
-    //     'index': this.selectedIndex
-    //   }).then((response) => {
-    //     console.log(response.data)
-    //   }).finally(() => {
-    //     this.compareLoading = false;
-    //   });
-    // },
     getTargetPortfolio(newValue) {
       this.targetLoading = true;
       const target = newValue || this.selectedIndex;
-      return instance.post('http://localhost:3000/generate_index', {
+      return instance.post('generate_index', {
         'provider': this.provider,
         'index': target,
         'stock_exclusions': Array.from(this.$store.getters.excludedTickers),
@@ -264,7 +253,7 @@ export default {
     },
     getPortfolio() {
       this.refreshLoading = true;
-      return instance.get(`http://localhost:3000/portfolio/${this.provider}`).then((response) => {
+      return instance.get(`portfolio/${this.provider}`).then((response) => {
         const portfolioHoldings = response.data.holdings.map(
           dict => new PortfolioElementModel(dict));
         this.portfolio.holdings = portfolioHoldings; //= new PortfolioModel(portfolioHoldings);
@@ -283,18 +272,18 @@ export default {
       })
     },
     getIndexes() {
-      return instance.get('http://localhost:3000/indexes').then((response) => {
+      return instance.get('indexes').then((response) => {
         this.indexKeys = response.data;
       });
     },
     getStockLists() {
-      return instance.get('http://localhost:3000/stock_lists').then((response) => {
+      return instance.get('stock_lists').then((response) => {
         this.setStockLists(response.data.loaded)
       });
     },
 
     buyIndex() {
-      return instance.post('http://localhost:3000/buy_index', {
+      return instance.post('buy_index', {
         'to_purchase': this.toPurchase,
         'index': this.selectedIndex
       }).then(() => {

@@ -239,17 +239,7 @@ export default {
       // Code to execute after the debounce delay
       this.setPortfolioSize({ portfolioName: this.portfolioName, size: Number(this.portfolioTarget) })
     }, 300), // Debounce delay in milliseconds
-    // compareToIndex() {
-    //   this.compareLoading = true;
-    //   return instance.post('http://localhost:3000/compare_index', {
-    //     'to_purchase': this.toPurchase,
-    //     'index': this.selectedIndex
-    //   }).then((response) => {
-    //     console.log(response.data)
-    //   }).finally(() => {
-    //     this.compareLoading = false;
-    //   });
-    // },
+
 
     getTargetPortfolio(newValue) {
       if (!newValue) {

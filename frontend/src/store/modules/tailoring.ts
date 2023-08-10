@@ -14,7 +14,7 @@ const storageAPI = {
     setDefaults(value) {
         const final: Array<any> = []
         value.forEach((val, key) => {
-            const destructured = {...val}
+            const destructured = { ...val }
             destructured.excludedLists = Array.from(destructured.excludedLists)
             destructured.excludedTickers = Array.from(destructured.excludedTickers)
             final.push({ key: key, value: destructured })
@@ -29,7 +29,7 @@ const storageAPI = {
             if (isObjectEmpty(item.value.excludedLists)) {
                 item.value.excludedLists = new Set()
             }
-            else {  
+            else {
                 item.value.excludedLists = new Set(item.value.excludedLists)
             }
             if (isObjectEmpty(item.value.excludedTickers)) {
@@ -68,7 +68,7 @@ const getters = {
     stockLists: state => state.stockLists,
     getCustomizationByName: (state) => (name) => {
         return safeGetCustomization(state, name);
-      }
+    }
     // totalModifications: state => state.stockModifications.length + state.listModifications.length + state.excludedLists.size + state.excludedTickers.size,
 };
 
@@ -88,7 +88,7 @@ const actions = {
     },
     async setPortfolioTargetIndex({ commit }, data) {
         if (!data.index) {
-        return
+            return
         }
         commit('setPortfolioTargetIndex', data)
         commit('saveCustomizations')
@@ -168,7 +168,15 @@ const mutations = {
         customization.excludedTickers.add(data.ticker)
     },
     removeStockExclusion(state, data) {
-        safeGetCustomization(state, data.portfolioName).excludedTickers.delete(data.ticker)
+        console.log(data)
+        const customization = safeGetCustomization(state, data.portfolioName)
+        if (data.mode === 'exclusion') {
+            customization.excludedTickers.delete(data.ticker)
+        }
+        else if (data.mode === 'modification') {
+            customization.stockModifications = customization.stockModifications.filter(item => item.ticker !== data.ticker)
+        }
+        
     },
     modifyStock(state, data) {
         safeGetCustomization(state, data.portfolioName).stockModifications.push(new StockModification(data.ticker, data.scale))
@@ -211,7 +219,7 @@ const mutations = {
     },
     setPortfolioTargetIndex(state, data) {
         const customization = safeGetCustomization(state, data.portfolioName)
-        customization.indexPortfolio=data.index
+        customization.indexPortfolio = data.index
     }
 };
 

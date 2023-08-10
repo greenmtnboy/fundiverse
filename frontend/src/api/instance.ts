@@ -2,9 +2,9 @@ import axios from 'axios';
 import store from '@/store'
 import exceptions from './exceptions';
 
-
+// must match port in backend\src\main.py
 const instance = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: 'http://localhost:3042',
 }
 );
 

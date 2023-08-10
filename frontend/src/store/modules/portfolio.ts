@@ -89,6 +89,9 @@ const actions = {
     async pushEmptyProvider({ commit }, data) {
         commit('pushNewProvider', data)
     },
+    async removeProvider({ commit }, data) {
+        commit('removeProvider', data)
+    },
     async setPortfolioSize({ commit }, data) {
         commit('setPortfolioSize', data)
         commit('savePortfolio')
@@ -119,15 +122,14 @@ const actions = {
             commit('savePortfolio')
         }
         catch (error) {
-            commit('setError', error)
             commit('setPortfolioLoadingStatus', { name: portfolioName, status: false })
-            return
+            throw error
         }
     },
     async refreshCompositePortfolios({ commit }) {
         commit('setPortfolioLoadingStatus', { name: null, status: true })
         try {
-            const response = await instance.get(`http://localhost:3000/composite_portfolios`)
+            const response = await instance.get(`composite_portfolios`)
             response.data.forEach((element, _) => {
                 const newPortfolio: CompositePortfolioModel = new CompositePortfolioModel(element);
                 const existingIndex = state.compositePortfolios.findIndex(item => item.name === element.name);
@@ -194,6 +196,15 @@ const mutations = {
     },
     setError(state, data) {
         state.error = data;
+    },
+    removeProvider(state, data) {
+        const existingIndex = state.compositePortfolios.findIndex(item => item.name === data.portfolioName);
+        if (existingIndex === -1) {
+            return
+        }
+        const current = state.compositePortfolios[existingIndex];
+        current.components = current.components.filter(item => item.provider !== data.provider)
+        current.keys = current.keys.filter(item => item !== data.provider)
     },
     pushNewProvider(state, data) {
         const existingIndex = state.compositePortfolios.findIndex(item => item.name === data.portfolioName);

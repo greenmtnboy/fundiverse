@@ -2,8 +2,8 @@
     <!-- rounded="0" -->
     <v-dialog v-model="dialog" max-width="500">
         <template v-slot:activator="{ props }">
-            <v-btn :disabled="!selectedIndex || cash.value < 0.0  || disabled" @click="planPurchase()" min-width="200px"
-                class="d-flex flex-column" color="primary" variant="outlined" v-bind="props">
+            <v-btn :disabled="!selectedIndex || cash.value < 0.0 || disabled" @click="clickPurchaseButton()"
+                min-width="200px" class="d-flex flex-column" color="primary" variant="outlined" v-bind="props">
                 Buy ({{ cash.currency }}{{ Math.round(cash.value) }} Available)
             </v-btn>
             <!-- <v-btn :disabled="!selectedIndex" class="d-flex flex-column" > -->
@@ -23,10 +23,16 @@
                     Review the list of planned transactions and click confirm to submit.
                     If you do not have enough money to buy the entire portfolio, you
                     can prioritize which tickers to buy first by selecting a purchase order.
-                    Smallest diff first will prioritize stocks where you can get the full target value with a smaller
-                    order, while largest diff will prioritize the stocks with the largest delta from target value. Even
-                    spread will proportionally spread your purchase order over all target stocks, and may result in a very
-                    large number of orders.</p>
+                </p>
+                <p></p>
+                <p>
+                    <b>Smallest diff first</b> will prioritize stocks where you can get the full target value with a smaller
+                    order, while <b>largest diff</b> will prioritize the stocks with the largest delta from target value.
+                    <b>Even
+                        spread</b> will proportionally spread your purchase order over all target stocks, and may result in
+                    a very
+                    large number of orders.
+                </p>
 
                 <v-row> <v-col width=12 justify="center">
                         <v-chip-group :disabled="loading || initialLoading" v-model="selectedMode" mandatory
@@ -38,40 +44,46 @@
                         </v-chip-group>
                     </v-col>
                 </v-row>
-                <!-- <v-row>
+                <v-row>
                     <v-col cols=12>
-                        <v-text-field class="input-field" variant="solo" label="Purchase Amount"
-                            v-model="toPurchaseInternal" :rules="numberValidationRules"
+                        <v-text-field :disabled="loading || initialLoading" class="input-field" variant="solo"
+                            label="Purchase Amount" v-model="toPurchaseInternal" :rules="numberValidationRules"
                             @update:modelValue="newValue => handleOrderSizeInput()">
                         </v-text-field>
                     </v-col>
-                </v-row> -->
+                </v-row>
                 <v-row class="py-5" height="15" v-if="initialLoading">
-                    <v-progress-linear height="10" indeterminate color="primary"></v-progress-linear>
+
+                    <v-progress-linear height="20" indeterminate color="primary">Planning Your Order - This May Take a
+                        Minute</v-progress-linear>
 
                 </v-row>
                 <v-row v-else>
-                    <v-col cols=12>
-                        <template v-for="element in plan.to_buy" :key="element.ticker">
+                    <v-col v-if="displayBatch" cols=12>
+                            <template v-for="element in displayBatch" :key="element.ticker">
 
-                            <v-list-item> <v-chip :color="element.order_type === 'BUY' ? 'green' : 'red'" small outlined>{{
-                                element.order_type }}</v-chip>
-                                
-                                <CurrencyItem :value="element.value" /> of {{ element.ticker }} on {{ element.provider }}
-                                <template v-slot:append>
-                                    <v-tooltip>
-                                        <template v-slot:activator="{ props }">
-                                            <v-btn v-bind="props" @click="removeOrder(element.ticker)" icon
-                                                density="compact">
-                                                <v-icon color="warning">mdi-cancel</v-icon>
-                                            </v-btn>
-                                        </template>
-                                        <span>Remove Order</span>
-                                    </v-tooltip>
-                                </template>
-                            </v-list-item>
-                        </template>
+                                <v-list-item> <v-chip :color="element.order_type === 'BUY' ? 'green' : 'red'" small
+                                        outlined>{{
+                                            element.order_type }}</v-chip>
+
+                                    <CurrencyItem :value="element.value" /> of {{ element.ticker }} on {{ element.provider
+                                    }}
+                                    <template v-slot:append>
+                                        <v-tooltip>
+                                            <template v-slot:activator="{ props }">
+                                                <v-btn v-bind="props" @click="removeOrder(element.ticker)" icon
+                                                    density="compact">
+                                                    <v-icon color="warning">mdi-cancel</v-icon>
+                                                </v-btn>
+                                            </template>
+                                            <span>Remove Order</span>
+                                        </v-tooltip>
+                                    </template>
+                                </v-list-item>
+                            </template>
+                        <v-pagination v-model="page" class="my-4" :length="orderLength"></v-pagination>
                     </v-col>
+                    <v-col v-else> </v-col>
                 </v-row>
 
             </v-card-text>
@@ -85,7 +97,7 @@
                     Exit
                 </v-btn>
 
-                <v-btn :disabled="initialLoading" :loading="loading" class="text-white flex-grow-1 text-none"
+                <v-btn :disabled="initialLoading || exception" :loading="loading" class="text-white flex-grow-1 text-none"
                     color="primary" variant="flat" @click="submit()">
                     Submit Orders
                 </v-btn>
@@ -112,10 +124,21 @@ function roundToNearestTen(number) {
     return Math.floor(number / 10) * 10;
 }
 
+function divideArrayIntoBatches(array, batchSize) {
+    const batches = [];
+
+    for (let i = 0; i < array.length; i += batchSize) {
+        batches.push(array.slice(i, i + batchSize));
+    }
+
+    return batches;
+}
+
 export default {
     name: "ConfirmPurchase",
     data: () => ({
         plan: { 'to_buy': [], 'to_sell': [] },
+        page: 1,
         exception: null,
         alertVisible: false,
         dialog: false,
@@ -158,16 +181,22 @@ export default {
     },
 
     computed: {
-        ...mapGetters(['portfolioCustomizations']),
+        ...mapGetters(['portfolioCustomizations', 'getCustomizationByName']),
+        orderBatches() {
+            return divideArrayIntoBatches(this.plan['to_buy'], 10)
+        },
+        displayBatch() {
+            return this.orderBatches[this.page - 1]
+        },
+        orderLength() {
+            return this.orderBatches.length
+        },
         customizations() {
-            return this.portfolioCustomizations.get(this.portfolioName);
+            return this.getCustomizationByName(this.portfolioName);
         },
         selectedIndex() {
-            if (this.customizations){
-                return this.customizations.indexPortfolio
-            }
-            return null
-            
+            return this.customizations.indexPortfolio
+
         },
         numberValidationRules() {
             return [
@@ -185,7 +214,10 @@ export default {
     },
     methods: {
         ...mapActions(['excludeList', 'modifyList', 'refreshCompositePortfolio']),
-
+        clickPurchaseButton() {
+            this.setDefaultPurchaseSize()
+            this.planPurchase()
+        },
         setDefaultPurchaseSize() {
             let defaultPurchase = roundToNearestTen(this.cash.value);
             if (defaultPurchase < 1) {
@@ -203,7 +235,9 @@ export default {
             this.plan['to_buy'] = this.plan['to_buy'].filter((element) => element.ticker !== ticker)
         },
         planPurchase() {
-            this.setDefaultPurchaseSize()
+
+            this.alertVisible = false;
+            this.exception = null;
             this.initialLoading = true;
             return instance.post('plan_composite_purchase', {
                 'to_purchase': this.toPurchase,
@@ -220,12 +254,9 @@ export default {
             ).then((response) => {
                 this.plan = response.data
             }).catch((error) => {
-                if (error instanceof exceptions.auth) {
-                    // Handle the custom exception
-                    console.log('Authentication error, redirecting')
-                } else {
-                    throw error
-                }
+                this.alertVisible = true;
+                this.exception = error;
+                this.plan.to_buy = []
             }).finally(() => {
                 this.initialLoading = false;
             });
@@ -233,6 +264,7 @@ export default {
         submit() {
             this.loading = true;
             this.alertVisible = false;
+            this.exception = null;
             return instance.post('buy_index_from_plan_multi_provider', {
                 'plan': this.plan,
                 'providers': this.providers

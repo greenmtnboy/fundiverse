@@ -1,9 +1,11 @@
 <template>
     <v-card class="ma-4">
         <v-card-title :key="portfolio.name" class="text-left">
-            {{ portfolio.name }} <span style="opacity: 0.5; font-size:small;" class="text-low-emphasis">(Refreshed {{
-                timeDisplay }})</span>
+            {{ portfolio.name }} <span class="text-low-emphasis"
+            style = "opacity=0.5; font-size: small">({{
+                    timeDisplay }})</span>
         </v-card-title>
+        <v-alert type="error" v-if="error">{{ error }}</v-alert>
         <v-card-text class="text-high-emphasis text--primary ">
             <div>
                 <p class="text-high-emphasis font-weight-black text--primary">A portfolio across {{
@@ -82,6 +84,7 @@ export default {
             saving: false,
             showSaveSuccess: false,
             showLoadSuccess: false,
+            error: null
         }
     },
     computed: {
@@ -95,11 +98,16 @@ export default {
         //     }
         // },
         timeDisplay() {
+
             const options = {
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                 hour: 'numeric', minute: 'numeric'
             };
-            return new Date(this.portfolio.refreshed_at * 1000).toLocaleDateString(undefined, options)
+            const dateString = new Date(this.portfolio.refreshed_at * 1000).toLocaleDateString(undefined, options)
+            if (this.error) {
+                return `Refresh failed. Showing data as of ${dateString}.`
+            }
+            return `Refreshed ${dateString}`
         },
         customizations() {
             const custom = this.portfolioCustomizations.get(this.portfolio.name);
@@ -155,8 +163,14 @@ export default {
             this.$router.push({ path: `composite_portfolio/${this.portfolio.name}` })
         },
         async refresh() {
-            await this.refreshCompositePortfolio({ portfolioName: this.portfolio.name, keys: this.portfolio.keys })
-            await this.saveCompositePortfolios();
+            this.error = null;
+            try {
+                await this.refreshCompositePortfolio({ portfolioName: this.portfolio.name, keys: this.portfolio.keys })
+                await this.saveCompositePortfolios();
+            } catch (e) {
+                this.error = e
+            }
+            
         },
     }
 
