@@ -49,15 +49,30 @@ import traceback
 
 app = FastAPI()
 
+SERVE_PORT = 3042
 
 @dataclass
 class ActiveConfig:
     logged_in: str | None = None
-    provider: Provider | None = None
     provider_cache: Dict[Provider, BaseProvider] = field(default_factory=dict)
     holding_cache: Dict[Provider, RealPortfolio] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
 
+    @property
+    def default_provider(self):
+        # get the fastest provider
+        for key, value in self.provider_cache.items():
+            if key == Provider.ALPACA:
+                return key
+        for key, value in self.provider_cache.items():
+            if key == Provider.ALPACA_PAPER:
+                return key
+        for key, value in self.provider_cache.items():
+            if key == Provider.ROBINHOOD:
+                return key
+        if self.provider_cache:
+            return list(self.provider_cache.keys())[0]
+        raise HTTPException(401, "No logged in provider specified")
 
 IN_APP_CONFIG = ActiveConfig()
 
@@ -167,7 +182,7 @@ class CompositePortfolioRefreshRequest(BaseModel):
 
 
 def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
-    _provider = iprovider or IN_APP_CONFIG.provider
+    _provider = iprovider or IN_APP_CONFIG.default_provider
     try:
         if _provider == Provider.ALPACA:
             provider = IN_APP_CONFIG.provider_cache.get(
@@ -250,7 +265,6 @@ async def login_handler(input: LoginRequest):
         else:
             raise HTTPException(404, "Selected provider not supported yet")
         IN_APP_CONFIG.logged_in = input.provider.value
-        IN_APP_CONFIG.provider = input.provider
         IN_APP_CONFIG.pending_auth_response = None
     except ExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_auth_response = e.response
@@ -264,10 +278,10 @@ async def login_handler(input: LoginRequest):
 
 @router.get("/portfolio/")
 async def get_portfolio_bare():
-    provider = IN_APP_CONFIG.provider
+    provider = IN_APP_CONFIG.default_provider
     if not provider:
         raise HTTPException(401, "No logged in provider specified")
-    return await get_portfolio(IN_APP_CONFIG.provider)
+    return await get_portfolio(provider)
 
 
 @router.get("/portfolio/{_provider}")
@@ -364,7 +378,7 @@ async def plan_composite_purchase(input: BuyRequest):
     plan = generate_composite_order_plan(
         real_port,
         ideal_port,
-        # purchase_power=input.to_purchase,
+        purchase_power=input.to_purchase,
         target_size=input.target_size,
         purchase_order_maps=buy_orders,
     )
@@ -389,9 +403,6 @@ async def plan_purchase(input: BuyRequest):
     provider = get_provider_safe(input.provider)
     real_port = IN_APP_CONFIG.provider_cache.get(input.provider, None)
     if not real_port:
-        print("have to rebuild real portfolio")
-        print(input.provider)
-        print(IN_APP_CONFIG.provider_cache.keys())
         real_port = provider.get_holdings()
     ideal_port = index_to_processed_index(input)
     plan = generate_order_plan(
@@ -420,7 +431,9 @@ async def buy_index_from_plan(input: BuyRequestFinal):
 
 @router.post("/buy_index_from_plan_multi_provider")
 async def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
-    providers = {p: IN_APP_CONFIG.provider_cache[p] for p in input.providers}
+    providers = {p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers}
+    if not all(providers.values()):
+        raise HTTPException(403, "Not all providers are logged in")
     # check each of our p
     for order in input.plan.to_buy:
         providers[order.provider].handle_order_element(order)
@@ -479,7 +492,7 @@ def run():
         run = uvicorn.run(
             app,
             host="0.0.0.0",
-            port=3000,
+            port=SERVE_PORT,
             log_level="info",
             log_config=LOGGING_CONFIG,
         )
@@ -490,7 +503,7 @@ def run():
             return uvicorn.run(
                 "main:app",
                 host="0.0.0.0",
-                port=3000,
+                port=SERVE_PORT,
                 log_level="info",
                 log_config=LOGGING_CONFIG,
                 reload=True,
