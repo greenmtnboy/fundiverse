@@ -11,8 +11,8 @@
                 <span>You are authenticated to this provider</span>
             </v-tooltip>
             <v-tooltip v-else-if="error">
-                <template>
-                    <v-btn v-bind="props" size="compact"  color="primary" >
+                <template v-slot:activator="{ props }">
+                    <v-btn v-bind="props"  @click="forceOpenModal"   color="primary" >
                         {{ label }}
                     </v-btn>
                 </template>
@@ -113,6 +113,9 @@ export default {
             return this.activeProviders.includes(this.provider)
         },
         label() {
+            if (this.error) {
+                return 'Fix Login'
+            }
             return this.provider == null ? 'Connect Provider' : 'Login'
         },
         availableProviders() {
@@ -142,6 +145,10 @@ export default {
         ...mapActions(['setLoggedIn', 'probeLogin', 'storeSavedValue', 'refreshCompositePortfolio', 'pushEmptyProvider']),
         required(v) {
             return !!v || 'Field is required'
+        },
+        forceOpenModal(){
+            // this.getDefaults()
+            this.dialog = true;
         },
         getDefaults(provider) {
             let key_key = 'key-'.concat(provider)

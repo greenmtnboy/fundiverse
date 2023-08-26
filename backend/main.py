@@ -3,6 +3,7 @@ import os
 import sys
 import multiprocessing
 import uvicorn
+from enum import Enum
 from datetime import datetime
 from uvicorn.config import LOGGING_CONFIG
 from fastapi import APIRouter, FastAPI, HTTPException
@@ -49,15 +50,30 @@ import traceback
 
 app = FastAPI()
 
+SERVE_PORT = 3042
 
 @dataclass
 class ActiveConfig:
     logged_in: str | None = None
-    provider: Provider | None = None
     provider_cache: Dict[Provider, BaseProvider] = field(default_factory=dict)
     holding_cache: Dict[Provider, RealPortfolio] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
 
+    @property
+    def default_provider(self):
+        # get the fastest provider
+        for key, value in self.provider_cache.items():
+            if key == Provider.ALPACA:
+                return key
+        for key, value in self.provider_cache.items():
+            if key == Provider.ALPACA_PAPER:
+                return key
+        for key, value in self.provider_cache.items():
+            if key == Provider.ROBINHOOD:
+                return key
+        if self.provider_cache:
+            return list(self.provider_cache.keys())[0]
+        raise HTTPException(401, "No logged in provider specified")
 
 IN_APP_CONFIG = ActiveConfig()
 
@@ -89,6 +105,7 @@ class RealPortfolioOutput(BaseModel):
     holdings: List[RealPortfolioElement]
     cash: Money
     provider: Provider | None
+    profit_or_loss: Money | None = None
 
 
 class CompositePortfolioOutput(BaseModel):
@@ -98,7 +115,14 @@ class CompositePortfolioOutput(BaseModel):
     components: Dict[str, RealPortfolioOutput]
     target_size: float = 250_000
     refreshed_at: int
+    profit_and_loss: Money | None = None
 
+class OrderStatus(Enum):
+    REQUESTED = "requested"
+    SUCCESS = "filled"
+    FAILED = "failed"
+    PLACED = "placed"
+    # PENDING = "placed"
 
 class OrderItem(BaseModel):
     ticker: str
@@ -106,6 +130,8 @@ class OrderItem(BaseModel):
     value: Money | None
     qty: int | None
     provider: Provider
+    status: OrderStatus | None
+    message: str | None
 
 
 class PurchaseOrderOutput(BaseModel):
@@ -156,6 +182,9 @@ class BuyRequestFinalMultiProvider(BaseModel):
     plan: PurchaseOrderOutput
     providers: list[Provider]
 
+class BuyRequestFinalMultiProviderOutput(BaseModel):
+    orders: List[OrderItem]
+
 
 class CompositePortfolioRefreshRequest(BaseModel):
     key: str
@@ -167,7 +196,7 @@ class CompositePortfolioRefreshRequest(BaseModel):
 
 
 def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
-    _provider = iprovider or IN_APP_CONFIG.provider
+    _provider = iprovider or IN_APP_CONFIG.default_provider
     try:
         if _provider == Provider.ALPACA:
             provider = IN_APP_CONFIG.provider_cache.get(
@@ -250,7 +279,6 @@ async def login_handler(input: LoginRequest):
         else:
             raise HTTPException(404, "Selected provider not supported yet")
         IN_APP_CONFIG.logged_in = input.provider.value
-        IN_APP_CONFIG.provider = input.provider
         IN_APP_CONFIG.pending_auth_response = None
     except ExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_auth_response = e.response
@@ -264,10 +292,10 @@ async def login_handler(input: LoginRequest):
 
 @router.get("/portfolio/")
 async def get_portfolio_bare():
-    provider = IN_APP_CONFIG.provider
+    provider = IN_APP_CONFIG.default_provider
     if not provider:
         raise HTTPException(401, "No logged in provider specified")
-    return await get_portfolio(IN_APP_CONFIG.provider)
+    return await get_portfolio(provider)
 
 
 @router.get("/portfolio/{_provider}")
@@ -277,11 +305,11 @@ async def get_portfolio(_provider: Provider):
     IN_APP_CONFIG.holding_cache[_provider] = holdings
     return provider.get_holdings()
 
-
 @router.post("/composite_portfolio/refresh")
 async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     active: Dict[Provider, RealPortfolio] = {}
     raw = []
+    profit_and_loss = Money(value=0.0)
     for key in input.providers:
         item = IN_APP_CONFIG.provider_cache.get(key, None)
         if not item:
@@ -289,12 +317,15 @@ async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
         # key, item in IN_APP_CONFIG.provider_cache.items():
         rport = item.get_holdings()
         IN_APP_CONFIG.holding_cache[key] = rport
+        pl = item.get_profit_or_loss()
         active[key] = RealPortfolioOutput(
             name=f"{key.name}",
             holdings=rport.holdings,
             cash=rport.cash,
             provider=key,
+            profit_or_loss = pl
         )
+        profit_and_loss += pl
         raw.append(rport)
     internal = CompositePortfolio(raw)
     return CompositePortfolioOutput(
@@ -303,6 +334,7 @@ async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
         cash=internal.cash,
         components=active,
         refreshed_at=datetime.now(tz=UTC).timestamp(),
+        profit_and_loss = profit_and_loss
     )
 
 
@@ -364,7 +396,7 @@ async def plan_composite_purchase(input: BuyRequest):
     plan = generate_composite_order_plan(
         real_port,
         ideal_port,
-        # purchase_power=input.to_purchase,
+        purchase_power=input.to_purchase,
         target_size=input.target_size,
         purchase_order_maps=buy_orders,
     )
@@ -389,9 +421,6 @@ async def plan_purchase(input: BuyRequest):
     provider = get_provider_safe(input.provider)
     real_port = IN_APP_CONFIG.provider_cache.get(input.provider, None)
     if not real_port:
-        print("have to rebuild real portfolio")
-        print(input.provider)
-        print(IN_APP_CONFIG.provider_cache.keys())
         real_port = provider.get_holdings()
     ideal_port = index_to_processed_index(input)
     plan = generate_order_plan(
@@ -420,11 +449,23 @@ async def buy_index_from_plan(input: BuyRequestFinal):
 
 @router.post("/buy_index_from_plan_multi_provider")
 async def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
-    providers = {p: IN_APP_CONFIG.provider_cache[p] for p in input.providers}
+    providers = {p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers}
+    if not all(providers.values()):
+        raise HTTPException(403, "Not all providers are logged in")
     # check each of our p
+    output:List[OrderItem] = []
     for order in input.plan.to_buy:
-        providers[order.provider].handle_order_element(order)
-
+        try:
+            providers[order.provider].handle_order_element(order)
+            order.status = OrderStatus.PLACED
+            output.append(order)
+        except OrderError as e:
+            order.status = OrderStatus.FAILED
+            order.message = e.message
+            output.append(order)
+    return BuyRequestFinalMultiProviderOutput(
+        orders=output
+    )
 
 app.include_router(router)
 
@@ -452,6 +493,7 @@ async def exit_app():
     asyncio.gather(asyncio.all_tasks())
     loop = asyncio.get_running_loop()
     loop.stop()
+    raise ValueError("Server is shutting down")
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -478,7 +520,7 @@ def run():
         run = uvicorn.run(
             app,
             host="0.0.0.0",
-            port=3000,
+            port=SERVE_PORT,
             log_level="info",
             log_config=LOGGING_CONFIG,
         )
@@ -489,7 +531,7 @@ def run():
             return uvicorn.run(
                 "main:app",
                 host="0.0.0.0",
-                port=3000,
+                port=SERVE_PORT,
                 log_level="info",
                 log_config=LOGGING_CONFIG,
                 reload=True,
@@ -499,7 +541,7 @@ def run():
         run()
     except Exception as e:
         print(f"Server is shutting down due to {e}")
-        exit(1)
+        exit(0)
 
 
 if __name__ == "__main__":

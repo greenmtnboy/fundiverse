@@ -26,6 +26,11 @@ module.exports = defineConfig({
 		},
     electronBuilder: {
       nodeIntegration: true,
+      productName: "Fundiverse",
+      appId: 'fundiverse.com',
+      win: {
+      icon: 'public/appicon.png',
+    },
       builderOptions: {
         publish: ['github'],
         extraResources: [

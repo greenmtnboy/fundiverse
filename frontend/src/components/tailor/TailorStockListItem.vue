@@ -1,7 +1,7 @@
 <template>
     <v-list-item>
         <v-list-item-title><span class="px-1">{{ ticker }}</span>
-            <v-chip :color="weight >= 1 ? 'green' : 'red'" v-if="weight" small outlined>{{ weight * 100 }}%</v-chip>
+            <v-chip :color="scale >= 1 ? 'green' : 'red'" v-if="scale" small outlined>{{ scale * 100 }}%</v-chip>
         </v-list-item-title>
         <template v-slot:append>
             <v-tooltip>
@@ -32,13 +32,18 @@ export default {
             type: String,
             required: true
         },
-        weight: {
+        scale: {
             type: Number,
             required: false
         },
         portfolioName: {
             type: String,
             required: true
+        },
+        mode: {
+            type: String,
+            required: false,
+            default: 'exclusion'
         }
     },
     computed: {
@@ -46,7 +51,7 @@ export default {
     methods: {
         ...mapActions(['removeStockExclusion']),
         localRemoveStockExclusion(data) {
-            this.removeStockExclusion({portfolioName:this.portfolioName,ticker:data})
+            this.removeStockExclusion({portfolioName:this.portfolioName,ticker:data, mode:this.mode})
         },
     },
 };

@@ -24,7 +24,7 @@
 
 <script>
 
-import axios from 'axios';
+import instance from '../api/instance'
 export default {
     name: "LoadingPage",
     data() {
@@ -34,7 +34,7 @@ export default {
     methods: {
         login() {
             let local = this;
-            return axios.get('http://localhost:3000/', {
+            return instance.get('', {
             }).then(() => {
                 local.$router.push({
                     path: 'portfolio_list'

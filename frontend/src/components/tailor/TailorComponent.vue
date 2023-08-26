@@ -76,7 +76,7 @@
                     </v-card-title>
                     <v-card-text>
                         <template v-for="element in stockModifications" :key="element.ticker">
-                            <TailorStockListItem :portfolioName="portfolioName" :ticker="element" :weight="element.scale" />
+                            <TailorStockListItem mode="modification" :portfolioName="portfolioName" :ticker="element.ticker" :scale="element.scale" />
                         </template>
                     </v-card-text>
                 </v-card>

@@ -53,7 +53,7 @@
             <v-checkbox-btn :disabled="!selectedIndex" v-model="reweightTarget"
               @update:modelValue="newValue => getTargetPortfolio(selectedIndex)" label="Reweight" />
             <IconTooltip
-              text="Scale the weights of stocks in the index by the changes in their prices from the date of the index (ex Q3 20203)" />
+              text="Scale the weights of stocks in the index by the changes in their prices from the date of the index. For example, if a index is a snapshot from Q3 2023 and it is Q4, reweight %s based on the changes in component prices between the index date and current date." />
             <v-spacer />
           </v-card-actions>
 
@@ -152,12 +152,13 @@ export default {
       cash: new CurrencyModel({
         value: 0,
         currency: '$'
-      })
+      }),
+      loaded: false
     };
   },
   computed: {
     ...mapGetters(['compositePortfolios', 'portfolioCustomizations', 'indexNames',
-     'getCustomizationByName']),
+      'getCustomizationByName']),
     routerDebug() {
       return this.$route.params;
     },
@@ -239,23 +240,15 @@ export default {
       // Code to execute after the debounce delay
       this.setPortfolioSize({ portfolioName: this.portfolioName, size: Number(this.portfolioTarget) })
     }, 300), // Debounce delay in milliseconds
-    // compareToIndex() {
-    //   this.compareLoading = true;
-    //   return instance.post('http://localhost:3000/compare_index', {
-    //     'to_purchase': this.toPurchase,
-    //     'index': this.selectedIndex
-    //   }).then((response) => {
-    //     console.log(response.data)
-    //   }).finally(() => {
-    //     this.compareLoading = false;
-    //   });
-    // },
+
 
     getTargetPortfolio(newValue) {
-      if (!newValue) {
+
+      if (this.targetLoading) {
         return
       }
       this.targetLoading = true;
+
       const target = newValue || this.selectedIndex;
       return instance.post('generate_index', {
         'provider': this.provider,
@@ -272,7 +265,10 @@ export default {
           'holdings': portfolioHoldings,
           'source_date': response.data.source_date
         });
-        this.setPortfolioTargetIndex({portfolioName:this.portfolioName, index:target})
+        if (newValue) {
+          this.setPortfolioTargetIndex({ portfolioName: this.portfolioName, index: target })
+        }
+
         this.updatedPortfolioWithTargets();
 
       }).catch(error => {
@@ -307,7 +303,7 @@ export default {
       }
       if (!this.selectedIndex && this.portfolioCustomization) {
         this.selectedIndex = this.portfolioCustomization.indexPortfolio;
-        this.reweightTarget = this.portfolioCustomization.reweightTarget;
+        this.reweightTarget = this.portfolioCustomization.reweightIndex;
         this.getTargetPortfolio()
 
       }
@@ -339,9 +335,10 @@ export default {
     }
   },
   async mounted() {
+
     await this.loadCustomizations();
     await this.loadCompositePortfolios();
-    await this.getPortfolio()
+    await this.getPortfolio();
 
     // this.getPortfolio()
     this.loadIndexes()

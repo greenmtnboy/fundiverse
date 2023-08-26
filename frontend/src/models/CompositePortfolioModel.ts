@@ -13,8 +13,9 @@ export default class CompositePortfolioModel {
     components: Array<SubPortfolioModel>;
     type?: string;
     refreshed_at: number;
+    profit_and_loss?: number;
 
-    constructor({name, holdings, cash, target_size, components, refreshed_at}) {
+    constructor({name, holdings, cash, target_size, components, refreshed_at, profit_and_loss}) {
         this.name = name;
         this.loading=false;
         this.holdings = holdings;
@@ -24,6 +25,7 @@ export default class CompositePortfolioModel {
         this.keys = reactive(Object.entries(scomponents).map(([key, component]) => component.provider))
         this.components = reactive(Object.entries(scomponents).map(([key, component]) => new SubPortfolioModel(component)))
         this.refreshed_at = refreshed_at
+        this.profit_and_loss = profit_and_loss
     }
     
 } 

@@ -1,10 +1,10 @@
 
 export default class StockModification {
     ticker: string
-    weight?: number
+    scale?: number
 
-    constructor(ticker, weight) {
+    constructor(ticker, scale) {
         this.ticker = ticker
-        this.weight = weight
+        this.scale = scale
     }
 } 

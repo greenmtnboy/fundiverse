@@ -1,10 +1,10 @@
 
 export default class ListModification {
     list: string
-    weight?: number
+    scale?: number
 
-    constructor(list, weight) {
+    constructor(list, scale) {
         this.list = list
-        this.weight = weight
+        this.scale = scale
     }
 } 

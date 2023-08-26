@@ -3,7 +3,7 @@
 class AuthRedirectException extends Error {
     constructor(message) {
         super(message);
-        this.name = 'AuthRedirectException';
+        this.name = 'ProviderAuthenticationError';
     }
 }
 

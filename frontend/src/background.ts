@@ -37,7 +37,7 @@ function stopBackground() {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: '127.0.0.1',
-      port: 3000,
+      port: 3042,
       path: '/terminate',
       method: 'GET',
     };
@@ -154,27 +154,6 @@ const startBackgroundService = () => {
   return backgroundService
 }
 
-
-// async function pollServer() {
-//   const pollInterval = 500; // Interval between each poll in milliseconds
-//   const serverUrl = 'http://localhost:3000';
-
-//   await fetch(serverUrl)
-//     .then(response => {
-//       console.log('checking background status')
-//       if (response.ok) {
-//         backgroundServiceReady = true;
-//         console.log('background service is up!')
-//         return
-//       } else {
-//         setTimeout(pollServer, pollInterval)
-//       }
-//     })
-//     .catch(error => {
-//       setTimeout(pollServer, pollInterval)
-//     });
-// }
-
 async function startBackgroundServiceSafe() {
   await findProcessesByName(targetProcessName).then((procs) => {
     if (procs.length>0) {
@@ -202,6 +181,7 @@ async function createWindow() {
     height: 600,
     minWidth: 800, // Set the minimum width here
     autoHideMenuBar: true,
+    icon: path.join(__dirname, 'assets', 'appicon.png'),
     webPreferences: {
 
       // Use pluginOptions.nodeIntegration, leave this alone
