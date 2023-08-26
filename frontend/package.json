@@ -24,7 +24,7 @@
     "os": false
   },
   "dependencies": {
-    "@mdi/font": "5.9.55",
+    "@mdi/font": "7.2.96",
     "@vue/typescript": "^1.8.0",
     "core-js": "^3.8.3",
     "electron-store": "^8.1.0",
