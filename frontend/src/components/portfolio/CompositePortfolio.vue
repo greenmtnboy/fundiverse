@@ -1,9 +1,16 @@
 <template>
     <v-card class="ma-4">
-        <v-card-title :key="portfolio.name" class="text-left">
-            {{ portfolio.name }} <span class="text-low-emphasis"
-            style = "opacity=0.5; font-size: small">({{
-                    timeDisplay }})</span>
+        <v-card-title :key="portfolio.name" style="{display:'flex'}">
+            <v-row>
+                <v-col col="8">
+            {{ portfolio.name }} <span class="text-low-emphasis" style="opacity=0.5; font-size: small">({{
+                timeDisplay }})</span>
+                </v-col><v-col class="text-right" col="4"><span >
+            <v-chip v-if="portfolio.profit_and_loss" :color="portfolio.profit_and_loss.value > 0 ? 'green' : 'red'" small
+                outlined>
+                <span class="pr-2">Portfolio Return: </span><CurrencyItem :value=portfolio.profit_and_loss />
+            </v-chip></span></v-col>
+        </v-row>
         </v-card-title>
         <v-alert type="error" v-if="error">{{ error }}</v-alert>
         <v-card-text class="text-high-emphasis text--primary ">
@@ -15,13 +22,17 @@
                 <p v-if="selectedIndex">Based on index <span class="font-weight-black" :style="{ color: 'purple' }">{{
                     this.selectedIndex }}</span>
                     with {{ customizationCount }} customizations.</p>
-                <p v-else :style="{color: 'orange'}"> No target index selected. Click customize to set.</p>
+                <p v-else :style="{ color: 'orange' }"> No target index selected. Click customize to set.</p>
             </div>
             <div>
             </div>
             <v-divider class="pb-4"></v-divider>
-            <v-progress-linear v-if="portfolio.loading" indeterminate color="blue-lighten-3" height="20">
-            </v-progress-linear>
+            <template v-if="portfolio.loading">
+                <v-progress-linear indeterminate color="green-lighten-3" height="20">
+                </v-progress-linear>
+                <v-progress-linear indeterminate reverse color="blue-lighten-3" height="20">
+                </v-progress-linear>
+            </template>
             <template v-else>
                 <v-progress-linear color="green-lighten-3" v-model="portfolioInTargetPercent" height="20">
                     <p class="text-high-emphasis font-weight-black">
@@ -170,7 +181,7 @@ export default {
             } catch (e) {
                 this.error = e
             }
-            
+
         },
     }
 

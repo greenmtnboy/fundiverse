@@ -35,7 +35,7 @@ const state = {
 
 const getters = {
     indexes: state => state.indexes,
-    indexNames: state => state.indexes.map((item) => item.name)
+    indexNames: state => state.indexes.map((item) => item.name).sort()
 
 };
 
@@ -44,7 +44,10 @@ const getters = {
 // };
 
 const actions = {
-    async loadIndexes({ commit }) {
+    async loadIndexes({ commit, getters }) {
+        if (getters.indexes.length > 0) {
+            return
+        }
         await instance.get('indexes_full').then((response) => {
             const keys = Object.keys(response.data.loaded);
             const indexes: Array<TargetPortfolioModel> = []

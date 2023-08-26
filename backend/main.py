@@ -3,6 +3,7 @@ import os
 import sys
 import multiprocessing
 import uvicorn
+from enum import Enum
 from datetime import datetime
 from uvicorn.config import LOGGING_CONFIG
 from fastapi import APIRouter, FastAPI, HTTPException
@@ -104,6 +105,7 @@ class RealPortfolioOutput(BaseModel):
     holdings: List[RealPortfolioElement]
     cash: Money
     provider: Provider | None
+    profit_or_loss: Money | None = None
 
 
 class CompositePortfolioOutput(BaseModel):
@@ -113,7 +115,14 @@ class CompositePortfolioOutput(BaseModel):
     components: Dict[str, RealPortfolioOutput]
     target_size: float = 250_000
     refreshed_at: int
+    profit_and_loss: Money | None = None
 
+class OrderStatus(Enum):
+    REQUESTED = "requested"
+    SUCCESS = "filled"
+    FAILED = "failed"
+    PLACED = "placed"
+    # PENDING = "placed"
 
 class OrderItem(BaseModel):
     ticker: str
@@ -121,6 +130,8 @@ class OrderItem(BaseModel):
     value: Money | None
     qty: int | None
     provider: Provider
+    status: OrderStatus | None
+    message: str | None
 
 
 class PurchaseOrderOutput(BaseModel):
@@ -170,6 +181,9 @@ class BuyRequestFinal(BaseModel):
 class BuyRequestFinalMultiProvider(BaseModel):
     plan: PurchaseOrderOutput
     providers: list[Provider]
+
+class BuyRequestFinalMultiProviderOutput(BaseModel):
+    orders: List[OrderItem]
 
 
 class CompositePortfolioRefreshRequest(BaseModel):
@@ -291,11 +305,11 @@ async def get_portfolio(_provider: Provider):
     IN_APP_CONFIG.holding_cache[_provider] = holdings
     return provider.get_holdings()
 
-
 @router.post("/composite_portfolio/refresh")
 async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     active: Dict[Provider, RealPortfolio] = {}
     raw = []
+    profit_and_loss = Money(value=0.0)
     for key in input.providers:
         item = IN_APP_CONFIG.provider_cache.get(key, None)
         if not item:
@@ -303,12 +317,15 @@ async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
         # key, item in IN_APP_CONFIG.provider_cache.items():
         rport = item.get_holdings()
         IN_APP_CONFIG.holding_cache[key] = rport
+        pl = item.get_profit_or_loss()
         active[key] = RealPortfolioOutput(
             name=f"{key.name}",
             holdings=rport.holdings,
             cash=rport.cash,
             provider=key,
+            profit_or_loss = pl
         )
+        profit_and_loss += pl
         raw.append(rport)
     internal = CompositePortfolio(raw)
     return CompositePortfolioOutput(
@@ -317,6 +334,7 @@ async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
         cash=internal.cash,
         components=active,
         refreshed_at=datetime.now(tz=UTC).timestamp(),
+        profit_and_loss = profit_and_loss
     )
 
 
@@ -435,9 +453,19 @@ async def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider
     if not all(providers.values()):
         raise HTTPException(403, "Not all providers are logged in")
     # check each of our p
+    output:List[OrderItem] = []
     for order in input.plan.to_buy:
-        providers[order.provider].handle_order_element(order)
-
+        try:
+            providers[order.provider].handle_order_element(order)
+            order.status = OrderStatus.PLACED
+            output.append(order)
+        except OrderError as e:
+            order.status = OrderStatus.FAILED
+            order.message = e.message
+            output.append(order)
+    return BuyRequestFinalMultiProviderOutput(
+        orders=output
+    )
 
 app.include_router(router)
 
