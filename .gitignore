@@ -36,6 +36,7 @@ frontend/dist_electron
 frontend/dist-electron
 frontend/build
 frontend/dist
+frontend/release
 
 #pyinstaller output
 backend/build
