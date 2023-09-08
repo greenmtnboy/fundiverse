@@ -19,8 +19,8 @@ const storageAPI = {
 
     getCustomIndexes(): Array<Object> {
         const data = store.get(storageKey, []) as Array<any>
-        // const parsed = data.map(dict => new TargetPortfolioModel(dict));
-        return data
+        const parsed = data.map(dict => new TargetPortfolioModel(dict));
+        return parsed
     },
 };
 
