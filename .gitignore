@@ -29,6 +29,7 @@ pnpm-debug.log*
 *.sw?
 *.code-workspace
 .ruff_cache
+.pytest_cache
 
 #Electron-builder output
 frontend/dist_electron
