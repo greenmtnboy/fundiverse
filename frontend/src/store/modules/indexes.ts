@@ -1,5 +1,7 @@
 import Store from 'electron-store';
 import instance from '/src/api/instance'
+import TargetPortfolioModel from '/src/models/TargetPortfolioModel';
+import TargetPortfolioElementModel from '/src/models/TargetPortfolioElementModel';
 
 const store = new Store<Record<string, Object>>({
     name: 'indexes',
