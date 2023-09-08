@@ -1,0 +1,7 @@
+[tool.ruff]
+line-length = 100
+
+ignore = ["E402", "F403"]
+
+[tool.mypy]
+ignore_missing_imports = true

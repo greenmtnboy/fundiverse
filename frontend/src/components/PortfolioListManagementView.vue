@@ -49,7 +49,7 @@
 //Components
 //API
 
-import CompositePortfolio from '/src/components/portfolio/CompositePortfolio';
+import CompositePortfolio from '/src/components/portfolio/CompositePortfolio.vue';
 import AddPortfolioPopup from './portfolio/AddPortfolioPopup.vue';
 import AddIndexPopup from './target_portfolio/AddIndexPopup.vue';
 import { mapGetters, mapActions } from 'vuex';

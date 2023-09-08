@@ -37,7 +37,7 @@
 
                 <v-row> <v-col width=12 justify="center">
                         <v-chip-group :disabled="loading || initialLoading" v-model="selectedMode" mandatory
-                            selected-class="text-primary" @update:modelValue="newValue => planPurchase()">
+                            selected-class="text-primary" @update:modelValue="_ => planPurchase()">
                             <v-chip :disabled="loading || initialLoading" v-for="mode in modes" :key="mode.id"
                                 :value="mode.id" :label="true" :item-text="mode.name">
                                 {{ mode.name }}
@@ -59,7 +59,7 @@
                     <v-col cols=12>
                         <v-text-field :disabled="loading || initialLoading" class="input-field" variant="solo"
                             label="Purchase Amount" v-model="toPurchaseInternal" :rules="numberValidationRules"
-                            @update:modelValue="newValue => handleOrderSizeInput()">
+                            @update:modelValue="_ => handleOrderSizeInput()">
                         </v-text-field>
                     </v-col>
                 </v-row>
@@ -153,7 +153,7 @@ function roundToNearestTen(number) {
 }
 
 function divideArrayIntoBatches(array, batchSize) {
-    const batches = [];
+    const batches:Array<any> = [];
 
     for (let i = 0; i < array.length; i += batchSize) {
         batches.push(array.slice(i, i + batchSize));
@@ -194,7 +194,7 @@ export default {
             required: true
         },
         targetSize: {
-            type: Number,
+            type: [String, Number],
             required: true
         },
         cash: {

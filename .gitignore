@@ -9,6 +9,7 @@ node_modules
 __pycache__
 
 # local env files
+.env
 .env.local
 .env.*.local
 
@@ -31,6 +32,8 @@ pnpm-debug.log*
 
 #Electron-builder output
 frontend/dist_electron
+frontend/dist-electron
+frontend/build
 
 #pyinstaller output
 backend/build

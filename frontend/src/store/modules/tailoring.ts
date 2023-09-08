@@ -23,7 +23,7 @@ const storageAPI = {
     },
 
     getDefaults() {
-        const dat: Array<any> = ((store.get('customizations') as unknown) as Array<any>)
+        const dat: Array<any> = (((store.get('customizations') as unknown) || []) as Array<any>)
         const final = new Map()
         dat.forEach((item) => {
             if (isObjectEmpty(item.value.excludedLists)) {

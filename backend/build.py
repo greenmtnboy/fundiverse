@@ -10,7 +10,7 @@ from platform import system
 root = Path(__file__).parent
 
 base = root.parent
- 
+
 SCRIPT_NAME = "fundiverse-backend"
 
 if system() == "Linux":
@@ -88,25 +88,25 @@ if __name__ == "__main__":
         ]
     else:
         command = [
-        f"{pyinstaller_path}",
-        "main.py",
-        "--noconsole",
-        "--onefile",
-        "--name",
-        SCRIPT_NAME,
-        "--hidden-import",
-        "py-portfolio-index",
-        "--collect-all",
-        "py_portfolio_index",
-        "--hidden-import",
-        "alpaca-py",
-        "--collect-all",
-        "uvicorn",
-        "--noconfirm",
-        "--clean",
-        "--additional-hooks-dir",
-        "extra-hooks",
-    ]
+            f"{pyinstaller_path}",
+            "main.py",
+            "--noconsole",
+            "--onefile",
+            "--name",
+            SCRIPT_NAME,
+            "--hidden-import",
+            "py-portfolio-index",
+            "--collect-all",
+            "py_portfolio_index",
+            "--hidden-import",
+            "alpaca-py",
+            "--collect-all",
+            "uvicorn",
+            "--noconfirm",
+            "--clean",
+            "--additional-hooks-dir",
+            "extra-hooks",
+        ]
 
     try:
         subprocess.check_call(command, cwd=root)

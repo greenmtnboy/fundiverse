@@ -84,7 +84,7 @@ export default {
             saveCredentials: false,
             showPass: false,
             showFactor: false,
-            error: '',
+            error: '' as string,
             extraLogin: false,
             dialog: false,
         };
@@ -116,7 +116,7 @@ export default {
             if (this.error) {
                 return 'Fix Login'
             }
-            return this.provider == null ? 'Connect Provider' : 'Login'
+            return this.provider == null ? 'Add Provider' : 'Login'
         },
         availableProviders() {
             return this.providers.filter(item => !this.providerKeys.includes(item));
@@ -200,6 +200,7 @@ export default {
                     'key': this.key,
                     'secret': this.secret,
                     'provider': this.selectedProvider,
+                    // @ts-ignore: this only exists sometimes
                     'extra_factor': this.factor
                 }
             }
@@ -236,7 +237,7 @@ export default {
             }).catch((exc) => {
                 if (exc instanceof exceptions.auth_extra) {
                     this.extraLogin = true;
-                    this.error = axiosHelpers.getErrorMessage('Extra authentication info required, provide and re-login');
+                    this.error = 'Extra authentication info required, provide and re-submit login'
                 } else {
                     this.error = axiosHelpers.getErrorMessage(exc);
                 }
@@ -244,6 +245,7 @@ export default {
             }).finally(() => {
                 this.factor = '';
                 this.loading = false;
+
 
             });
         },

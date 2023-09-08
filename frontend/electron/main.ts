@@ -4,9 +4,14 @@ import Store from 'electron-store';
 import Os from 'os'
 import http from 'http';
 import { exec, execFile } from 'child_process';
-import {randomInt} from 'crypto';
+import { randomInt } from 'crypto';
+import instance from '/src/api/instance.ts'
 
-const API_KEY = randomInt(1, 100000000000000000)
+const API_KEY = (randomInt(1, 1000000) * 1000000 + randomInt(1, 1000000)).toString();
+
+// instance.defaults.headers.common['Authorization'] = `Bearer ${API_KEY}`;
+instance.defaults.headers.post['Authorization'] = `Bearer ${API_KEY}`;
+instance.defaults.headers.get['Authorization'] = `Bearer ${API_KEY}`;
 
 /**
  * Determine whether the Node.js process runs on Windows.
@@ -17,8 +22,8 @@ function isWindows() {
   return Os.platform() === 'win32'
 }
 
-let targetProcessName = 'fundiverse-engine'
-let servicePort = 5678;
+let targetProcessName = 'fundiverse-backend'
+let servicePort = 3042;
 
 if (isWindows()) {
   targetProcessName = `${targetProcessName}.exe`
@@ -43,25 +48,36 @@ function stopBackground() {
       port: servicePort,
       path: '/terminate',
       method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`
+      }
     };
 
     const req = http.request(options, (res) => {
-      let data = '';
+      if (res.statusCode === 200) {
+        let data = '';
 
-      // Receive data chunks
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
+        // Receive data chunks
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
 
-      // Process the complete response
-      res.on('end', () => {
-        resolve(data); // Resolve the Promise with the received data
-      });
-    });
+        // Process the complete response
+        res.on('end', () => {
+          resolve(data); // Resolve the Promise with the received data
+        });
+      } else {
+        // Handle other status codes here
+        console.error(`Failed to shutdown background service -HTTP Status Code: ${res.statusCode}`);
+      }
+
+    }
+    );
 
     req.on('error', (error) => {
       reject(error); // Reject the Promise with the error
     });
+
 
     req.end(); // Send the HTTP request
   });
@@ -129,7 +145,7 @@ const startBackgroundService = () => {
   const spath = path.join(process.env.PUBLIC, targetProcessName)
   //const spath = path.join(app.getAppPath(), '/src/background/', `${targetProcessName}`)
   console.log(`spawning background service at ${spath}`)
-  const backgroundService = execFile(spath, [], {'windowsHide': true}, (error, stdout, stderr) => {
+  const backgroundService = execFile(spath, [API_KEY], { 'env': { ...process.env, 'FUNDIVERSE_API_SECRET_KEY': API_KEY }, 'windowsHide': true, }, (error, stdout, stderr) => {
     if (error) {
       throw error;
     }
@@ -222,7 +238,7 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.PUBLIC, 'appicon.svg'),
     webPreferences: {
       contextIsolation: false,
       nodeIntegration: true,
@@ -234,7 +250,9 @@ function createWindow() {
   // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', (new Date).toLocaleString())
+    win?.webContents.send('api-key', API_KEY);
   })
+
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
@@ -256,6 +274,6 @@ app.on('window-all-closed', () => {
   }
 })
 
-app.isPackaged ? app.whenReady().then(startBackgroundServiceSafe).then(createWindow) : app.whenReady().then(createWindow)
-// app.whenReady().then(startBackgroundServiceSafe).then(createWindow)
+// app.isPackaged ? app.whenReady().then(startBackgroundServiceSafe).then(createWindow) : app.whenReady().then(createWindow)
+app.whenReady().then(startBackgroundServiceSafe).then(createWindow)
 // 
