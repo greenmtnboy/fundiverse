@@ -34,6 +34,7 @@ pnpm-debug.log*
 frontend/dist_electron
 frontend/dist-electron
 frontend/build
+frontend/dist
 
 #pyinstaller output
 backend/build
