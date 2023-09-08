@@ -1,12 +1,12 @@
-import Store from 'electron-store';
-import instance from '/src/api/instance'
+// import Store from 'electron-store';
+// // import instance from '/src/api/instance'
 
 
-// store order history
-const store = new Store<Record<string, Object>>({
-    name: 'history',
-    watch: true,
-});
+// // store order history
+// const store = new Store<Record<string, Object>>({
+//     name: 'history',
+//     watch: true,
+// });
 
 // const storageAPI = {
 //     setPortfolios(value: Array<TargetPortfolioModel>) {

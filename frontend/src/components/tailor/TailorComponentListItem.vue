@@ -43,7 +43,7 @@
 
             <v-tooltip>
                 <template v-slot:activator="{ props }">
-                    <v-btn v-bind="props" @click="action => removeListExclusion(list)" icon density="compact">
+                    <v-btn v-bind="props" @click="_ => removeListExclusion(list)" icon density="compact">
                         <v-icon color="warning">mdi-cancel</v-icon>
                     </v-btn>
                 </template>

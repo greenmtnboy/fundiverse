@@ -63,7 +63,7 @@ const actions = {
 
 
 const mutations = {
-    login(state, data) {
+    login(state, _) {
         state.loggedIn = true;
         // state.provider = data.provider;
     },

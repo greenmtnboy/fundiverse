@@ -54,7 +54,7 @@ function stopBackground() {
     };
 
     const req = http.request(options, (res) => {
-      if (res.statusCode === 200) {
+      if (res.statusCode && [200, 503].includes(res.statusCode)) {
         let data = '';
 
         // Receive data chunks
