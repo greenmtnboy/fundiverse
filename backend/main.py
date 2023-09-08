@@ -1,4 +1,7 @@
 from typing import List, Dict, Annotated
+import dotenv
+
+dotenv.load_dotenv()
 import os
 import sys
 import multiprocessing
@@ -9,10 +12,12 @@ from uvicorn.config import LOGGING_CONFIG
 from fastapi import APIRouter, FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from dataclasses import dataclass, field
 from py_portfolio_index.exceptions import OrderError, ExtraAuthenticationStepException
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
 from py_portfolio_index.portfolio_providers.helpers.robinhood import login as rh_login
+from fastapi.encoders import jsonable_encoder
 from py_portfolio_index.models import (
     CompositePortfolio,
     RealPortfolio,
@@ -20,6 +25,7 @@ from py_portfolio_index.models import (
     RealPortfolioElement,
     Money,
     OrderType,
+    OrderElement,
 )
 from pytz import UTC
 
@@ -30,7 +36,6 @@ from py_portfolio_index import (
     PaperAlpacaProvider,
     RobinhoodProvider,
     PurchaseStrategy,
-    generate_order_plan,
     generate_composite_order_plan,
     AVAILABLE_PROVIDERS,
 )
@@ -43,15 +48,18 @@ from pydantic import BaseModel, Field
 from copy import deepcopy
 
 # from py_portfolio_index.models import RealPortfolio
-from fastapi.responses import PlainTextResponse, Response
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import PlainTextResponse
 from starlette.background import BackgroundTask
 import asyncio
 import traceback
+from logging import getLogger
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 SERVE_PORT = 3042
+
+logger = getLogger(__name__)
+
 
 @dataclass
 class ActiveConfig:
@@ -77,13 +85,23 @@ class ActiveConfig:
             return list(self.provider_cache.keys())[0]
         raise HTTPException(401, "No logged in provider specified")
 
+
 IN_APP_CONFIG = ActiveConfig()
 
+IN_APP_CONFIG.auth_token = os.environ.get("FUNDIVERSE_API_SECRET_KEY")
 
-def canonicalize_key(key:str | int):
+
+def canonicalize_key(key: str | None) -> str:
     return str(key).strip()
 
+
 async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     valid = canonicalize_key(token) == canonicalize_key(IN_APP_CONFIG.auth_token)
     if not valid:
         raise HTTPException(
@@ -92,6 +110,7 @@ async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
             headers={"WWW-Authenticate": "Bearer"},
         )
     return valid
+
 
 ## app definitions
 app = FastAPI(dependencies=[Depends(validate_auth_token)])
@@ -106,8 +125,10 @@ app.add_middleware(
     ],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["Authorization"],
+    allow_origin_regex="(app://.)|(http://localhost:[0-9]+)",
 )
+
 
 ## BEGIN REQUESTS
 class LoginRequest(BaseModel):
@@ -121,7 +142,7 @@ class LoginRequest(BaseModel):
 class RealPortfolioOutput(BaseModel):
     name: str
     holdings: List[RealPortfolioElement]
-    cash: Money
+    cash: Money | None
     provider: Provider | None
     profit_or_loss: Money | None = None
 
@@ -135,12 +156,14 @@ class CompositePortfolioOutput(BaseModel):
     refreshed_at: int
     profit_and_loss: Money | None = None
 
+
 class OrderStatus(Enum):
     REQUESTED = "requested"
     SUCCESS = "filled"
     FAILED = "failed"
     PLACED = "placed"
     # PENDING = "placed"
+
 
 class OrderItem(BaseModel):
     ticker: str
@@ -177,10 +200,10 @@ class PortfolioRequest(BaseModel):
 class TargetPortfolioRequest(BaseModel):
     index: str
     reweight: bool = False
-    stock_exclusions: None | List[str] = Field(default_factory=list)
-    list_exclusions: None | List[str] = Field(default_factory=list)
-    stock_modifications: None | List[StockMutation] = Field(default_factory=list)
-    list_modifications: None | List[ListMutation] = Field(default_factory=list)
+    stock_exclusions: List[str] = Field(default_factory=list)
+    list_exclusions: List[str] = Field(default_factory=list)
+    stock_modifications: List[StockMutation] = Field(default_factory=list)
+    list_modifications: List[ListMutation] = Field(default_factory=list)
     purchase_strategy: PurchaseStrategy = PurchaseStrategy.LARGEST_DIFF_FIRST
     provider: Provider | None = None
     providers: List[Provider] = Field(default_factory=list)
@@ -199,6 +222,7 @@ class BuyRequestFinal(BaseModel):
 class BuyRequestFinalMultiProvider(BaseModel):
     plan: PurchaseOrderOutput
     providers: list[Provider]
+
 
 class BuyRequestFinalMultiProviderOutput(BaseModel):
     orders: List[OrderItem]
@@ -230,9 +254,10 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
             # Robinhood requires potential two factor auth
             # cannot safely instantiate default handler
             # even in dev
-            provider = IN_APP_CONFIG.provider_cache.get(Provider.ROBINHOOD, None)
-            if not provider:
+            rh_provider = IN_APP_CONFIG.provider_cache.get(Provider.ROBINHOOD, None)
+            if not rh_provider:
                 raise HTTPException(401, "No logged in robinhood provider found")
+            provider = rh_provider
             IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = provider
         elif _provider is None:
             raise HTTPException(401, "No logged in provider specified")
@@ -247,7 +272,9 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
 router = APIRouter()
 
 
-@router.get("/", )
+@router.get(
+    "/",
+)
 async def healthcheck():
     return "healthy"
 
@@ -275,13 +302,13 @@ async def login_handler(input: LoginRequest):
             environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
             environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
             # ensure we can login
-            provider = AlpacaProvider()
+            provider: BaseProvider = AlpacaProvider()
             IN_APP_CONFIG.provider_cache[input.provider] = provider
         elif input.provider == Provider.ALPACA_PAPER:
             environ[PaperAlpacaProvider.API_KEY_VARIABLE] = input.key
             environ[PaperAlpacaProvider.API_SECRET_VARIABLE] = input.secret
             # ensure we can login
-            provider =  PaperAlpacaProvider()
+            provider = PaperAlpacaProvider()
             IN_APP_CONFIG.provider_cache[input.provider] = provider
         elif input.provider == Provider.ROBINHOOD:
             environ["ROBINHOOD_USERNAME"] = input.key
@@ -323,9 +350,10 @@ async def get_portfolio(_provider: Provider):
     IN_APP_CONFIG.holding_cache[_provider] = holdings
     return provider.get_holdings()
 
+
 @router.post("/composite_portfolio/refresh")
 async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
-    active: Dict[Provider, RealPortfolio] = {}
+    active: Dict[str, RealPortfolioOutput] = {}
     raw = []
     profit_and_loss = Money(value=0.0)
     for key in input.providers:
@@ -341,7 +369,7 @@ async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
             holdings=rport.holdings,
             cash=rport.cash,
             provider=key,
-            profit_or_loss = pl
+            profit_or_loss=pl,
         )
         profit_and_loss += pl
         raw.append(rport)
@@ -351,8 +379,8 @@ async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
         holdings=internal.holdings,
         cash=internal.cash,
         components=active,
-        refreshed_at=datetime.now(tz=UTC).timestamp(),
-        profit_and_loss = profit_and_loss
+        refreshed_at=int(datetime.now(tz=UTC).timestamp()),
+        profit_and_loss=profit_and_loss,
     )
 
 
@@ -388,9 +416,9 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
         ideal_port.exclude(STOCK_LISTS[item])
     for mutation in input.stock_modifications:
         ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=0.001)
-    for mutation in input.list_modifications:
+    for list_mutation in input.list_modifications:
         ideal_port.reweight(
-            STOCK_LISTS[mutation.list], weight=mutation.scale, min_weight=0.001
+            STOCK_LISTS[list_mutation.list], weight=mutation.scale, min_weight=0.001
         )
     return ideal_port
 
@@ -428,27 +456,29 @@ async def plan_composite_purchase(input: BuyRequest):
                     value=order.value,
                     qty=order.qty,
                     provider=key,
+                    status=OrderStatus.REQUESTED,
+                    message=None,
                 )
             )
     output = PurchaseOrderOutput(to_buy=final)
     return output
 
 
-@router.post("/plan_purchase")
-async def plan_purchase(input: BuyRequest):
-    provider = get_provider_safe(input.provider)
-    real_port = IN_APP_CONFIG.provider_cache.get(input.provider, None)
-    if not real_port:
-        real_port = provider.get_holdings()
-    ideal_port = index_to_processed_index(input)
-    plan = generate_order_plan(
-        real_port,
-        ideal_port,
-        purchase_power=input.to_purchase,
-        target_size=input.target_size,
-        buy_order=input.purchase_strategy,
-    )
-    return plan
+# @router.post("/plan_purchase")
+# async def plan_purchase(input: BuyRequest):
+#     provider = get_provider_safe(input.provider)
+#     real_port = IN_APP_CONFIG.provider_cache.get(input.provider, None)
+#     if not real_port:
+#         real_port = provider.get_holdings()
+#     ideal_port = index_to_processed_index(input)
+#     plan = generate_order_plan(
+#         real_port,
+#         ideal_port,
+#         purchase_power=input.to_purchase,
+#         target_size=input.target_size,
+#         buy_order=input.purchase_strategy,
+#     )
+#     return plan
 
 
 @router.get("/terminate")
@@ -467,23 +497,30 @@ async def buy_index_from_plan(input: BuyRequestFinal):
 
 @router.post("/buy_index_from_plan_multi_provider")
 async def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
-    providers = {p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers}
+    providers: Dict[Provider, BaseProvider] = {
+        p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers  # type: ignore
+    }
     if not all(providers.values()):
         raise HTTPException(403, "Not all providers are logged in")
     # check each of our p
-    output:List[OrderItem] = []
+    output: List[OrderItem] = []
     for order in input.plan.to_buy:
         try:
-            providers[order.provider].handle_order_element(order)
+            transformed_order = OrderElement(
+                ticker=order.ticker,
+                order_type=order.order_type,
+                value=order.value,
+                qty=order.qty,
+            )
+            providers[order.provider].handle_order_element(transformed_order)
             order.status = OrderStatus.PLACED
             output.append(order)
         except OrderError as e:
             order.status = OrderStatus.FAILED
             order.message = e.message
             output.append(order)
-    return BuyRequestFinalMultiProviderOutput(
-        orders=output
-    )
+    return BuyRequestFinalMultiProviderOutput(orders=output)
+
 
 app.include_router(router)
 
@@ -500,29 +537,31 @@ def _get_last_exc():
 
 
 async def exit_app():
-    if asyncio.Task:
-        for task in asyncio.all_tasks():
-            print(f"cancelling task: {task}")
-            try:
-                task.cancel()
-            except Exception:
-                print(f"Task kill failed: {_get_last_exc()}")
-                pass
-    asyncio.gather(asyncio.all_tasks())
+    for task in asyncio.all_tasks():
+        print(f"cancelling task: {task}")
+        try:
+            task.cancel()
+        except Exception:
+            print(f"Task kill failed: {_get_last_exc()}")
+            pass
+    asyncio.gather(*asyncio.all_tasks())
     loop = asyncio.get_running_loop()
     loop.stop()
     raise ValueError("Server is shutting down")
 
 
-@app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request, exc):
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    """Overdrive the default exception handler to allow for graceful shutdowns"""
     if exc.status_code == 503:
+        # here is where we terminate all running processes
         task = BackgroundTask(exit_app)
         return PlainTextResponse(
             "Server is shutting down", status_code=exc.status_code, background=task
         )
-    return Response(
-        status_code=exc.status_code, headers=exc.headers, content=exc.detail
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=jsonable_encoder({"detail": exc.detail}),
     )
 
 
@@ -563,15 +602,6 @@ def run():
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        # dev case
-        secret_key = 12345
-    else:
-        secret_key = sys.argv[1]
-
-    IN_APP_CONFIG.auth_token = secret_key
-
     multiprocessing.freeze_support()
     try:
         run()
