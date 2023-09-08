@@ -4,3 +4,5 @@ black
 ruff
 mypy
 httpx
+types-pytz
+types-requests
