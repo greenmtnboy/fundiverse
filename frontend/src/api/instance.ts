@@ -1,5 +1,5 @@
 import axios from 'axios';
-import store from '@/store'
+import store from '/src/store'
 import exceptions from './exceptions';
 
 // must match port in backend\src\main.py
@@ -7,6 +7,8 @@ const instance = axios.create({
   baseURL: 'http://localhost:3042',
 }
 );
+
+instance.defaults.headers.common['Authorization'] = AUTH_TOKEN;
 
 instance.interceptors.response.use(
   response => {

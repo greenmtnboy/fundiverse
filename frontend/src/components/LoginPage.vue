@@ -35,7 +35,7 @@
     border-radius: 0 !important;
 }
 </style>
-<script>
+<script lang="ts">
 // Views
 
 import instance from '../api/instance'

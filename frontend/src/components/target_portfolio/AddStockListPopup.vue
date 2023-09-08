@@ -32,7 +32,7 @@
     border-radius: 0 !important;
 }
 </style>
-<script>
+<script lang="ts">
 import {
     mapActions
 } from 'vuex';

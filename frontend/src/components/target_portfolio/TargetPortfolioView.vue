@@ -27,7 +27,7 @@
     </v-list>
 </template>
 
-<script>
+<script lang="ts">
 import TargetPortfolioElement from "./TargetPortfolioElement.vue";
 import TargetPortfolioModel from '../../models/TargetPortfolioModel';
 

@@ -75,9 +75,9 @@
     </v-card>
 </template>
 
-<script>
-import CompositePortfolioModel from "@/models/CompositePortfolioModel";
-import ProviderLoginPopup from "@/components/portfolio/ProviderLoginPopup.vue";
+<script lang="ts">
+import CompositePortfolioModel from "/src/models/CompositePortfolioModel";
+import ProviderLoginPopup from "/src/components/portfolio/ProviderLoginPopup.vue";
 import SubPortfolio from './SubPortfolio.vue'
 import CurrencyItem from '../generic/CurrencyItem.vue';
 import ConfirmPurchase from "../purchase/ConfirmPurchase.vue";

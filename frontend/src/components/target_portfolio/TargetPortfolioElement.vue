@@ -16,7 +16,7 @@
   </v-list-item>
 </template>
 
-<script>
+<script lang="ts">
 import TargetPortfolioElementModel from '../../models/TargetPortfolioElementModel';
 import { mapActions } from 'vuex';
 

@@ -1,9 +1,9 @@
 
 
-import store from '@/store/local';
-import PortfolioCustomization from '@/models/PortfolioCustomization';
-import StockModification from '@/models/StockModification';
-import instance from '@/api/instance'
+import store from '/src/store/local';
+import PortfolioCustomization from '/src/models/PortfolioCustomization';
+import StockModification from '/src/models/StockModification';
+import instance from '/src/api/instance'
 function isObjectEmpty(obj) {
     if (!obj) {
         return true;

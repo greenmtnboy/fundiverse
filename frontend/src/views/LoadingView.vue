@@ -2,9 +2,9 @@
     <LoadingPage/>
   </template>
   
-  <script>
+  <script lang="ts">
 
-  import LoadingPage from '@/components/LoadingPage.vue'
+  import LoadingPage from '/src/components/LoadingPage.vue'
   
   export default {
     name: 'LoadingView',

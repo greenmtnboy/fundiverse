@@ -1,8 +1,8 @@
 import Store from 'electron-store';
-import CompositePortfolioModel from '@/models/CompositePortfolioModel';
-import instance from '@/api/instance'
-import SubPortfolioModel from '@/models/SubPortfolioModel';
-import PortfolioCustomization from '@/models/PortfolioCustomization'
+import CompositePortfolioModel from '/src/models/CompositePortfolioModel';
+import instance from '/src/api/instance'
+import SubPortfolioModel from '/src/models/SubPortfolioModel';
+import PortfolioCustomization from '/src/models/PortfolioCustomization'
 
 const store = new Store<Record<string, Object>>({
     name: 'portfolios',

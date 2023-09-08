@@ -1,6 +1,6 @@
 // const { safeStorage } = require("electron");
-import store from '@/store/local';
-import instance from '@/api/instance';
+import store from '/src/store/local';
+import instance from '/src/api/instance';
 
 const storageAPI = {
     setCredential(key: string, value: string) {

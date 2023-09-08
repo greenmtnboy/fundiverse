@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import PortfolioView from '../views/PortfolioView.vue'
-import CompositePortfolioView from '../views/CompositePortfolioView.vue'
+import CompositePortfolioView from '/src/views/CompositePortfolioView.vue'
 import PortfolioListView from '../views/PortfolioListView.vue'
 import LoginView from '../views/LoginView.vue'
 import LoadingView from '../views/LoadingView.vue'

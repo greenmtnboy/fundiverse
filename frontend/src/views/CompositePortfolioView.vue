@@ -2,9 +2,9 @@
     <CompositePortfolioManagementView :portfolioName="portfolioName"/>
   </template>
   
-  <script>
+  <script lang="ts">
   // @ is an alias to /src
-  import CompositePortfolioManagementView from '@/components/CompositePortfolioManagementView.vue'
+  import CompositePortfolioManagementView from '/src/components/CompositePortfolioManagementView.vue'
   
   export default {
     name: 'CompositePortfolioView',

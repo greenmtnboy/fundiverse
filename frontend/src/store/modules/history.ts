@@ -1,5 +1,5 @@
 import Store from 'electron-store';
-import instance from '@/api/instance'
+import instance from '/src/api/instance'
 
 
 // store order history

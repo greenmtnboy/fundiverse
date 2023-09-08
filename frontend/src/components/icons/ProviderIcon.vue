@@ -7,13 +7,13 @@
         </template>
     </v-avatar>
 </template>
-<script>
+<script lang="ts">
 import AlpacaIcon from './AlpacaIcon.vue'
 export default {
     name: 'ProviderIcon',
     data() {
         return {
-            robinhoodSrc: require('@/assets/robinhood.png'), // Replace with the correct path to your .png file
+            robinhoodSrc: require('/src/assets/robinhood.png'), // Replace with the correct path to your .png file
         };
     },
     components: {

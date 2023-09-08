@@ -59,12 +59,12 @@
     border-radius: 0 !important;
 }
 </style>
-<script>
+<script lang="ts">
 // Views
 
-import instance from '@/api/instance'
-import axiosHelpers from '@/api/helpers';
-import exceptions from '@/api/exceptions'
+import instance from '/src/api/instance'
+import axiosHelpers from '/src/api/helpers';
+import exceptions from '/src/api/exceptions'
 import {
     mapActions, mapGetters
 } from 'vuex';

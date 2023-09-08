@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Annotated
 import os
 import sys
 import multiprocessing
@@ -6,7 +6,8 @@ import uvicorn
 from enum import Enum
 from datetime import datetime
 from uvicorn.config import LOGGING_CONFIG
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException, Depends, status
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from dataclasses import dataclass, field
 from py_portfolio_index.exceptions import OrderError, ExtraAuthenticationStepException
@@ -48,7 +49,7 @@ from starlette.background import BackgroundTask
 import asyncio
 import traceback
 
-app = FastAPI()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 SERVE_PORT = 3042
 
@@ -58,6 +59,7 @@ class ActiveConfig:
     provider_cache: Dict[Provider, BaseProvider] = field(default_factory=dict)
     holding_cache: Dict[Provider, RealPortfolio] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
+    auth_token: str | None = None
 
     @property
     def default_provider(self):
@@ -77,6 +79,23 @@ class ActiveConfig:
 
 IN_APP_CONFIG = ActiveConfig()
 
+
+def canonicalize_key(key:str | int):
+    return str(key).strip()
+
+async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
+    valid = canonicalize_key(token) == canonicalize_key(IN_APP_CONFIG.auth_token)
+    if not valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return valid
+
+## app definitions
+app = FastAPI(dependencies=[Depends(validate_auth_token)])
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -89,7 +108,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 ## BEGIN REQUESTS
 class LoginRequest(BaseModel):
@@ -229,7 +247,7 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("/", )
 async def healthcheck():
     return "healthy"
 
@@ -545,6 +563,15 @@ def run():
 
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) < 2:
+        # dev case
+        secret_key = 12345
+    else:
+        secret_key = sys.argv[1]
+
+    IN_APP_CONFIG.auth_token = secret_key
+
     multiprocessing.freeze_support()
     try:
         run()

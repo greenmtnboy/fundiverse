@@ -26,11 +26,11 @@
     </v-list-item>
 </template>
 
-<script>
+<script lang="ts">
 import CurrencyItem from '../generic/CurrencyItem.vue';
 import ProviderIcon from '../icons/ProviderIcon.vue';
-import ProviderLoginPopup from "@/components/portfolio/ProviderLoginPopup.vue";
-import SubPortfolioModel from '@/models/SubPortfolioModel'
+import ProviderLoginPopup from "/src/components/portfolio/ProviderLoginPopup.vue";
+import SubPortfolioModel from '/src/models/SubPortfolioModel'
 export default {
     data() {
         return {

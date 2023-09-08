@@ -91,7 +91,7 @@
   /* Adjust the value as per your requirement */
 }
 </style>
-<script>
+<script lang="ts">
 
 //Components
 import PortfolioView from "./portfolio/PortfolioView.vue"

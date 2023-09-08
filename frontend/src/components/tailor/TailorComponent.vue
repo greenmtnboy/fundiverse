@@ -112,7 +112,7 @@
     height: 100%;
 }
 </style>
-<script>
+<script lang="ts">
 import {
     mapActions,
     mapGetters
@@ -123,7 +123,7 @@ import TailorListPopup from './TailorListPopup.vue';
 import TailorComponentListItem from './TailorComponentListItem.vue';
 import TailorStockListItem from './TailorStockListItem.vue';
 import IconTooltip from '../generic/IconTooltip.vue'
-import PortfolioCustomization from '@/models/PortfolioCustomization';
+import PortfolioCustomization from '/src/models/PortfolioCustomization';
 export default {
     name: "TailorComponent",
     components: {

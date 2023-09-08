@@ -93,7 +93,7 @@
   /* Adjust the value as per your requirement */
 }
 </style>
-<script>
+<script lang="ts">
 
 //Components
 import PortfolioView from "./portfolio/PortfolioView.vue"
@@ -105,7 +105,7 @@ import IconTooltip from './generic/IconTooltip.vue'
 import TargetPortfolioModel from '../models/TargetPortfolioModel';
 import TargetPortfolioElementModel from '../models/TargetPortfolioElementModel';
 import CurrencyModel from '../models/CurrencyModel'
-import CompositePortfolioModel from "@/models/CompositePortfolioModel";
+import CompositePortfolioModel from "/src/models/CompositePortfolioModel";
 
 //API
 import instance from '../api/instance'
