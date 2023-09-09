@@ -22,7 +22,7 @@
 }
 </style>
 
-<script>
+<script lang="ts">
 import PortfolioElement from "./PortfolioElement.vue";
 import CompositePortfolioModel from '../../models/CompositePortfolioModel';
 import PortfolioModel from '../../models/PortfolioModel';

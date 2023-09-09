@@ -48,7 +48,7 @@
     </v-list-item>
 </template>
 
-<script>
+<script lang="ts">
 import CurrencyItem from '../generic/CurrencyItem.vue';
 
 const comparisonThreshold = .1;

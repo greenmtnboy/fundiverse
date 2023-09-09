@@ -51,7 +51,7 @@
             <IconTooltip
               text="Further customize the selected index by excluding or reweighting individual stocks or lists of stocks" />
             <v-checkbox-btn :disabled="!selectedIndex" v-model="reweightTarget"
-              @update:modelValue="newValue => getTargetPortfolio(selectedIndex)" label="Reweight" />
+              @update:modelValue="_ => getTargetPortfolio(selectedIndex)" label="Reweight" />
             <IconTooltip
               text="Scale the weights of stocks in the index by the changes in their prices from the date of the index. For example, if a index is a snapshot from Q3 2023 and it is Q4, reweight %s based on the changes in component prices between the index date and current date." />
             <v-spacer />
@@ -93,19 +93,21 @@
   /* Adjust the value as per your requirement */
 }
 </style>
-<script>
+<script lang="ts">
 
 //Components
 import PortfolioView from "./portfolio/PortfolioView.vue"
 import TargetPortfolioView from "./target_portfolio/TargetPortfolioView.vue"
-import TailorComponent from './tailor/TailorComponent.vue';
+import TailorComponent from './tailor/TailorComponent.vue'
 import IconTooltip from './generic/IconTooltip.vue'
 
+
 // Models
-import TargetPortfolioModel from '../models/TargetPortfolioModel';
-import TargetPortfolioElementModel from '../models/TargetPortfolioElementModel';
+import PortfolioElementModel from '../models/PortfolioElementModel'
+import TargetPortfolioModel from '../models/TargetPortfolioModel'
+import TargetPortfolioElementModel from '../models/TargetPortfolioElementModel'
 import CurrencyModel from '../models/CurrencyModel'
-import CompositePortfolioModel from "@/models/CompositePortfolioModel";
+import CompositePortfolioModel from "/src/models/CompositePortfolioModel"
 
 //API
 import instance from '../api/instance'
@@ -122,7 +124,7 @@ export default {
     PortfolioView,
     TargetPortfolioView,
     TailorComponent,
-    IconTooltip,
+    IconTooltip
     // ConfirmPurchase
   },
   props: {
@@ -189,7 +191,8 @@ export default {
       if (!matched) {
         return new CompositePortfolioModel({
           name: this.portfolioName, holdings: [],
-          components: [], cash: { value: 0, currency: '$' }
+          components: [], cash: { value: 0, currency: '$' },target_size: 50000,
+          refreshed_at: null, profit_and_loss: 0
         })
       }
       return matched
@@ -263,7 +266,8 @@ export default {
           dict => new TargetPortfolioElementModel(dict));
         this.targetPortfolio = new TargetPortfolioModel({
           'holdings': portfolioHoldings,
-          'source_date': response.data.source_date
+          'source_date': response.data.source_date,
+          'name': target
         });
         if (newValue) {
           this.setPortfolioTargetIndex({ portfolioName: this.portfolioName, index: target })
@@ -285,7 +289,7 @@ export default {
     },
     updatedPortfolioWithTargets() {
       // update our existing portfolio with targets
-      let newHoldings = [];
+      let newHoldings:Array<PortfolioElementModel> = [];
       this.portfolio.holdings.forEach((element) => {
         const targetElement = this.targetPortfolio.holdings.find((target) => target.ticker === element.ticker);
         if (targetElement) {

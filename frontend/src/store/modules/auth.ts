@@ -1,6 +1,6 @@
 // const { safeStorage } = require("electron");
-import store from '@/store/local';
-import instance from '@/api/instance';
+import store from '/src/store/local';
+import instance from '/src/api/instance';
 
 const storageAPI = {
     setCredential(key: string, value: string) {
@@ -63,7 +63,7 @@ const actions = {
 
 
 const mutations = {
-    login(state, data) {
+    login(state, _) {
         state.loggedIn = true;
         // state.provider = data.provider;
     },

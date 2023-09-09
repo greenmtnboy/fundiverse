@@ -1,12 +1,28 @@
 import axios from 'axios';
-import store from '@/store'
+import store from '/src/store'
 import exceptions from './exceptions';
+import { ipcRenderer } from 'electron';
 
 // must match port in backend\src\main.py
 const instance = axios.create({
   baseURL: 'http://localhost:3042',
 }
 );
+
+
+
+
+// Listen for the shared-variable event
+if (ipcRenderer) {
+  ipcRenderer.on('api-key', (_, API_KEY) => {
+    // Now you can use the sharedVariable in your renderer process
+    console.log(API_KEY);
+    instance.defaults.headers.post['Authorization'] = `Bearer ${API_KEY}`;
+    instance.defaults.headers.get['Authorization'] = `Bearer ${API_KEY}`;
+  });
+}
+
+
 
 instance.interceptors.response.use(
   response => {

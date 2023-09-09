@@ -12,7 +12,7 @@
             </v-chip></span></v-col>
         </v-row>
         </v-card-title>
-        <v-alert type="error" v-if="error">{{ error }}</v-alert>
+        <v-alert type="error" v-if="portfolio.error">{{ portfolio.error }}</v-alert>
         <v-card-text class="text-high-emphasis text--primary ">
             <div>
                 <p class="text-high-emphasis font-weight-black text--primary">A portfolio across {{
@@ -64,23 +64,28 @@
             <ConfirmPurchase :selectedIndex="selectedIndex" :targetSize="portfolio.target_size" :cash="portfolio.cash"
                 :providers="portfolio.keys" :portfolioName="portfolio.name" :disabled="portfolio.loading" />
             <v-btn @click="navigatePortfolio">
-                Configure
+                Set Index
             </v-btn>
             <ProviderLoginPopup :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
 
             <v-btn :disabled="portfolio.loading" @click="refresh">
                 Refresh
             </v-btn>
+            <ConfirmationButton :onClick="remove" text="Delete"/>
+            <!-- <v-btn :disabled="portfolio.loading" @click="remove"  color="red" prependIcon="mdi-cancel">
+                Delete
+            </v-btn> -->
         </v-card-actions>
     </v-card>
 </template>
 
-<script>
-import CompositePortfolioModel from "@/models/CompositePortfolioModel";
-import ProviderLoginPopup from "@/components/portfolio/ProviderLoginPopup.vue";
+<script lang="ts">
+import CompositePortfolioModel from "/src/models/CompositePortfolioModel";
+import ProviderLoginPopup from "/src/components/portfolio/ProviderLoginPopup.vue";
 import SubPortfolio from './SubPortfolio.vue'
 import CurrencyItem from '../generic/CurrencyItem.vue';
 import ConfirmPurchase from "../purchase/ConfirmPurchase.vue";
+import ConfirmationButton from '../generic/ConfirmationButton.vue'
 import { mapActions, mapGetters } from 'vuex';
 export default {
     name: "CompositePortfolioView",
@@ -88,14 +93,15 @@ export default {
         SubPortfolio,
         ProviderLoginPopup,
         CurrencyItem,
-        ConfirmPurchase
+        ConfirmPurchase,
+        ConfirmationButton
     },
     data() {
         return {
             saving: false,
             showSaveSuccess: false,
             showLoadSuccess: false,
-            error: null
+
         }
     },
     computed: {
@@ -110,12 +116,12 @@ export default {
         // },
         timeDisplay() {
 
-            const options = {
+            const options: Intl.DateTimeFormatOptions = {
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                 hour: 'numeric', minute: 'numeric'
             };
             const dateString = new Date(this.portfolio.refreshed_at * 1000).toLocaleDateString(undefined, options)
-            if (this.error) {
+            if (this.portfolio.error) {
                 return `Refresh failed. Showing data as of ${dateString}.`
             }
             return `Refreshed ${dateString}`
@@ -169,7 +175,7 @@ export default {
         },
     },
     methods: {
-        ...mapActions(["refreshCompositePortfolio", "saveCompositePortfolios"]),
+        ...mapActions(["refreshCompositePortfolio", "saveCompositePortfolios", "removeCompositePortfolio"]),
         navigatePortfolio() {
             this.$router.push({ path: `composite_portfolio/${this.portfolio.name}` })
         },
@@ -181,6 +187,10 @@ export default {
             } catch (e) {
                 this.error = e
             }
+
+        },
+        async remove() {
+            await this.removeCompositePortfolio({ portfolioName: this.portfolio.name, keys: this.portfolio.keys })
 
         },
     }

@@ -42,7 +42,7 @@
     </v-dialog>
 </template>
     
-<script>
+<script lang="ts">
 import {
     mapActions,
     mapGetters

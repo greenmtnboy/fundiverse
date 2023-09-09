@@ -1,0 +1,50 @@
+/**
+ * @see https://www.electron.build/configuration/configuration
+ */
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.electron.trilogy-studio",
+  "asar": true,
+  "buildDependenciesFromSource": true,
+  "npmRebuild": true,
+  "directories": {
+    "output": "release/${version}"
+  },
+  "files": [
+    "./index.html",
+    "dist-electron",
+    "dist"
+  ],
+  "mac": {
+    "artifactName": "${productName}_${version}.${ext}",
+    "target": [
+      "dmg"
+    ]
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "artifactName": "${productName}_${version}.${ext}"
+  },
+  "linux": {
+    "target": [
+      "snap"
+    ],
+    "category": "Development"
+  },
+  "snap" : {
+      "base": "core22"
+    },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": true
+  }
+}

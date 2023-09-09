@@ -1,9 +1,9 @@
 
 
-import store from '@/store/local';
-import PortfolioCustomization from '@/models/PortfolioCustomization';
-import StockModification from '@/models/StockModification';
-import instance from '@/api/instance'
+import store from '/src/store/local';
+import PortfolioCustomization from '/src/models/PortfolioCustomization';
+import StockModification from '/src/models/StockModification';
+import instance from '/src/api/instance'
 function isObjectEmpty(obj) {
     if (!obj) {
         return true;
@@ -23,7 +23,7 @@ const storageAPI = {
     },
 
     getDefaults() {
-        const dat: Array<any> = ((store.get('customizations') as unknown) as Array<any>)
+        const dat: Array<any> = (((store.get('customizations') as unknown) || []) as Array<any>)
         const final = new Map()
         dat.forEach((item) => {
             if (isObjectEmpty(item.value.excludedLists)) {

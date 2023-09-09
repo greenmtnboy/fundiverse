@@ -15,7 +15,7 @@
         </g>
     </svg>
 </template>
-<script>
+<script lang="ts">
 export default {
   name: 'AlpacaIcon',
   // Add additional properties or data here

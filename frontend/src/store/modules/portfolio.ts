@@ -1,8 +1,10 @@
 import Store from 'electron-store';
-import CompositePortfolioModel from '@/models/CompositePortfolioModel';
-import instance from '@/api/instance'
-import SubPortfolioModel from '@/models/SubPortfolioModel';
-import PortfolioCustomization from '@/models/PortfolioCustomization'
+import CompositePortfolioModel from '/src/models/CompositePortfolioModel';
+import instance from '/src/api/instance'
+import SubPortfolioModel from '/src/models/SubPortfolioModel';
+import PortfolioCustomization from '/src/models/PortfolioCustomization'
+
+const storeKey = 'compositePortfolios'
 
 const store = new Store<Record<string, Object>>({
     name: 'portfolios',
@@ -10,15 +12,16 @@ const store = new Store<Record<string, Object>>({
 });
 
 const storageAPI = {
+
     setPortfolios(value: Array<CompositePortfolioModel>) {
         // const buffer = safeStorage.encryptString(value);
-        store.set('compositePortfolios', value);
+        store.set(storeKey, value);
         // store.set(key, buffer.toString(encoding));
     },
 
 
     getPortfolios(): Array<Object> {
-        const data = store.get('compositePortfolios', []) as Array<any>
+        const data = store.get(storeKey, []) as Array<any>
         const parsed = data.map(dict => new CompositePortfolioModel(dict));
         return parsed
     },
@@ -93,6 +96,10 @@ const actions = {
     async removeProvider({ commit }, data) {
         commit('removeProvider', data)
     },
+    async removeCompositePortfolio({ commit }, data) {
+        commit('removeCompositePortfolio', data)
+        commit('savePortfolio')
+    },
     async setPortfolioSize({ commit }, data) {
         commit('setPortfolioSize', data)
         commit('savePortfolio')
@@ -108,7 +115,7 @@ const actions = {
         if (!keys) {
             keys = existing.keys
         }
-        commit('setPortfolioLoadingStatus', { name: portfolioName, status: true })
+        commit('setPortfolioLoadingStatus', { name: portfolioName, status: true, error: null })
         const args = {
             key: portfolioName,
             providers: keys,
@@ -125,7 +132,7 @@ const actions = {
             commit('savePortfolio')
         }
         catch (error) {
-            commit('setPortfolioLoadingStatus', { name: portfolioName, status: false })
+            commit('setPortfolioLoadingStatus', { name: portfolioName, status: false, error: error })
             throw error
         }
     },
@@ -174,6 +181,9 @@ const mutations = {
     addCompositePortfolios(state, data) {
         state.compositePortfolios.push(data);
     },
+    removeCompositePortfolio(state, data) {
+        state.compositePortfolios = state.compositePortfolios.filter(item => item.name !== data.portfolioName)
+    },
     setPortfolioSize(state, data) {
         const existingIndex = state.compositePortfolios.findIndex(item => item.name === data.portfolioName);
         state.compositePortfolios[existingIndex].target_size = data.size
@@ -184,8 +194,12 @@ const mutations = {
         }
         else {
             const existingIndex = state.compositePortfolios.findIndex(item => item.name === data.name);
-            state.compositePortfolios[existingIndex].components.forEach((element, index) => {
+            state.compositePortfolios[existingIndex].components.forEach((element, _) => {
                 element.loading = data.status;
+                if (data.error) {
+                    element.error = data.error
+                }
+
             });
             state.compositePortfolios[existingIndex].loading = data.status;
         }

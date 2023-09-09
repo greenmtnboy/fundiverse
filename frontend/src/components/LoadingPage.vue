@@ -22,7 +22,7 @@
   </v-sheet>
 </template>
 
-<script>
+<script lang="ts">
 
 import instance from '../api/instance'
 export default {

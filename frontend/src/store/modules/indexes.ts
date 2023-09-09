@@ -1,35 +1,33 @@
 import Store from 'electron-store';
-import instance from '@/api/instance'
-import TargetPortfolioModel from '@/models/TargetPortfolioModel'
-import TargetPortfolioElementModel from '@/models/TargetPortfolioElementModel'
+import instance from '/src/api/instance'
+import TargetPortfolioModel from '/src/models/TargetPortfolioModel';
+import TargetPortfolioElementModel from '/src/models/TargetPortfolioElementModel';
+
 const store = new Store<Record<string, Object>>({
     name: 'indexes',
     watch: true,
 });
 
+const storageKey = 'customIndexes'
 const storageAPI = {
-    setPortfolios(value: Array<TargetPortfolioModel>) {
+    setCustomIndexes(value: Array<any>) {
         // const buffer = safeStorage.encryptString(value);
-        store.set('customIndexes', value);
+        store.set(storageKey, value);
         // store.set(key, buffer.toString(encoding));
     },
 
 
-    getPortfolios(): Array<Object> {
-        const data = store.get('customIndexes', []) as Array<any>
+    getCustomIndexes(): Array<Object> {
+        const data = store.get(storageKey, []) as Array<any>
         const parsed = data.map(dict => new TargetPortfolioModel(dict));
         return parsed
     },
 };
 
-function defaults() {
-    const data: Array<TargetPortfolioModel> = [];
-    return data
-}
-
 
 const state = {
-    indexes: []
+    indexes: [],
+    customIndexes: storageAPI.getCustomIndexes()
 };
 
 
