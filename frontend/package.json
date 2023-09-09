@@ -1,6 +1,6 @@
 {
   "name": "fundiverse",
-  "version": "0.1.8",
+  "version": "0.1.11",
   "private": false,
   "description": "Buy all those stocks",
   "author": "Ethan Dickinson <ethan.dickinson@gmail.com>",
@@ -11,10 +11,11 @@
   "scripts": {
     "dev": "vite",
     "build_debug": "vue-tsc && vite build",
-    "build": "vue-tsc && vite build && node build-backend.js",
+    "build": "node build-backend.js && vue-tsc && vite build",
     "preview": "vite preview",
     "debug_bg": "node test-bg.js",
     "dist_linux": "vue-tsc && vite build && node build-backend.js && electron-builder --linux snap",
+    "dist_windows": "vue-tsc && vite build && node build-backend.js && electron-builder --win",
     "test": "playwright test"
   },
   "dependencies": {
@@ -27,7 +28,8 @@
     "vue-router": "^4.2.4",
     "vue3-shortkey": "^4.0.0",
     "vuetify": "^3.3.7",
-    "vuex": "^4.1.0"
+    "vuex": "^4.1.0",
+    "webfontloader": "^1.6.28"
   },
   "devDependencies": {
     "@mdi/font": "^7.2.96",

@@ -16,9 +16,11 @@ SCRIPT_NAME = "fundiverse-backend"
 if system() == "Linux":
     parent = "bin"
     final_file = SCRIPT_NAME
+    print(f'on linux, building {final_file}')
 else:
     parent = "scripts"
     final_file = f"{SCRIPT_NAME}.exe"
+    print(f'on windows, building {final_file}')
 
 ci_python = os.environ.get("pythonLocation")
 pyenv_env = os.environ.get("pyenv")
@@ -122,4 +124,7 @@ if __name__ == "__main__":
     # Copy the PyInstaller output file to the destination folder
     print(f"copying to final location {destination_folder}")
     shutil.copy(pyinstaller_output_file, destination_folder)
-    print("file copied")
+    print(f"file {pyinstaller_output_file} copied")
+    if final_file != SCRIPT_NAME:
+        print(f"renaming file from {destination_folder / final_file} to {destination_folder / SCRIPT_NAME}")
+        shutil.move(destination_folder / final_file, destination_folder / SCRIPT_NAME)

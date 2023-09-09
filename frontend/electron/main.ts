@@ -1,7 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import Store from 'electron-store';
-import Os from 'os'
+// import Os from 'os'
 import http from 'http';
 import { exec, execFile } from 'child_process';
 import { randomInt } from 'crypto';
@@ -18,16 +18,16 @@ instance.defaults.headers.get['Authorization'] = `Bearer ${API_KEY}`;
  *
  * @returns {Boolean}
  */
-function isWindows() {
-  return Os.platform() === 'win32'
-}
+// function isWindows() {
+//   return Os.platform() === 'win32'
+// }
 
 let targetProcessName = 'fundiverse-backend'
 let servicePort = 3042;
 
-if (isWindows()) {
-  targetProcessName = `${targetProcessName}.exe`
-}
+// if (isWindows()) {
+//   targetProcessName = `${targetProcessName}.exe`
+// }
 
 function stripQuotes(str) {
   str = str.trim();
@@ -274,6 +274,6 @@ app.on('window-all-closed', () => {
   }
 })
 
-// app.isPackaged ? app.whenReady().then(startBackgroundServiceSafe).then(createWindow) : app.whenReady().then(createWindow)
-app.whenReady().then(startBackgroundServiceSafe).then(createWindow)
+app.isPackaged ? app.whenReady().then(startBackgroundServiceSafe).then(createWindow) : app.whenReady().then(createWindow)
+// app.whenReady().then(startBackgroundServiceSafe).then(createWindow)
 // 
