@@ -125,3 +125,6 @@ if __name__ == "__main__":
     print(f"copying to final location {destination_folder}")
     shutil.copy(pyinstaller_output_file, destination_folder)
     print(f"file {pyinstaller_output_file} copied")
+    if final_file != SCRIPT_NAME:
+        print(f"renaming file from {destination_folder / final_file} to {destination_folder / SCRIPT_NAME}")
+        shutil.move(destination_folder / final_file, destination_folder / SCRIPT_NAME)
