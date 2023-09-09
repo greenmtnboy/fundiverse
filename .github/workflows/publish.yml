@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - debug-exe-build
+      - debug-exe-build-2
     # tags:
     #   - "v*"
 jobs:
