@@ -16,9 +16,11 @@ SCRIPT_NAME = "fundiverse-backend"
 if system() == "Linux":
     parent = "bin"
     final_file = SCRIPT_NAME
+    print(f'on linux, building {final_file}')
 else:
     parent = "scripts"
     final_file = f"{SCRIPT_NAME}.exe"
+    print(f'on windows, building {final_file}')
 
 ci_python = os.environ.get("pythonLocation")
 pyenv_env = os.environ.get("pyenv")
