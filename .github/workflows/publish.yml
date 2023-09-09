@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - vite-linux-build
+      - debug-exe-build
     # tags:
     #   - "v*"
 jobs:

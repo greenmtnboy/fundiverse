@@ -122,4 +122,4 @@ if __name__ == "__main__":
     # Copy the PyInstaller output file to the destination folder
     print(f"copying to final location {destination_folder}")
     shutil.copy(pyinstaller_output_file, destination_folder)
-    print("file copied")
+    print(f"file {pyinstaller_output_file} copied")
