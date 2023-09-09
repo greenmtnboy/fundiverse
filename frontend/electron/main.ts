@@ -1,7 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import Store from 'electron-store';
-import Os from 'os'
+// import Os from 'os'
 import http from 'http';
 import { exec, execFile } from 'child_process';
 import { randomInt } from 'crypto';
