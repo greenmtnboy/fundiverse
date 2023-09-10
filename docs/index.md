@@ -66,13 +66,8 @@ Generate an API key in sidebar on right, save it.
 Go back to your portfolio. Click add provider. Select ‘alpaca paper’ as the type, add in your key and secret. Click ‘save login info’.
 
 
-Mess around with indexes
-Now that you’re connected, click ‘configure’ to mess around with what index you want to use. For example, you could pick the sp500 or large cap stocks.
+## Configuring
+
+Now that you’re connected, click ‘configure’ to set the index you want to use. For example, you could pick the sp500 or large cap stocks. You can also customize this index by adding/removing/reweighting particular stocks or lists of stocks. 
 
 
-
-Configuring
-
-Within the configuration screen, you can select an index to build against. You can also customize this index by adding/removing/reweighting particular stocks or lists of stocks. 
-
-TODO: add examples of customizing
