@@ -274,6 +274,9 @@ app.on('window-all-closed', () => {
   }
 })
 
-app.isPackaged ? app.whenReady().then(startBackgroundServiceSafe).then(createWindow) : app.whenReady().then(createWindow)
-// app.whenReady().then(startBackgroundServiceSafe).then(createWindow)
+// app.isPackaged ? app.whenReady().then(startBackgroundServiceSafe).then(createWindow) : app.whenReady().then(createWindow)
+app.whenReady().then(startBackgroundServiceSafe).then(createWindow).catch((err) => {
+  console.log(`Error starting background service ${err}`)
+  app.quit()
+})
 // 

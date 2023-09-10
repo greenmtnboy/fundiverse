@@ -5,6 +5,7 @@
  */
 
 export async function loadFonts () {
+    // @ts-ignore 
     const webFontLoader = await import(/* webpackChunkName: "webfontloader" */'webfontloader')
   
     webFontLoader.load({
