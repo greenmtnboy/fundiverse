@@ -1,6 +1,6 @@
 <template>
     <v-list-item>
-        <v-list-item-title><span class="px-1">{{ ticker }}</span>
+        <v-list-item-title><span class="px-1"><TickerDisplay :ticker="ticker"/></span>
             <v-chip :color="scale >= 1 ? 'green' : 'red'" v-if="scale" small outlined>{{ scale * 100 }}%</v-chip>
         </v-list-item-title>
         <template v-slot:append>
@@ -20,13 +20,14 @@
 import {
     mapActions,
 } from 'vuex';
-
+import TickerDisplay from '../generic/TickerDisplay.vue';
 export default {
     name: "TailorComponentStockItem",
     data() {
         return {
         };
     },
+    components: {TickerDisplay},
     props: {
         ticker: {
             type: String,
@@ -51,7 +52,7 @@ export default {
     methods: {
         ...mapActions(['removeStockExclusion']),
         localRemoveStockExclusion(data) {
-            this.removeStockExclusion({portfolioName:this.portfolioName,ticker:data, mode:this.mode})
+            this.removeStockExclusion({ portfolioName: this.portfolioName, ticker: data, mode: this.mode })
         },
     },
 };

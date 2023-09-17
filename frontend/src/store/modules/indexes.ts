@@ -42,6 +42,18 @@ const getters = {
 // };
 
 const actions = {
+    async newCustomIndex({ commit, getters }, payload) {
+        const customIndexes = getters.customIndexes
+        const targetPortfolio = new TargetPortfolioModel({
+            'holdings': [],
+            'source_date': new Date(),
+            'name': payload.name
+        });
+        const newCustomIndexes = [...customIndexes, targetPortfolio]
+
+        commit('setCustomIndexes', newCustomIndexes)
+        storageAPI.setCustomIndexes(newCustomIndexes)
+    },
     async loadIndexes({ commit, getters }) {
         if (getters.indexes.length > 0) {
             return
@@ -69,7 +81,7 @@ const actions = {
 
 
 const mutations = {
-    setIndexes(state, indexes ) {
+    setIndexes(state, indexes) {
         state.indexes = indexes
 
     }

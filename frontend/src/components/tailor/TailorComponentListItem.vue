@@ -11,7 +11,7 @@
             <v-col cols="9">
                 <v-chip-group class="d-flex align-center" active-class="primary">
                     <v-chip v-for="tag in displayedTags" :key="tag" :value="tag" label>
-                        {{ tag }}
+                       <TickerDisplay :ticker="tag"></TickerDisplay>
                     </v-chip>
                     <v-chip v-if="tags.length > displayedTags.length" label>
                         ...
@@ -58,7 +58,7 @@ import {
     mapActions,
     mapGetters
 } from 'vuex';
-
+import TickerDisplay from '../generic/TickerDisplay.vue';
 const {
     shell
 } = require('electron');
@@ -71,6 +71,9 @@ export default {
             maxDisplayedTags: 10,
             githubLink: ""
         };
+    },
+    components: {
+        TickerDisplay
     },
     created() {
         this.githubLink = `https://github.com/greenmtnboy/py-portfolio-index/blob/main/py_portfolio_index/bin/lists/${this.list}.csv`;

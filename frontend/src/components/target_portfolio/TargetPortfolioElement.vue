@@ -1,6 +1,6 @@
 <template>
   <v-list-item>
-    <div>{{ element.ticker }}
+    <div><TickerDisplay :ticker="element.ticker"/>
       <p class="text-medium-emphasis">${{ elementValue }} ({{ elementWeight }}%)</p>
     </div>
     <template v-slot:append>
@@ -18,6 +18,7 @@
 
 <script lang="ts">
 import TargetPortfolioElementModel from '../../models/TargetPortfolioElementModel';
+import TickerDisplay from '../generic/TickerDisplay.vue';
 import { mapActions } from 'vuex';
 
 export default {
@@ -28,6 +29,7 @@ export default {
       excluded: false,
     }
   },
+  components: {TickerDisplay},
   methods: {
     ...mapActions(['excludeStock']),
     onClickWrapper() {

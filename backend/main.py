@@ -68,6 +68,7 @@ class ActiveConfig:
     holding_cache: Dict[Provider, RealPortfolio] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
     auth_token: str | None = None
+    validate: bool = False
 
     @property
     def default_provider(self):
@@ -87,7 +88,8 @@ class ActiveConfig:
 
 
 IN_APP_CONFIG = ActiveConfig()
-
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    IN_APP_CONFIG.validate = True
 IN_APP_CONFIG.auth_token = os.environ.get("FUNDIVERSE_API_SECRET_KEY")
 
 
@@ -96,6 +98,8 @@ def canonicalize_key(key: str | None) -> str:
 
 
 async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
+    if not IN_APP_CONFIG.validate:
+        return True
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -464,26 +468,17 @@ async def plan_composite_purchase(input: BuyRequest):
     return output
 
 
-# @router.post("/plan_purchase")
-# async def plan_purchase(input: BuyRequest):
-#     provider = get_provider_safe(input.provider)
-#     real_port = IN_APP_CONFIG.provider_cache.get(input.provider, None)
-#     if not real_port:
-#         real_port = provider.get_holdings()
-#     ideal_port = index_to_processed_index(input)
-#     plan = generate_order_plan(
-#         real_port,
-#         ideal_port,
-#         purchase_power=input.to_purchase,
-#         target_size=input.target_size,
-#         buy_order=input.purchase_strategy,
-#     )
-#     return plan
-
-
 @router.get("/terminate")
 async def terminate():
     raise HTTPException(503, "Terminating server")
+
+
+@router.get("/stock_info/{ticker}")
+async def stock_info(ticker: str):
+    provider = get_provider_safe()
+    if not provider:
+        return HTTPException(401, "No logged in provider specified")
+    return provider.get_stock_info(ticker)
 
 
 @router.post("/buy_index_from_plan")
@@ -518,6 +513,10 @@ async def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider
         except OrderError as e:
             order.status = OrderStatus.FAILED
             order.message = e.message
+            output.append(order)
+        except Exception as e:
+            order.status = OrderStatus.FAILED
+            order.message = str(e)
             output.append(order)
     return BuyRequestFinalMultiProviderOutput(orders=output)
 
