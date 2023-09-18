@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@mdi/font": "^7.2.96",
-    "@playwright/test": "^1.37.1",
+    "@playwright/test": "^1.38.0",
     "@vitejs/plugin-vue": "^4.1.0",
     "electron": "^26.1.0",
     "electron-builder": "^24.6.4",
