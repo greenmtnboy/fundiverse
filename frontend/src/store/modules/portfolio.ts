@@ -165,6 +165,7 @@ const actions = {
     },
     async loadCompositePortfolios({ commit },) {
         const data = storageAPI.getPortfolios()
+        console.log(data)
         commit('loadPortfolios', data)
     }
 };

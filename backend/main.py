@@ -1,4 +1,4 @@
-from typing import List, Dict, Annotated
+from typing import List, Dict, Annotated, Callable, Any
 import dotenv
 
 dotenv.load_dotenv()
@@ -6,10 +6,20 @@ import os
 import sys
 import multiprocessing
 import uvicorn
+import uuid
 from enum import Enum
 from datetime import datetime
 from uvicorn.config import LOGGING_CONFIG
-from fastapi import APIRouter, FastAPI, HTTPException, Depends, status
+from fastapi import (
+    APIRouter,
+    FastAPI,
+    HTTPException,
+    Depends,
+    status,
+    BackgroundTasks,
+    Body,
+)
+from fastapi.routing import APIRoute
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -43,7 +53,7 @@ from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
 from py_portfolio_index.enums import Provider
 from pydantic import BaseModel, Field
-
+from concurrent.futures import ThreadPoolExecutor
 
 from copy import deepcopy
 
@@ -61,6 +71,21 @@ SERVE_PORT = 3042
 logger = getLogger(__name__)
 
 
+class BackgroundStatus(Enum):
+    RUNNING = 1
+    SUCCESS = 2
+    FAILED = 1
+
+
+@dataclass
+class AsyncTask:
+    guid: str
+    status: BackgroundStatus
+    started: datetime
+    result: any
+    error: Exception | None = None
+
+
 @dataclass
 class ActiveConfig:
     logged_in: str | None = None
@@ -69,6 +94,7 @@ class ActiveConfig:
     pending_auth_response: LoginResponse | None = None
     auth_token: str | None = None
     validate: bool = False
+    background_tasks: Dict[str, AsyncTask] = field(default_factory=dict)
 
     @property
     def default_provider(self):
@@ -91,6 +117,32 @@ IN_APP_CONFIG = ActiveConfig()
 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     IN_APP_CONFIG.validate = True
 IN_APP_CONFIG.auth_token = os.environ.get("FUNDIVERSE_API_SECRET_KEY")
+
+
+def run_task(config: ActiveConfig, guid: str, func: Callable, *args, **kwargs):
+    task = AsyncTask(
+        guid=guid,
+        status=BackgroundStatus.RUNNING,
+        started=datetime.now(tz=UTC),
+        result=None,
+    )
+    config.background_tasks[guid] = task
+
+    try:
+        # with ThreadPoolExecutor() as executor:
+        # # Start the long-running request in a separate thread
+        #     future = executor.submit()
+        # You can do other things here while waiting for the request to complete
+
+        # Wait for the request to complete and get the result
+        task.result = func(*args, **kwargs)
+        task.status = BackgroundStatus.SUCCESS
+    
+    except Exception as e:
+        task.error = e
+        task.status = BackgroundStatus.FAILED
+        raise e
+    config.background_tasks[guid] = task
 
 
 def canonicalize_key(key: str | None) -> str:
@@ -118,6 +170,10 @@ async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
 
 ## app definitions
 app = FastAPI(dependencies=[Depends(validate_auth_token)])
+
+## associate config for testing
+app.in_app_config = IN_APP_CONFIG
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -295,7 +351,7 @@ async def logged_in_handler(provider):
 
 
 @router.post("/login")
-async def login_handler(input: LoginRequest):
+def login_handler(input: LoginRequest):
     from os import environ
 
     # early exit if we have already logged in
@@ -356,7 +412,7 @@ async def get_portfolio(_provider: Provider):
 
 
 @router.post("/composite_portfolio/refresh")
-async def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
+def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     active: Dict[str, RealPortfolioOutput] = {}
     raw = []
     profit_and_loss = Money(value=0.0)
@@ -422,18 +478,37 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
         ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=0.001)
     for list_mutation in input.list_modifications:
         ideal_port.reweight(
-            STOCK_LISTS[list_mutation.list], weight=mutation.scale, min_weight=0.001
+            STOCK_LISTS[list_mutation.list], weight=list_mutation.scale, min_weight=0.001
         )
     return ideal_port
 
 
 @router.post("/generate_index")
-async def generate_index(input: TargetPortfolioRequest):
+def generate_index(input: TargetPortfolioRequest):
+    if not input.index:
+        raise HTTPException(400, "No index specified")
     return index_to_processed_index(input)
 
 
+@router.get("/background_tasks/{guid}")
+async def get_background_task(guid):
+    response = IN_APP_CONFIG.background_tasks.get(guid)
+
+    if not response:
+        raise HTTPException(404, f"No background task found with guid {guid}")
+    if response.status == BackgroundStatus.RUNNING:
+        raise HTTPException(202, "Background task is still running")
+    # for failure or success,
+    # wipe the object to free memory
+    elif response.status == BackgroundStatus.FAILED:
+        del IN_APP_CONFIG.background_tasks[guid]
+        raise HTTPException(500, f"Background task failed with error {response.error}")
+    del IN_APP_CONFIG.background_tasks[guid]
+    return response.result
+
+
 @router.post("/plan_composite_purchase")
-async def plan_composite_purchase(input: BuyRequest):
+def plan_composite_purchase(input: BuyRequest):
     children = []
     buy_orders = {}
     for provider in input.providers:
@@ -468,8 +543,18 @@ async def plan_composite_purchase(input: BuyRequest):
     return output
 
 
+@router.get("/force_terminate")
+async def terminate():
+    raise HTTPException(503, "Terminating server")
+
+
 @router.get("/terminate")
 async def terminate():
+    if not IN_APP_CONFIG.validate:
+        return HTTPException(
+            401,
+            "Not in a pyinstaller bundle, running in dev mode and will not terminate by default. curl get to /force_terminate to terminate instead.",
+        )
     raise HTTPException(503, "Terminating server")
 
 
@@ -482,7 +567,7 @@ async def stock_info(ticker: str):
 
 
 @router.post("/buy_index_from_plan")
-async def buy_index_from_plan(input: BuyRequestFinal):
+def buy_index_from_plan(input: BuyRequestFinal):
     provider = get_provider_safe(input.provider)
     try:
         provider.purchase_order_plan(plan=input.plan)
@@ -491,7 +576,7 @@ async def buy_index_from_plan(input: BuyRequestFinal):
 
 
 @router.post("/buy_index_from_plan_multi_provider")
-async def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
+def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
     providers: Dict[Provider, BaseProvider] = {
         p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers  # type: ignore
     }
@@ -521,7 +606,16 @@ async def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider
     return BuyRequestFinalMultiProviderOutput(orders=output)
 
 
-app.include_router(router)
+class SleepRequest(BaseModel):
+    sleep: int
+
+
+@router.post("/long_sleep")
+def long_sleep(sleep: SleepRequest):
+    import time
+
+    time.sleep(sleep.sleep)
+    return {"slept": sleep.sleep}
 
 
 @app.on_event("shutdown")
@@ -562,6 +656,42 @@ async def http_exception_handler(request, exc: HTTPException):
         status_code=exc.status_code,
         content=jsonable_encoder({"detail": exc.detail}),
     )
+
+
+from typing import get_type_hints
+
+## Build async routes
+router_routes = list(router.routes)
+for path in router_routes:
+    if not isinstance(path, APIRoute):
+        continue
+    if "POST" in path.methods:
+
+        def make_function(endpoint):
+            args = get_type_hints(endpoint)
+            async def dynamic_route_handler(
+                background_tasks: BackgroundTasks,
+                arg: Any = Body(None),
+            ):
+                guid = str(uuid.uuid4())
+                parsed_arg = list(args.values())[0].parse_obj(arg)
+                background_tasks.add_task(
+                    run_task, IN_APP_CONFIG, guid, endpoint, parsed_arg
+                )
+                return {"guid": guid}
+
+            return dynamic_route_handler
+
+        local_func = make_function(path.endpoint)
+        new_path = f"/async_{path.path[1:]}"
+        router.post(new_path)(local_func)
+
+
+app.include_router(router)
+
+
+# @router.post("/async_plan_composite_purchase")
+# def async_plan_composite_purchase(input: BuyRequest, background_tasks: BackgroundTasks):
 
 
 def run():

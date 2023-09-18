@@ -53,4 +53,32 @@ instance.interceptors.response.use(
   }
 );
 
+const desiredResponseCode = 200;
+// Define a function for making the Axios request
+async function makeAsyncRequestInner(guid) {
+
+  try {
+    const response = await instance.get(`background_tasks/${guid}`);
+    const { status } = response;
+    if (status === desiredResponseCode) {
+      return response
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return await makeAsyncRequestInner(guid);
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function makeAsyncRequest(asyncApi, args) {
+  const response = await instance.post(`async_${asyncApi}`, args);
+  const guid = response.data.guid;
+  return await makeAsyncRequestInner(guid)
+}
+
+
+// Start the polling loop
+instance['makeAsyncRequest'] = makeAsyncRequest
+
 export default instance;

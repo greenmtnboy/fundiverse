@@ -37,6 +37,10 @@ export default {
                 this.text = `${resp.data.name} (${resp.data.exchange})`
                 this.loading = false
                 this.loaded = true
+            }).catch((e)=>{
+                this.text = `Error loading ticker details: ${e}`
+                this.loading = false
+                this.loaded = true
             })
         },
     }

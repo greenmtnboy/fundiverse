@@ -4,6 +4,8 @@ import store from '/src/store/local';
 import PortfolioCustomization from '/src/models/PortfolioCustomization';
 import StockModification from '/src/models/StockModification';
 import instance from '/src/api/instance'
+import ListModification from "/src/models/ListModification";
+
 function isObjectEmpty(obj) {
     if (!obj) {
         return true;
@@ -38,6 +40,19 @@ const storageAPI = {
             else {
                 item.value.excludedTickers = new Set(item.value.excludedTickers)
             }
+            try {
+                item.value.stockModifications = item.value.stockModifications.map((item) => new StockModification(item.ticker, item.scale))
+            }
+            catch (e) {
+                item.value.stockModifications = []
+            }
+            try {
+                item.value.listModifications = item.value.listModifications.map((item) => new ListModification(item.list, item.scale))
+            }
+            catch (e) {
+                item.value.listModifications = []
+            }
+            // item.value.listModifications = item.value.listModifications.map((item) => new ListModification(item.list, item.scale))
             final.set(item.key, new PortfolioCustomization(item.value))
         })
         return final
@@ -176,7 +191,7 @@ const mutations = {
         else if (data.mode === 'modification') {
             customization.stockModifications = customization.stockModifications.filter(item => item.ticker !== data.ticker)
         }
-        
+
     },
     modifyStock(state, data) {
         safeGetCustomization(state, data.portfolioName).stockModifications.push(new StockModification(data.ticker, data.scale))
@@ -192,11 +207,14 @@ const mutations = {
         safeGetCustomization(state, data.portfolioName).excludedLists.delete(data.list)
     },
     modifyList(state, data) {
-        safeGetCustomization(state, data.portfolioName).listModifications.push(data.ticker)
+        // push the entire object here
+        const customization = safeGetCustomization(state, data.portfolioName);
+        customization.listModifications = customization.listModifications.filter(item => item.list !== data.list)
+        customization.listModifications.push(new ListModification(data.list, data.scale))
     },
     removeListModification(state, data) {
         const customization = safeGetCustomization(state, data.portfolioName);
-        customization.listModifications = customization.listModifications.filter(item => item.ticker !== data.ticker)
+        customization.listModifications = customization.listModifications.filter(item => item.list !== data.list)
     },
     saveCustomizations(state) {
         storageAPI.setDefaults(state.customizations)
