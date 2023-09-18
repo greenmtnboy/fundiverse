@@ -53,7 +53,6 @@ from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
 from py_portfolio_index.enums import Provider
 from pydantic import BaseModel, Field
-from concurrent.futures import ThreadPoolExecutor
 
 from copy import deepcopy
 
@@ -82,7 +81,7 @@ class AsyncTask:
     guid: str
     status: BackgroundStatus
     started: datetime
-    result: any
+    result: Any
     error: Exception | None = None
 
 
@@ -137,7 +136,7 @@ def run_task(config: ActiveConfig, guid: str, func: Callable, *args, **kwargs):
         # Wait for the request to complete and get the result
         task.result = func(*args, **kwargs)
         task.status = BackgroundStatus.SUCCESS
-    
+
     except Exception as e:
         task.error = e
         task.status = BackgroundStatus.FAILED
@@ -172,7 +171,7 @@ async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
 app = FastAPI(dependencies=[Depends(validate_auth_token)])
 
 ## associate config for testing
-app.in_app_config = IN_APP_CONFIG
+app.in_app_config = IN_APP_CONFIG #type: ignore
 
 
 app.add_middleware(
@@ -478,7 +477,9 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
         ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=0.001)
     for list_mutation in input.list_modifications:
         ideal_port.reweight(
-            STOCK_LISTS[list_mutation.list], weight=list_mutation.scale, min_weight=0.001
+            STOCK_LISTS[list_mutation.list],
+            weight=list_mutation.scale,
+            min_weight=0.001,
         )
     return ideal_port
 
@@ -544,7 +545,7 @@ def plan_composite_purchase(input: BuyRequest):
 
 
 @router.get("/force_terminate")
-async def terminate():
+async def force_terminate():
     raise HTTPException(503, "Terminating server")
 
 
@@ -553,7 +554,9 @@ async def terminate():
     if not IN_APP_CONFIG.validate:
         return HTTPException(
             401,
-            "Not in a pyinstaller bundle, running in dev mode and will not terminate by default. curl get to /force_terminate to terminate instead.",
+            "Not in a pyinstaller bundle, running in dev mode "
+            "and will not terminate by default."
+            "curl get to /force_terminate to terminate instead.",
         )
     raise HTTPException(503, "Terminating server")
 
@@ -669,6 +672,7 @@ for path in router_routes:
 
         def make_function(endpoint):
             args = get_type_hints(endpoint)
+
             async def dynamic_route_handler(
                 background_tasks: BackgroundTasks,
                 arg: Any = Body(None),
