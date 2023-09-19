@@ -253,7 +253,7 @@ export default {
       this.targetLoading = true;
 
       const target = newValue || this.selectedIndex;
-      return instance.post('generate_index', {
+      return instance['makeAsyncRequest']('generate_index', {
         'provider': this.provider,
         'index': target,
         'stock_exclusions': Array.from(this.portfolioCustomization.excludedTickers),

@@ -3,14 +3,15 @@
         <v-card-title :key="portfolio.name" style="{display:'flex'}">
             <v-row>
                 <v-col col="8">
-            {{ portfolio.name }} <span class="text-low-emphasis" style="opacity=0.5; font-size: small">({{
-                timeDisplay }})</span>
-                </v-col><v-col class="text-right" col="4"><span >
-            <v-chip v-if="portfolio.profit_and_loss" :color="portfolio.profit_and_loss.value > 0 ? 'green' : 'red'" small
-                outlined>
-                <span class="pr-2">Portfolio Return: </span><CurrencyItem :value=portfolio.profit_and_loss />
-            </v-chip></span></v-col>
-        </v-row>
+                    {{ portfolio.name }} <span class="text-low-emphasis" style="opacity=0.5; font-size: small">({{
+                        timeDisplay }})</span>
+                </v-col><v-col class="text-right" col="4"><span>
+                        <v-chip v-if="portfolio.profit_and_loss"
+                            :color="portfolio.profit_and_loss.value > 0 ? 'green' : 'red'" small outlined>
+                            <span class="pr-2">Portfolio Return: </span>
+                            <CurrencyItem :value=portfolio.profit_and_loss />
+                        </v-chip></span></v-col>
+            </v-row>
         </v-card-title>
         <v-alert type="error" v-if="portfolio.error">{{ portfolio.error }}</v-alert>
         <v-card-text class="text-high-emphasis text--primary ">
@@ -59,19 +60,24 @@
             </template>
             <!-- <div v-for="sportfolio in portfolio.components" :key="sportfolio.name"> 
                 {{ sportfolio.holdings }}</div> -->
+            <v-alert type="info" v-if="portfolio.keys.length === 0" closable close-label="Dismiss Hint">Add a provider to get
+                started! Providers are the actual brokerages that can hold your stocks
+                and are needed to fetch up-to-date stock information as you set up your portfolio. If you're just getting started,
+                you can sign up for a Alpaca paper account in minutes and explore with fake money, no bank account provided.
+            </v-alert>
         </v-card-text>
         <v-card-actions>
             <ConfirmPurchase :selectedIndex="selectedIndex" :targetSize="portfolio.target_size" :cash="portfolio.cash"
                 :providers="portfolio.keys" :portfolioName="portfolio.name" :disabled="portfolio.loading" />
-            <v-btn @click="navigatePortfolio">
+            <v-btn :disabled="portfolio.keys.length === 0" @click="navigatePortfolio">
                 Set Index
             </v-btn>
             <ProviderLoginPopup :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
 
-            <v-btn :disabled="portfolio.loading" @click="refresh">
+            <v-btn :disabled="portfolio.keys.length === 0 || portfolio.loading" @click="refresh">
                 Refresh
             </v-btn>
-            <ConfirmationButton :onClick="remove" text="Delete"/>
+            <ConfirmationButton :onClick="remove" text="Delete" />
             <!-- <v-btn :disabled="portfolio.loading" @click="remove"  color="red" prependIcon="mdi-cancel">
                 Delete
             </v-btn> -->

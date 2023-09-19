@@ -1,6 +1,7 @@
 <template>
     <v-list-item :min-height="15">
-        <div>{{ ticker }}
+        <div>
+            <TickerDisplay :ticker="ticker" />
             <p class="text-medium-emphasis">
                 <CurrencyItem :value="value"></CurrencyItem> ({{
                     elementWeight }}%)
@@ -50,7 +51,7 @@
 
 <script lang="ts">
 import CurrencyItem from '../generic/CurrencyItem.vue';
-
+import TickerDisplay from '../generic/TickerDisplay.vue';
 const comparisonThreshold = .1;
 
 export default {
@@ -62,6 +63,7 @@ export default {
     },
     components: {
         CurrencyItem,
+        TickerDisplay
     },
     props: {
         ticker: {

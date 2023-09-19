@@ -87,8 +87,8 @@
                             text="Reweighted lists have the % of every component stock in the index multipled by this factor, and the index is then reweighted to 100%. This means that 200% of a 3% stock does not result in a weight of 6%; it results in about 5.8%" />
                     </v-card-title>
                     <v-card-text>
-                        <template v-for="element in listModifications" :key="element">
-                            <TailorComponentListItem :list="element.list" :weight="element.scale" />
+                        <template v-for="element in listModifications" :key="element.list">
+                            <TailorComponentListItem :list="element" :weight="element.scale" />
                         </template>
                     </v-card-text>
                 </v-card>

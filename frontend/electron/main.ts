@@ -6,6 +6,11 @@ import http from 'http';
 import { exec, execFile } from 'child_process';
 import { randomInt } from 'crypto';
 import instance from '/src/api/instance.ts'
+import { autoUpdater } from "electron-updater"
+
+app.on('ready', function()  {
+  autoUpdater.checkForUpdatesAndNotify();
+});
 
 const API_KEY = (randomInt(1, 1000000) * 1000000 + randomInt(1, 1000000)).toString();
 
@@ -239,6 +244,7 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.PUBLIC, 'appicon.svg'),
+    fullscreen: app.isPackaged ? true : false,
     webPreferences: {
       contextIsolation: false,
       nodeIntegration: true,
