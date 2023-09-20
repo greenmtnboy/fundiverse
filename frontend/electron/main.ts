@@ -30,9 +30,9 @@ instance.defaults.headers.get['Authorization'] = `Bearer ${API_KEY}`;
 let targetProcessName = 'fundiverse-backend'
 let servicePort = 3042;
 
-// if (isWindows()) {
-//   targetProcessName = `${targetProcessName}.exe`
-// }
+if (isWindows()) {
+  targetProcessName = `${targetProcessName}.exe`
+}
 
 function stripQuotes(str) {
   str = str.trim();
