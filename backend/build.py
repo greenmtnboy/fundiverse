@@ -20,6 +20,7 @@ if system() == "Linux":
 else:
     parent = "scripts"
     final_file = f"{SCRIPT_NAME}.exe"
+    SCRIPT_NAME = f"{SCRIPT_NAME}.exe"
     print(f"on windows, building {final_file}")
 
 ci_python = os.environ.get("pythonLocation")
