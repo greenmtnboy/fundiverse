@@ -16,7 +16,7 @@ However, the emergence of low and no-fee trading platforms has made a previously
 
 Fundiverse is a platform to enable you to have fun diversifying your index. Take the gold standard as a model, and add your personal touch to it. Exclude coal stocks? Sure. All in on solar? Why not weight those 400%. Hate fruit? Mark Apple down 50%.
 
-![UI Preview](https://github.com/greenmtnboy/fundiverse/blob/main/media/ui-example.png)
+![UI Preview](https://github.com/greenmtnboy/fundiverse/blob/main/media/fundiverse_new.png)
 
 ## What is it not?
 Fundiverse is not an effective tool for day trading or short-term holding in general.
