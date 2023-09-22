@@ -27,13 +27,15 @@ Fundiverse is not an effective tool for day trading or short-term holding in gen
 
 ### Windows
 
-Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases), or click for [direct download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.3/fundiverse-Setup-0.1.3.exe).
+Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases), or click for [direct download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.15/fundiverse_0.1.15.exe).
 
 Run the downloaded exe to install, then start it as a standard application. You'll have to accept the unsafe publisher + potentially allow firewall access. Fundiverse needs to communicate with itself and with your brokerage provider. 
 
 ### Linux
 
-`snap install fundiverse`
+Fundiverse is distributed through the snap store on linux. 
+
+Run `snap install fundiverse` to install the app, then `fundiverse` to start it.
 
 ## Why would you do this?
 Besides just being more fun than buying an index, customization can enable you to weigh specific factors that are either important to you (morally or financially) - such as not investing in oil companies, or overweighting companies oil companies, or just buying everything but Tesla. 
