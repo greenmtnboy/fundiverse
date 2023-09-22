@@ -32,10 +32,12 @@
                         :label="loginDisplay" variant="underlined"></v-text-field>
                     <v-text-field :readonly="loading" :rules="[required]" v-model="secret" color="primary"
                         :label="secretDisplay" :append-icon="showPass ? 'mdi-eye' : 'mdi-eye-off'"
-                        :type="showPass ? 'text' : 'password'" @click:append="showPass = !showPass"
+                        :type="showPass ? 'text' : 'password'"
+                         @click:append="showPass = !showPass"
                         variant="underlined"></v-text-field>
-                    <v-text-field v-if="extraLogin" :readonly="loading" :rules="[required]" v-model="factor" color="primary"
-                        label="Extra Factor" :append-icon="showPass ? 'mdi-eye' : 'mdi-eye-off'"
+                    <v-text-field v-if="extraLogin" :readonly="loading" :rules="[required]"
+                     v-model="factor" color="primary"
+                        label="Extra Factor" :append-icon="showFactor ? 'mdi-eye' : 'mdi-eye-off'"
                         :type="showFactor ? 'text' : 'password'" @click:append="showFactor = !showFactor"
                         variant="underlined"></v-text-field>
                     <v-checkbox v-model="saveCredentials" color="secondary" label="Save Login Credentials"></v-checkbox>

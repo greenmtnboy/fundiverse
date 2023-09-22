@@ -5,10 +5,10 @@ from datetime import datetime
 def test_read_main(test_client: TestClient):
     # we skip validation outside pyinstaller bundles
     # so set manually here
-    test_client.app.in_app_config.validate = True #type: ignore
+    test_client.app.in_app_config.validate = True  # type: ignore
     response = test_client.get("/")
     assert response.status_code == 401
-    test_client.app.in_app_config.validate = False #type: ignore
+    test_client.app.in_app_config.validate = False  # type: ignore
 
 
 def test_async_functions(test_client: TestClient):
@@ -30,7 +30,7 @@ def test_async_functions(test_client: TestClient):
 
     datetime1 = datetime.now()
 
-    found:set[str] = set()
+    found: set[str] = set()
     attempts = 0
     max_attempts = 5
     from time import sleep

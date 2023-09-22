@@ -39,6 +39,8 @@ from py_portfolio_index.models import (
 )
 from pytz import UTC
 
+from typing import get_type_hints
+
 from py_portfolio_index import (
     INDEXES,
     STOCK_LISTS,
@@ -73,7 +75,7 @@ logger = getLogger(__name__)
 class BackgroundStatus(Enum):
     RUNNING = 1
     SUCCESS = 2
-    FAILED = 1
+    FAILED = -1
 
 
 @dataclass
@@ -128,19 +130,11 @@ def run_task(config: ActiveConfig, guid: str, func: Callable, *args, **kwargs):
     config.background_tasks[guid] = task
 
     try:
-        # with ThreadPoolExecutor() as executor:
-        # # Start the long-running request in a separate thread
-        #     future = executor.submit()
-        # You can do other things here while waiting for the request to complete
-
-        # Wait for the request to complete and get the result
         task.result = func(*args, **kwargs)
         task.status = BackgroundStatus.SUCCESS
-
     except Exception as e:
         task.error = e
         task.status = BackgroundStatus.FAILED
-        raise e
     config.background_tasks[guid] = task
 
 
@@ -171,21 +165,27 @@ async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
 app = FastAPI(dependencies=[Depends(validate_auth_token)])
 
 ## associate config for testing
-app.in_app_config = IN_APP_CONFIG #type: ignore
+app.in_app_config = IN_APP_CONFIG  # type: ignore
 
+allowed_origins = [
+    "app://.",
+]
+allow_origin_regex = "(app://.)"
+# if not IN_APP_CONFIG.validate:
+allowed_origins += [
+    "http://localhost:8080",
+    "http://localhost:8081",
+    "http://localhost:8090",
+]
+allow_origin_regex = "(app://.)|(http://localhost:[0-9]+)"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080",
-        "http://localhost:8081",
-        "http://localhost:8090",
-        "app://.",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["Authorization"],
-    allow_origin_regex="(app://.)|(http://localhost:[0-9]+)",
+    allow_origin_regex=allow_origin_regex,
 )
 
 
@@ -464,7 +464,10 @@ async def stock_lists():
 
 
 def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
-    ideal_port = deepcopy(INDEXES[input.index])
+    try:
+        ideal_port = deepcopy(INDEXES[input.index])
+    except KeyError:
+        raise HTTPException(404, f"Index {input.index} not found")
     ideal_port.exclude(input.stock_exclusions)
 
     if input.reweight:
@@ -503,7 +506,10 @@ async def get_background_task(guid):
     # wipe the object to free memory
     elif response.status == BackgroundStatus.FAILED:
         del IN_APP_CONFIG.background_tasks[guid]
-        raise HTTPException(500, f"Background task failed with error {response.error}")
+        # we will have stored the exception
+        # raise it now
+        raise response.error
+        # raise HTTPException(500, f"Background task failed with error {response.error}")
     del IN_APP_CONFIG.background_tasks[guid]
     return response.result
 
@@ -660,8 +666,6 @@ async def http_exception_handler(request, exc: HTTPException):
         content=jsonable_encoder({"detail": exc.detail}),
     )
 
-
-from typing import get_type_hints
 
 ## Build async routes
 router_routes = list(router.routes)

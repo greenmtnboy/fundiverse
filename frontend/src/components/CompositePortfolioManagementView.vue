@@ -28,7 +28,7 @@
               </v-btn>
             </v-col>
             <v-col cols="8" class="d-flex justify-center align-center px-2 py-0">
-              <v-btn color="primary" :loading="refreshLoading" class="d-flex flex-column" @click="saveChanges()">Save
+              <v-btn color="primary" :loading="refreshLoading || saving" class="d-flex flex-column" @click="saveChanges()">Save
                 Changes
               </v-btn>
 
