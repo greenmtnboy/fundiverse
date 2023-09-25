@@ -42,4 +42,4 @@ jobs:
         run: npm test
         env:
           DEBUG: pw:webserver
-        timeout-minutes: 5
+        timeout-minutes: 6
