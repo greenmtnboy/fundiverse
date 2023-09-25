@@ -54,9 +54,16 @@ instance.interceptors.response.use(
 );
 
 const desiredResponseCode = 200;
-// Define a function for making the Axios request
-async function makeAsyncRequestInner(guid) {
 
+const maxAsyncMinutes = 10;
+
+// Define a function for making the Axios request
+async function makeAsyncRequestInner(guid, startTime) {
+  const currentTime = Date.now();
+  if (currentTime - startTime >= maxAsyncMinutes * 60 * 1000) {
+    console.log("Loop has been running for more than 5 minutes. Breaking the loop.");
+    return; // Exit the loop
+  }
   try {
     const response = await instance.get(`background_tasks/${guid}`);
     const { status } = response;
@@ -64,7 +71,7 @@ async function makeAsyncRequestInner(guid) {
       return response
     } else {
       await new Promise(resolve => setTimeout(resolve, 500));
-      return await makeAsyncRequestInner(guid);
+      return await makeAsyncRequestInner(guid, startTime);
     }
   } catch (error) {
     throw error;
@@ -74,7 +81,8 @@ async function makeAsyncRequestInner(guid) {
 export async function makeAsyncRequest(asyncApi, args) {
   const response = await instance.post(`async_${asyncApi}`, args);
   const guid = response.data.guid;
-  return await makeAsyncRequestInner(guid)
+  const startTime = Date.now();
+  return await makeAsyncRequestInner(guid, startTime)
 }
 
 
