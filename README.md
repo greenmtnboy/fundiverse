@@ -23,7 +23,7 @@ Fundiverse is not an effective tool for day trading or short-term holding in gen
 
 ## Installation
 
-[Read the docs](https://fundiverse.readthedocs.io/en/latest/) for detaild instructions. 
+[Read the docs](https://fundiverse.readthedocs.io/en/latest/) for detailed instructions. 
 
 ### Windows
 

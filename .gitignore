@@ -42,3 +42,6 @@ frontend/release
 backend/build
 backend/dist
 
+#playwright
+frontend/playwright-report
+frontend/test-results

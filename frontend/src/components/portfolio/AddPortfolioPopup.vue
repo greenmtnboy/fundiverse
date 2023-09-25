@@ -1,7 +1,7 @@
 <template>
     <v-dialog v-model="dialog" max-width="500" min-width=400>
         <template v-slot:activator="{ props }">
-            <v-btn class="text-none" color="primary" variant="outlined" v-bind="props">
+            <v-btn data-testid="add-portfolio" class="text-none" color="primary" variant="outlined" v-bind="props">
                 Add Portfolio
             </v-btn>
         </template>
