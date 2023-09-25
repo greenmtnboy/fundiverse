@@ -21,6 +21,9 @@ jobs:
       - name: Install Node dependencies
         working-directory: ./frontend
         run: npm install
+      - name: Build the electron package
+        working-directory: ./frontend
+        run: npm run build
       - name: Run tests
         working-directory: ./frontend
         run: npm test
