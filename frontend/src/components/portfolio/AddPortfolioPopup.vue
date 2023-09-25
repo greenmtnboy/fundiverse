@@ -6,10 +6,10 @@
             </v-btn>
         </template>
         <v-card class="mx-auto" min-width="344" title="New Portfolio">
-            <v-form v-model="form" >
+            <v-form v-model="form">
                 <v-container>
-                    <v-text-field :readonly="loading" :rules="[required]" v-model="name" color="primary"
-                        label="New Portfolio Name" variant="underlined">
+                    <v-text-field data-testid="input-add-portfolio-name" :readonly="loading" :rules="[required]"
+                        v-model="name" color="primary" label="New Portfolio Name" variant="underlined">
                     </v-text-field>
                     <v-text-field :readonly="loading" :rules="[required]" v-model="target_size" color="primary"
                         label="Target Size" variant="underlined">
@@ -19,7 +19,8 @@
                 <v-alert class="mx-auto square-corners" color="warning" v-if="error">{{ error }}</v-alert>
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn :disabled="!form" :loading="loading" color="success" @click="localAddNewCompositePortfolio">
+                    <v-btn data-testid="btn-add-portfolio-submit" :disabled="!form" :loading="loading" color="success"
+                        @click="localAddNewCompositePortfolio">
                         Create
                         <v-icon icon="mdi-chevron-right" end></v-icon>
                     </v-btn>

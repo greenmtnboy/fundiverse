@@ -10,15 +10,16 @@ test.describe('Add Connection', async() => {
         firstWindow = await electronApp.firstWindow();
     });
 
-    test('Create Portfolio', async() => {
+    test('Create and Delete Portfolio', async() => {
         await firstWindow.title();
-        await firstWindow.getByTestId('add-portfolio').click({delay: 1500});
+        await firstWindow.getByTestId('add-portfolio').click({delay: 500});
+        await firstWindow.getByTestId('input-add-portfolio-name').pressSequentially('ci-port');
+        await firstWindow.getByTestId('btn-add-portfolio-submit').click({delay: 500});
+        await firstWindow.getByTestId('cmp-port-ci-port');
+        await firstWindow.getByTestId('btn-del-ci-port').click({delay: 500});
+        await expect(firstWindow.getByTestId('cmp-port-ci-port')).toHaveCount(0);
     });
 
-    test('Refresh Portfolio', async() => {
-        await firstWindow.title();
-        await firstWindow.getByTestId('add-portfolio').click({delay: 1500});
-    });
 
     test.afterAll(async() => {
         await electronApp.close();

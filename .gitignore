@@ -37,6 +37,8 @@ frontend/dist-electron
 frontend/build
 frontend/dist
 frontend/release
+frontend/public/fundiverse-backend
+frontend/public/fundiverse-backend.exe
 
 #pyinstaller output
 backend/build

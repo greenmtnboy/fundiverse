@@ -4,18 +4,6 @@
     <v-card-actions>
       <AddPortfolioPopup />
       <AddIndexPopup />
-      <!-- <v-btn v-if="showSaveSuccess" transition="fade-transition">
-        <v-icon>mdi-check</v-icon>
-      </v-btn> -->
-      <!-- <v-btn v-else transition="fade-transition" :loading="saving" @click="savePortfolios">
-        Save Portfolios
-      </v-btn>
-      <v-btn v-if="showLoadSuccess" transition="fade-transition">
-        <v-icon>mdi-check</v-icon>
-      </v-btn>
-      <v-btn v-else transition="fade-transition" :loading="saving" @click="loadPortfolios">
-        Undo Changes
-      </v-btn> -->
     </v-card-actions>
     <v-divider />
     <v-container>
