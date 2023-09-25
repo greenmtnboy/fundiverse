@@ -38,4 +38,6 @@ jobs:
       - name: Run tests
         working-directory: ./frontend
         run: npm test
+        env:
+          DEBUG: pw:webserver
         timeout-minutes: 5
