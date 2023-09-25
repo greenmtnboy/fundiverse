@@ -34,6 +34,9 @@ jobs:
         run: npm install
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+      - name: Build the electron package and webservice
+        working-directory: ./frontend
+        run: npm run build
       - name: Run tests
         working-directory: ./frontend
         run: npm test
