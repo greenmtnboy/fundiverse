@@ -77,7 +77,7 @@
             <v-btn :disabled="portfolio.keys.length === 0 || portfolio.loading" @click="refresh">
                 Refresh
             </v-btn>
-            <ConfirmationButton :data-testid="`btn-del-${portfolio.name}`" :onClick="remove" text="Delete" />
+            <ConfirmationButton :dataTestId="`btn-del-${portfolio.name}`" :onClick="remove" text="Delete" />
             <!-- <v-btn :disabled="portfolio.loading" @click="remove"  color="red" prependIcon="mdi-cancel">
                 Delete
             </v-btn> -->

@@ -20,6 +20,7 @@ test.describe('Add Connection', async() => {
         await firstWindow.getByTestId('btn-add-portfolio-submit').click({delay: 500});
         await firstWindow.getByTestId('cmp-port-ci-port');
         await firstWindow.getByTestId('btn-del-ci-port').click({delay: 500});
+        await firstWindow.getByTestId('btn-del-ci-port-confirm').click({delay: 500});
         await expect(firstWindow.getByTestId('cmp-port-ci-port')).toHaveCount(0);
     });
 
