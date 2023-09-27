@@ -38,6 +38,7 @@ frontend/build
 frontend/dist
 frontend/release
 frontend/public/fundiverse-backend
+fundiverse-backend
 frontend/public/fundiverse-backend.exe
 
 #pyinstaller output

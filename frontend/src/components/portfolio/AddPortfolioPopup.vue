@@ -8,8 +8,9 @@
         <v-card class="mx-auto" min-width="344" title="New Portfolio">
             <v-form v-model="form">
                 <v-container>
-                    <v-text-field data-testid="input-add-portfolio-name" :readonly="loading" :rules="[required]"
-                        v-model="name" color="primary" label="New Portfolio Name" variant="underlined">
+                    <v-text-field id="input-add-portfolio-name" test-id="input-add-portfolio-name" :readonly="loading"
+                        :rules="[required]" v-model="name" color="primary" title="New Portfolio Name" type="portfolio-name"
+                        label="New Portfolio Name" variant="underlined">
                     </v-text-field>
                     <v-text-field :readonly="loading" :rules="[required]" v-model="target_size" color="primary"
                         label="Target Size" variant="underlined">

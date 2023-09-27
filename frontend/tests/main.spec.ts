@@ -12,8 +12,11 @@ test.describe('Add Connection', async() => {
 
     test('Create and Delete Portfolio', async() => {
         await firstWindow.title();
-        await firstWindow.getByTestId('add-portfolio').click({delay: 500});
-        await firstWindow.getByTestId('input-add-portfolio-name').fill('ci-port');
+        await firstWindow.getByTestId('add-portfolio').click({delay: 500})  
+        // const popup = await firstWindow.waitForEvent('popup');
+        const newPortfolioInput = await firstWindow.locator("#input-add-portfolio-name");
+        await newPortfolioInput.click();
+        await newPortfolioInput.pressSequentially('ci-port');
         await firstWindow.getByTestId('btn-add-portfolio-submit').click({delay: 500});
         await firstWindow.getByTestId('cmp-port-ci-port');
         await firstWindow.getByTestId('btn-del-ci-port').click({delay: 500});
