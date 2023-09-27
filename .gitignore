@@ -41,6 +41,9 @@ frontend/public/fundiverse-backend
 fundiverse-backend
 frontend/public/fundiverse-backend.exe
 
+frontend/playwright-report
+frontend/test-results
+
 #pyinstaller output
 backend/build
 backend/dist
