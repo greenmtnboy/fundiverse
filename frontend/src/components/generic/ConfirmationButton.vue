@@ -1,5 +1,5 @@
 <template>
-    <v-btn color="red" prependIcon="mdi-cancel" @click="dialog = true">Delete</v-btn>
+    <v-btn :data-testid="dataTestId" color="red" prependIcon="mdi-cancel" @click="dialog = true">Delete</v-btn>
     <v-dialog v-model="dialog" max-width="400">
         <v-card>
             <v-card-title>Confirm</v-card-title>
@@ -7,7 +7,7 @@
                 Are you sure you want to perform this action?
             </v-card-text>
             <v-card-actions>
-                <v-btn color="error" @click="confirm">Confirm</v-btn>
+                <v-btn color="error" @click="confirm" :data-testid="`${dataTestId}-confirm`">Confirm</v-btn>
                 <v-btn @click="cancel">Cancel</v-btn>
             </v-card-actions>
         </v-card>
@@ -30,6 +30,10 @@ export default {
             type: Function,
             required: true,
         },
+        dataTestId: {
+            type: String,
+            required: false,
+        }
     },
     methods: {
         confirm() {

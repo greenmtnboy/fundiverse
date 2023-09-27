@@ -266,6 +266,7 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST, 'index.html'))
   }
+  console.log(`App ready and available at ${VITE_DEV_SERVER_URL}`)
 }
 
 // app.on('window-all-closed', () => {

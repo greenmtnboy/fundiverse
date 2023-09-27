@@ -18,10 +18,28 @@ jobs:
             ${{ runner.os }}-build-${{ env.cache-name }}-
             ${{ runner.os }}-build-
             ${{ runner.os }}-
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.11"
+      - name: Install python dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheel
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
       - name: Install Node dependencies
         working-directory: ./frontend
         run: npm install
-      # - name: Run tests
-      #   working-directory: ./frontend
-      #   run: npm test
-      #   timeout-minutes: 5
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Build the electron package and webservice
+        working-directory: ./frontend
+        run: npm run build
+      - name: Run tests
+        working-directory: ./frontend
+        run: npm test
+        env:
+          DEBUG: pw:webserver
+        timeout-minutes: 6

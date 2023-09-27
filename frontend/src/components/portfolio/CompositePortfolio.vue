@@ -1,6 +1,6 @@
 <template>
     <v-card class="ma-4">
-        <v-card-title :key="portfolio.name" style="{display:'flex'}">
+        <v-card-title :data-testid="`cmp-port-${portfolio.name}`" :key="portfolio.name" style="{display:'flex'}">
             <v-row>
                 <v-col col="8">
                     {{ portfolio.name }} <span class="text-low-emphasis" style="opacity=0.5; font-size: small">({{
@@ -77,7 +77,7 @@
             <v-btn :disabled="portfolio.keys.length === 0 || portfolio.loading" @click="refresh">
                 Refresh
             </v-btn>
-            <ConfirmationButton :onClick="remove" text="Delete" />
+            <ConfirmationButton :dataTestId="`btn-del-${portfolio.name}`" :onClick="remove" text="Delete" />
             <!-- <v-btn :disabled="portfolio.loading" @click="remove"  color="red" prependIcon="mdi-cancel">
                 Delete
             </v-btn> -->
