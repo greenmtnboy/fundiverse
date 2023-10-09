@@ -132,7 +132,12 @@ const actions = {
             commit('savePortfolio')
         }
         catch (error) {
-            commit('setPortfolioLoadingStatus', { name: portfolioName, status: false, error: error })
+            let errorString = 'error refreshing'
+            if (error instanceof Error) {
+                errorString = error.toString()
+            }
+
+            commit('setPortfolioLoadingStatus', { name: portfolioName, status: false, error: errorString })
             throw error
         }
     },
