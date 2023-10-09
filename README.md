@@ -27,7 +27,7 @@ Fundiverse is not an effective tool for day trading or short-term holding in gen
 
 ### Windows
 
-Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases), or click for [direct download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.15/fundiverse_0.1.15.exe).
+Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases), or click for [direct download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.16/fundiverse_0.1.16.exe).
 
 Run the downloaded exe to install, then start it as a standard application. You'll have to accept the unsafe publisher + potentially allow firewall access. Fundiverse needs to communicate with itself and with your brokerage provider. 
 
