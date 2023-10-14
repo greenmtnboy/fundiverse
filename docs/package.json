@@ -1,0 +1,19 @@
+{
+  "name": "fundiverse",
+  "version": "0.0.1",
+  "description": "Personalized index funds in your brokerage of choice.",
+  "main": "index.js",
+  "authors": {
+    "name": "Fundiverse Dev Team",
+    "email": "fundiverse.dev@gmail.com"
+  },
+  "repository": "https://github.com/greenmtnboy/fundiverse/fundiverse",
+  "scripts": {
+    "dev": "vuepress dev src",
+    "build": "export NODE_OPTIONS=--openssl-legacy-provider && vuepress build src"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "vuepress": "^1.5.3"
+  }
+}

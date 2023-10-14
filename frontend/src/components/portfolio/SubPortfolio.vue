@@ -5,23 +5,31 @@
         </template>
         <v-list-item-title>{{ portfolio.name }}</v-list-item-title>
         <span>
-            <CurrencyItemVue :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" /> in {{
+            <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" /> in {{
                 portfolioLength }} stocks
         </span>
         <v-spacer></v-spacer>
         <span class="text-medium-emphasis">
-            <CurrencyItemVue :loading="portfolio.loading" :value="portfolio.cash" /> cash
+            <CurrencyItem :loading="portfolio.loading" :value="portfolio.cash" /> cash
         </span>
         <template v-slot:append>
+            <v-chip v-if="portfolio.profit_or_loss" :color="portfolio.profit_or_loss.value > 0 ? 'green' : 'red'" small
+                outlined>
+                <span class="pr-2">Return: </span>
+                <CurrencyItem :value=portfolio.profit_or_loss />
+            </v-chip>
             <v-spacer />
             <ProviderLoginPopup stateful :provider="portfolio.provider" :portfolioName="parentName"></ProviderLoginPopup>
             <!-- <v-btn v-if="loggedIn" color="green" icon="mdi-check" variant="text"></v-btn> -->
             <!-- <v-btn v-else color="grey-lighten-1" icon="mdi-login" variant="text"></v-btn> -->
-            <v-spacer>
-            </v-spacer>
+            <v-spacer/>
             <v-btn v-if="loggedIn" @click="removeProvider" color="red" prependIcon="mdi-cancel" variant="text">
                 Remove
             </v-btn>
+
+
+
+
         </template>
     </v-list-item>
 </template>
@@ -38,7 +46,7 @@ export default {
         }
     },
     components: {
-        CurrencyItemVue: CurrencyItem,
+        CurrencyItem: CurrencyItem,
         ProviderIcon: ProviderIcon,
         ProviderLoginPopup: ProviderLoginPopup
     },

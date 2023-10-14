@@ -654,7 +654,7 @@ async def exit_app():
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc: HTTPException):
-    """Overdrive the default exception handler to allow for graceful shutdowns"""
+    """Override the default exception handler to allow for graceful shutdowns"""
     if exc.status_code == 503:
         # here is where we terminate all running processes
         task = BackgroundTask(exit_app)

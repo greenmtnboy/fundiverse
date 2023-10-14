@@ -50,7 +50,7 @@
                         <v-chip-group :disabled="true">
                             <v-chip :disabled="loading || initialLoading" v-for="ticker in localExclusions" :key="ticker"
                                 :value="ticker" :label="true" :item-text="ticker">
-                                {{ ticker }}
+                                <!-- <TickerDisplay ticker={{ element.ticker }}/> -->
                             </v-chip>
                         </v-chip-group>
                     </v-col>
@@ -73,7 +73,7 @@
                         <template v-for="element in displayPlacedBatch" :key="element.ticker">
                             <v-list-item> <v-chip :color="element.status === 'placed' ? 'green' : 'red'" small outlined>{{
                                 element.status }}</v-chip>
-                                <CurrencyItem :value="element.value" /> of {{ element.ticker }} on {{ element.provider
+                                <CurrencyItem :value="element.value" /> of {{element.ticker}} on {{ element.provider
                                 }}
                             </v-list-item>
                         </template>
@@ -88,7 +88,7 @@
                             <v-list-item> <v-chip :color="element.order_type === 'BUY' ? 'green' : 'red'" small outlined>{{
                                 element.order_type }}</v-chip>
 
-                                <CurrencyItem :value="element.value" /> of {{ element.ticker }} on {{ element.provider
+                                <CurrencyItem :value="element.value" /> of {{element.ticker}} on {{ element.provider
                                 }}
                                 <template v-slot:append>
                                     <v-tooltip>
@@ -144,7 +144,7 @@ import {
 import instance from '../../api/instance'
 import exceptions from '../../api/exceptions'
 import CurrencyItem from '../generic/CurrencyItem.vue'
-
+import TickerDisplay from '../generic/TickerDisplay.vue'
 import {
     debounce
 } from 'lodash';
@@ -178,6 +178,7 @@ export default {
         toPurchaseInternal: 50,
         toPurchase: 50,
         selectedMode: 2,
+        batchSize: 10,
         localExclusions: [],
         modes: [{ name: 'Smallest Diff First', id: 1 },
         { name: 'Largest Diff First', id: 2 },
@@ -186,7 +187,8 @@ export default {
         ]
     }),
     components: {
-        CurrencyItem
+        CurrencyItem,
+        TickerDisplay
     },
     props: {
         portfolioName: {
@@ -216,7 +218,7 @@ export default {
     computed: {
         ...mapGetters(['portfolioCustomizations', 'getCustomizationByName']),
         placedBatches() {
-            return divideArrayIntoBatches(this.placedOrders, 10)
+            return divideArrayIntoBatches(this.placedOrders, this.batchSize)
         },
         placedLength() {
             return this.placedBatches.length
@@ -225,7 +227,7 @@ export default {
             return this.placedBatches[this.placedPage - 1]
         },
         orderBatches() {
-            return divideArrayIntoBatches(this.plan['to_buy'], 10)
+            return divideArrayIntoBatches(this.plan['to_buy'], this.batchSize)
         },
         displayBatch() {
             return this.orderBatches[this.page - 1]

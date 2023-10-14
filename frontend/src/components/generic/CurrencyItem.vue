@@ -1,19 +1,16 @@
 <template>
-
     <span v-if="loading" class="box-placeholder">
         {{ value.currency }}<span class="text">xxxxxxx</span>
     </span>
     <span v-else>
-        {{ value.currency }}{{ Math.round(value.value * 100) / 100 }}
+        {{ formatted }}
     </span>
 </template>
 <style>
-
-
 .box-placeholder .text {
 
     background-color: #444;
-    color:#444;
+    color: #444;
     height: 12px;
     border-radius: 100px;
     margin: 5px 0;
@@ -83,6 +80,22 @@ export default {
             default: false
         }
     },
+    computed: {
+        formatted() {
+            let currency = 'USD';
+            switch (this.value.currency) {
+                case '$':
+                    currency = 'USD'
+                    break;
+                default:
+                    currency = this.value.currency
+            }
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency,
+            }).format(Math.round(this.value.value * 100) / 100);
+        }
+    }
 
 };
 </script>

@@ -71,7 +71,12 @@ const getters = {
 // };
 
 const actions = {
-    async addNewCompositePortfolio({ commit }, data) {
+    async addNewCompositePortfolio({ commit, getters }, data) {
+        // check that we don't already have a portfolio with this name
+        const existingIndex = getters.compositePortfolios.findIndex(item => item.name === data.name);
+        if (existingIndex !== -1) {
+            throw new Error(`Portfolio ${data.name} already exists!`)
+        }
         const newPortfolio: CompositePortfolioModel = new CompositePortfolioModel({
             name: data.name,
             holdings: [],
@@ -238,7 +243,10 @@ const mutations = {
             return
         }
         current.keys.push(data.key);
-        const newSub = new SubPortfolioModel({ provider: data.key, name: data.key, target_size: 0, holdings: [], cash: { currency: '$', value: 1000.0 } })
+        const newSub = new SubPortfolioModel({
+            provider: data.key, name: data.key, target_size: 0, holdings: [], cash: { currency: '$', value: 1000.0 },
+            profit_or_loss: { currency: '$', value: 0.0 }
+        })
         newSub.loading = true;
         current.components.push(newSub)
         state.compositePortfolios[existingIndex] = current;
