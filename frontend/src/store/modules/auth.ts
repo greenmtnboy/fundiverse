@@ -40,8 +40,15 @@ const getters = {
 
 const actions = {
     async probeLogin({ commit }, data) {
-        const response = await instance.get(`/logged_in/${data.provider}`)
-        await actions.setProviderState({ commit }, { provider: data.provider, loggedIn: Boolean(response.data) })
+        try {
+            const response = await instance.get(`/logged_in/${data.provider}`)
+            await actions.setProviderState({ commit }, { provider: data.provider, loggedIn: Boolean(response.data) })
+        }
+        catch {
+            await actions.setProviderState({ commit }, { provider: data.provider, loggedIn: false })
+        }
+
+        
     },
     async setProviderState({ commit }, data) {
         commit('setProviderState', { provider: data.provider, loggedIn: data.loggedIn })

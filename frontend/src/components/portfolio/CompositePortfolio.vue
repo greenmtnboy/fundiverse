@@ -5,7 +5,8 @@
                 <v-col col="8">
                     {{ portfolio.name }} <span class="text-low-emphasis" style="opacity=0.5; font-size: small">({{
                         timeDisplay }})</span>
-                </v-col><v-col class="text-right" col="4"><span>
+                </v-col><v-col class="text-right" col="4">
+                    <span>
                         <v-chip v-if="portfolio.profit_and_loss"
                             :color="portfolio.profit_and_loss.value > 0 ? 'green' : 'red'" small outlined>
                             <span class="pr-2">Portfolio Return: </span>
