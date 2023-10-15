@@ -16,6 +16,7 @@ module.exports = {
    * ref：https://v1.vuepress.vuejs.org/config/#head
    */
   head: [
+    ['link', { rel: "apple-touch-icon", sizes: "180x180", href: "/favicon.png"}],
     ['meta', { name: 'theme-color', content: '#3eaf7c' }],
     ['meta', { name: 'apple-mobile-web-app-capable', content: 'yes' }],
     ['meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black' }]
@@ -26,15 +27,18 @@ module.exports = {
    *
    * ref：https://v1.vuepress.vuejs.org/theme/default-theme-config.html
    */
+  theme: "vt",
   themeConfig: {
-    repo: '',
+    enableDarkMode: true,
+    repo: 'https://github.com/greenmtnboy/fundiverse',
     editLinks: false,
     docsDir: '',
     editLinkText: '',
     lastUpdated: false,
+    logo: '/logo-only-transparent-png.png',
     nav: [
       {
-        text: 'Install',
+        text: 'Get Started',
         link: '/install/',
       },
       {
@@ -83,5 +87,7 @@ module.exports = {
   plugins: [
     '@vuepress/plugin-back-to-top',
     '@vuepress/plugin-medium-zoom',
+    ['@vuepress/plugin-google-analytics', { ga: 'G-3P8R2SW79T' }],
+
   ]
 }

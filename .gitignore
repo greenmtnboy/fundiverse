@@ -34,7 +34,7 @@ pnpm-debug.log*
 #Electron-builder output
 frontend/dist_electron
 frontend/dist-electron
-frontend/build
+#frontend/build
 frontend/dist
 frontend/release
 frontend/public/fundiverse-backend
