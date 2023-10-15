@@ -1,9 +1,8 @@
 ## Direct Download
 
-Windows can be downloaded directly from the github page as an installer.  
+The windows intaller can be downloaded directly from the [github release page](https://github.com/greenmtnboy/fundiverse/releases).
 
 ### Downloading
-Go to https://github.com/greenmtnboy/fundiverse/releases
 
 Open the latest release and download the EXE.
 

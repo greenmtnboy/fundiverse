@@ -3,12 +3,15 @@
 Customize your index funds
 </p>
 
+![Logo](https://github.com/greenmtnboy/fundiverse/blob/main/media/logo-png.png)
 
-## Fundiverse is Your UI For Building Custom Index Funds
+[Website](https://fundiverse.dev/) | [Get Started](https://fundiverse.dev/install/) 
 
-- Money never leaves your brokerage.
+## Fundiverse lets you own the market - your way
+
+- Money never leaves your brokerage
 - Customize to your priorities, knowledge, or beliefs
-- Index the SP500 with as little as $500 dollars.
+- Index the SP500 with as little as $500 dollars
 
 Indexing has been a gospel of long-term investing for years. The central tenet of buying diverse funds that capture large portions of the market and holding them for a long-duration has proven it's value again and again.
 
@@ -23,11 +26,11 @@ Fundiverse is not an effective tool for day trading or short-term holding in gen
 
 ## Installation
 
-[Read the docs](https://fundiverse.readthedocs.io/en/latest/) for detailed instructions. 
+[Read the docs](https://fundiverse.dev/install/) for detailed instructions. 
 
 ### Windows
 
-Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases), or click for [direct download](https://github.com/greenmtnboy/fundiverse/releases/download/v0.1.16/fundiverse_0.1.16.exe).
+Download the latest release .exe from [the releases page](https://github.com/greenmtnboy/fundiverse/releases).
 
 Run the downloaded exe to install, then start it as a standard application. You'll have to accept the unsafe publisher + potentially allow firewall access. Fundiverse needs to communicate with itself and with your brokerage provider. 
 
@@ -54,5 +57,5 @@ Fundiverse requires you to have an account sent up with one of the following pla
 
 ## Getting Started
 
-[Read the docs](https://fundiverse.readthedocs.io/en/latest/). 
+[Read the docs](https://fundiverse.dev/install/).
 
