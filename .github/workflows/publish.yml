@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - fix-icon
+    #  - fix-icon
     # tags:
     #   - "v*"
 jobs:
