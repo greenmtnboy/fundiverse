@@ -46,7 +46,7 @@
                     </v-col>
                 </v-row>
                 <v-row v-if="localExclusions.length > 0"> <v-col width=12 justify="center">
-                    Excluded Tickers
+                        Excluded Tickers
                         <v-chip-group :disabled="true">
                             <v-chip :disabled="loading || initialLoading" v-for="ticker in localExclusions" :key="ticker"
                                 :value="ticker" :label="true" :item-text="ticker">
@@ -65,7 +65,8 @@
                 </v-row>
                 <v-row class="py-5" height="15" v-if="initialLoading">
 
-                    <v-progress-linear height="20" indeterminate color="primary">Planning Orders - This May Take Time</v-progress-linear>
+                    <v-progress-linear height="20" indeterminate color="primary">Planning Orders - This May Take
+                        Time</v-progress-linear>
 
                 </v-row>
                 <v-row v-else-if="placedOrders.length > 0">
@@ -73,7 +74,7 @@
                         <template v-for="element in displayPlacedBatch" :key="element.ticker">
                             <v-list-item> <v-chip :color="element.status === 'placed' ? 'green' : 'red'" small outlined>{{
                                 element.status }}</v-chip>
-                                <CurrencyItem :value="element.value" /> of {{element.ticker}} on {{ element.provider
+                                <CurrencyItem :value="element.value" /> of {{ element.ticker }} on {{ element.provider
                                 }}
                             </v-list-item>
                         </template>
@@ -88,7 +89,8 @@
                             <v-list-item> <v-chip :color="element.order_type === 'BUY' ? 'green' : 'red'" small outlined>{{
                                 element.order_type }}</v-chip>
 
-                                <CurrencyItem :value="element.value" /> of {{element.ticker}} on {{ element.provider
+                                <CurrencyItem :value="element.value" /> of
+                                <TickerDisplay :ticker="element.ticker" /> on {{ element.provider
                                 }}
                                 <template v-slot:append>
                                     <v-tooltip>
@@ -115,17 +117,15 @@
                 {{ exception }}
             </v-alert>
             <v-card-actions class="justify-center px-6 py-3">
-        
+
                 <v-btn class="flex-grow-1 text-none" variant="plain" @click="dialog = false">
                     Exit
                 </v-btn>
-                <v-btn v-if="placedOrders.length>0"  :loading="loading"
-                    key="return"
-                    class="text-white flex-grow-1 text-none" color="primary" variant="flat" @click="completeOrders()">
+                <v-btn v-if="placedOrders.length > 0" :loading="loading" key="return" class="text-white flex-grow-1 text-none"
+                    color="primary" variant="flat" @click="completeOrders()">
                     Return to Portfolio
                 </v-btn>
-                <v-btn v-else :disabled="initialLoading || alertVisible" :loading="loading"
-                    key="submit"
+                <v-btn v-else :disabled="initialLoading || alertVisible" :loading="loading" key="submit"
                     class="text-white flex-grow-1 text-none" color="primary" variant="flat" @click="submit()">
                     Submit Orders
                 </v-btn>
@@ -153,7 +153,7 @@ function roundToNearestTen(number) {
 }
 
 function divideArrayIntoBatches(array, batchSize) {
-    const batches:Array<any> = [];
+    const batches: Array<any> = [];
 
     for (let i = 0; i < array.length; i += batchSize) {
         batches.push(array.slice(i, i + batchSize));
@@ -183,7 +183,7 @@ export default {
         modes: [{ name: 'Smallest Diff First', id: 1 },
         { name: 'Largest Diff First', id: 2 },
         { name: 'Equal Spread', id: 3 },
-        // { name: 'Manual', id: 4 },
+            // { name: 'Manual', id: 4 },
         ]
     }),
     components: {
