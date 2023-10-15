@@ -15,5 +15,5 @@ features:
 ---
 
 ::: slot footer
-MIT Licensed | Contributions Welcome | [Source](https://github.com/greenmtnboy/fundiverse)
+GPL Licensed | Contributions Welcome | [Source](https://github.com/greenmtnboy/fundiverse)
 :::
