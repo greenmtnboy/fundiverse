@@ -115,8 +115,9 @@ class ActiveConfig:
 
 
 IN_APP_CONFIG = ActiveConfig()
-if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-    IN_APP_CONFIG.validate = True
+# if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+#     IN_APP_CONFIG.validate = True
+IN_APP_CONFIG.validate = True
 IN_APP_CONFIG.auth_token = os.environ.get("FUNDIVERSE_API_SECRET_KEY")
 
 
@@ -170,7 +171,7 @@ app.in_app_config = IN_APP_CONFIG  # type: ignore
 allowed_origins = [
     "app://.",
 ]
-allow_origin_regex = "(app://.)"
+
 # if not IN_APP_CONFIG.validate:
 allowed_origins += [
     "http://localhost:8080",

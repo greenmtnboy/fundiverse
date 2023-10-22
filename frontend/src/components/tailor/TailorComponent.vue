@@ -88,7 +88,7 @@
                     </v-card-title>
                     <v-card-text>
                         <template v-for="element in listModifications" :key="element.list">
-                            <TailorComponentListItem :list="element" :weight="element.scale" />
+                            <TailorComponentListItem :list="element.list" :weight="element.scale" />
                         </template>
                     </v-card-text>
                 </v-card>
