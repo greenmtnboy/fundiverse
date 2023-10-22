@@ -11,7 +11,7 @@
             <v-col cols="9">
                 <v-chip-group class="d-flex align-center" active-class="primary">
                     <v-chip v-for="tag in displayedTags" :key="tag" :value="tag" label>
-                       <TickerDisplay :ticker="tag"></TickerDisplay>
+                        <TickerDisplay :ticker="tag"></TickerDisplay>
                     </v-chip>
                     <v-chip v-if="tags.length > displayedTags.length" label>
                         ...
@@ -110,6 +110,11 @@ export default {
     },
     methods: {
         ...mapActions(['removeListExclusion']),
+        localRemoveListExclusion(list) {
+            this.removeListExclusion({ portfolioName: this.portfolioName, list: list })
+
+        },
+
         toggleShowAll() {
             this.showAllTags = !this.showAllTags;
         },
