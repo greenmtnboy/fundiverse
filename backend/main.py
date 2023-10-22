@@ -170,14 +170,16 @@ app.in_app_config = IN_APP_CONFIG  # type: ignore
 allowed_origins = [
     "app://.",
 ]
+allow_origin_regex = "(app://.)"
 
-# if not IN_APP_CONFIG.validate:
-allowed_origins += [
-    "http://localhost:8080",
-    "http://localhost:8081",
-    "http://localhost:8090",
-]
-allow_origin_regex = "(app://.)|(http://localhost:[0-9]+)"
+# dev settings
+if not IN_APP_CONFIG.validate:
+    allowed_origins += [
+        "http://localhost:8080",
+        "http://localhost:8081",
+        "http://localhost:8090",
+    ]
+    allow_origin_regex = "(app://.)|(http://localhost:[0-9]+)"
 
 app.add_middleware(
     CORSMiddleware,
