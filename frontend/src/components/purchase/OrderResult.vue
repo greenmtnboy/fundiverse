@@ -2,9 +2,10 @@
     <v-list-item>
         <v-chip :color="element.status === 'placed' ? 'green' : 'red'" small outlined>{{
             element.status }}</v-chip>
-        <CurrencyItem :value="element.value" /> of {{ element.ticker }} on {{ element.provider
+        <CurrencyItem :value="element.value" /> of
+        <TickerDisplay :ticker="element.ticker" /> on {{ element.provider
         }}
-        <template v-slot:append>
+        <template v-slot:append v-if="element.message">
             <v-tooltip>
                 <template v-slot:activator="{ props }">
                     <v-btn v-bind="props" icon density="compact">
