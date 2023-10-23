@@ -159,13 +159,13 @@ export default {
             return this.portfolio.holdings.filter((element) => indexTickers.has(element.ticker));
         },
         portfolioInTargetSum() {
-            return this.portfolioMatchedHoldings.reduce((sum, holding) => sum + holding.value.value, 0);
+            return this.portfolioMatchedHoldings.reduce((sum, holding) => sum + Math.floor(holding.value.value*10000) >>> 0, 0) / 10000;
         },
         portfolioInTargetPercent() {
             return Math.round((this.portfolioInTargetSum / this.portfolio.target_size) * 100);
         },
         portfolioSum() {
-            return this.portfolio.holdings.reduce((sum, holding) => sum + holding.value.value, 0);
+            return this.portfolio.holdings.reduce((sum, holding) => sum + Math.floor(holding.value.value*10000) >>> 0, 0) / 10000;
         },
         portfolioPercentOfTarget() {
             return Math.round((this.portfolioSum / this.portfolio.target_size) * 100);
