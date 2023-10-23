@@ -72,11 +72,7 @@
                 <v-row v-else-if="placedOrders.length > 0">
                     <v-col v-if="displayPlacedBatch" cols=12>
                         <template v-for="element in displayPlacedBatch" :key="element.ticker">
-                            <v-list-item> <v-chip :color="element.status === 'placed' ? 'green' : 'red'" small outlined>{{
-                                element.status }}</v-chip>
-                                <CurrencyItem :value="element.value" /> of {{ element.ticker }} on {{ element.provider
-                                }}
-                            </v-list-item>
+                            <OrderResult :element="element" />
                         </template>
                         <v-pagination v-model="placedPage" class="my-4" :length="placedLength"></v-pagination>
                     </v-col>
@@ -143,6 +139,7 @@ import {
 
 import instance from '../../api/instance'
 import exceptions from '../../api/exceptions'
+import OrderResult from './OrderResult.vue'
 import CurrencyItem from '../generic/CurrencyItem.vue'
 import TickerDisplay from '../generic/TickerDisplay.vue'
 import {
@@ -188,7 +185,8 @@ export default {
     }),
     components: {
         CurrencyItem,
-        TickerDisplay
+        TickerDisplay,
+        OrderResult
     },
     props: {
         portfolioName: {

@@ -1,7 +1,11 @@
 <template>
   <v-list-item>
-    <div><TickerDisplay :ticker="element.ticker"/>
-      <p class="text-medium-emphasis">${{ elementValue }} ({{ elementWeight }}%)</p>
+    <div>
+      <TickerDisplay :ticker="element.ticker" />
+      <p class="text-medium-emphasis">
+        <CurrencyItem :value="elementValue"></CurrencyItem> ({{
+          elementWeight }}%)
+      </p>
     </div>
     <template v-slot:append>
       <v-tooltip>
@@ -19,6 +23,7 @@
 <script lang="ts">
 import TargetPortfolioElementModel from '../../models/TargetPortfolioElementModel';
 import TickerDisplay from '../generic/TickerDisplay.vue';
+import CurrencyItem from '../generic/CurrencyItem.vue';
 import { mapActions } from 'vuex';
 
 export default {
@@ -29,7 +34,7 @@ export default {
       excluded: false,
     }
   },
-  components: {TickerDisplay},
+  components: { TickerDisplay, CurrencyItem },
   methods: {
     ...mapActions(['excludeStock']),
     onClickWrapper() {
@@ -67,8 +72,7 @@ export default {
       return Math.round(this.element.weight * 10000) / 100;
     },
     elementValue() {
-      // return 100;
-      return Math.round(this.totalPortfolioSize * this.element.weight);
+      return {value:Math.round(this.totalPortfolioSize * this.element.weight), currency: '$'};
     },
   }
 };
