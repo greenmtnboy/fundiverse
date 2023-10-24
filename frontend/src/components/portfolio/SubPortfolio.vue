@@ -68,7 +68,7 @@ export default {
     },
     computed: {
         portfolioSum() {
-            return this.portfolio.holdings.reduce((sum, holding) => sum + holding.value.value, 0);
+            return this.portfolio.holdings.reduce((sum, holding) => sum +  Math.floor(holding.value.value*10000) >>> 0, 0) / 10000;
         },
         portfolioLength() {
             return this.portfolio.holdings.length;

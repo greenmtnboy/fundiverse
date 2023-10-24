@@ -17,8 +17,11 @@
           <v-card-title style="min-height: 90px;" class="text-center">
             <v-select v-model="selectedSubPortfolio" :items="subPortfolioKeys" density="compact" variant="solo"
               label="Sub Portfolio" :disabled="compareLoading"></v-select>
-            <v-progress-linear color="blue-lighten-3" v-model="portfolioPercentOfTarget" height="15">
-              <span class="text-caption">{{ portfolioPercentOfTarget }}%</span>
+            <v-progress-linear color="blue-lighten-3" v-model="portfolioPercentOfGoal" height="15">
+              <span class="text-caption">{{ portfolioPercentOfGoal }}% of Target Size</span>
+            </v-progress-linear>
+            <v-progress-linear color="green-lighten-3" height="15" v-model="portfolioPercentOfTarget">
+              <span class="text-caption">{{ portfolioPercentOfTarget }}% Only Index Stocks</span>
             </v-progress-linear>
           </v-card-title>
           <v-card-actions>
@@ -28,7 +31,8 @@
               </v-btn>
             </v-col>
             <v-col cols="8" class="d-flex justify-center align-center px-2 py-0">
-              <v-btn color="primary" :loading="refreshLoading || saving" class="d-flex flex-column" @click="saveChanges()">Save
+              <v-btn color="primary" :loading="refreshLoading || saving" class="d-flex flex-column"
+                @click="saveChanges()">Save
                 Changes
               </v-btn>
 
@@ -41,7 +45,7 @@
       </v-col>
       <v-col cols=6 min-width="300px">
         <v-card>
-          <v-card-title style="min-height: 90px;" class="text-center">
+          <v-card-title style="min-height: 115px;" class="text-center">
             <v-autocomplete @update:modelValue="newValue => getTargetPortfolio(newValue)" v-model="selectedIndex"
               :items="indexKeys" density="compact" variant="solo" label="Target Portfolio"
               :disabled="compareLoading"></v-autocomplete>
@@ -59,7 +63,7 @@
 
           <v-card-text>
             <v-row class="py-5" height="15" v-if="targetLoading">
-              <v-progress-linear height="10" indeterminate color="primary"></v-progress-linear>
+              <v-progress-linear height="15" indeterminate color="primary"></v-progress-linear>
 
             </v-row>
             <TargetPortfolioView v-else-if="targetPortfolio" :portfolio="targetPortfolio" :searchQuery="searchQuery"
@@ -191,7 +195,7 @@ export default {
       if (!matched) {
         return new CompositePortfolioModel({
           name: this.portfolioName, holdings: [],
-          components: [], cash: { value: 0, currency: '$' },target_size: 50000,
+          components: [], cash: { value: 0, currency: '$' }, target_size: 50000,
           refreshed_at: null, profit_and_loss: 0
         })
       }
@@ -204,10 +208,13 @@ export default {
       return this.$store.getters.provider;
     },
     portfolioSum() {
-      return this.portfolio.holdings.reduce((sum, holding) => sum + holding.value.value, 0);
+      return this.portfolio.totalValue;
+    },
+    portfolioPercentOfGoal() {
+      return Math.round((this.portfolioSum / this.portfolioTarget) * 100);
     },
     portfolioPercentOfTarget() {
-      return Math.round((this.portfolioSum / this.portfolioTarget) * 100);
+      return Math.round((this.portfolio.valueInIndex(this.targetPortfolio) / this.portfolioTarget) * 100);
     },
     numberValidationRules() {
       return [
@@ -289,11 +296,11 @@ export default {
     },
     updatedPortfolioWithTargets() {
       // update our existing portfolio with targets
-      let newHoldings:Array<PortfolioElementModel> = [];
+      let newHoldings: Array<PortfolioElementModel> = [];
       this.portfolio.holdings.forEach((element) => {
         const targetElement = this.targetPortfolio.holdings.find((target) => target.ticker === element.ticker);
         if (targetElement) {
-          element.targetWeight = targetElement.weight
+          element.targetWeight = parseFloat(targetElement.weight)
         }
         newHoldings.push(element);
       });
