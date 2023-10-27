@@ -50,7 +50,7 @@
                         <v-chip-group :disabled="true">
                             <v-chip :disabled="loading || initialLoading" v-for="ticker in localExclusions" :key="ticker"
                                 :value="ticker" :label="true" :item-text="ticker">
-                                <!-- <TickerDisplay ticker={{ element.ticker }}/> -->
+                                <TickerDisplay :ticker="ticker"/>
                             </v-chip>
                         </v-chip-group>
                     </v-col>
