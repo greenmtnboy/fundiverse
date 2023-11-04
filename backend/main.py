@@ -18,6 +18,7 @@ from fastapi import (
     status,
     BackgroundTasks,
     Body,
+    Request,
 )
 from fastapi.routing import APIRoute
 from fastapi.security import OAuth2PasswordBearer
@@ -70,6 +71,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 SERVE_PORT = 3042
 
 logger = getLogger(__name__)
+
+
+class ShutdownException(Exception):
+    pass
 
 
 class BackgroundStatus(Enum):
@@ -173,13 +178,13 @@ allowed_origins = [
 allow_origin_regex = "(app://.)"
 
 # dev settings
-if not IN_APP_CONFIG.validate:
-    allowed_origins += [
-        "http://localhost:8080",
-        "http://localhost:8081",
-        "http://localhost:8090",
-    ]
-    allow_origin_regex = "(app://.)|(http://localhost:[0-9]+)"
+# if not IN_APP_CONFIG.validate:
+allowed_origins += [
+    "http://localhost:8080",
+    "http://localhost:8081",
+    "http://localhost:8090",
+]
+allow_origin_regex = "(app://.)|(http://localhost:[0-9]+)"
 
 app.add_middleware(
     CORSMiddleware,
@@ -422,6 +427,7 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
         if not item:
             raise HTTPException(401, f"Must log into {key} to refresh this portfolio.")
         # key, item in IN_APP_CONFIG.provider_cache.items():
+        item.clear_cache()
         rport = item.get_holdings()
         IN_APP_CONFIG.holding_cache[key] = rport
         pl = item.get_profit_or_loss()
@@ -554,7 +560,7 @@ def plan_composite_purchase(input: BuyRequest):
 
 @router.get("/force_terminate")
 async def force_terminate():
-    raise HTTPException(503, "Terminating server")
+    raise ShutdownException("Terminating server")
 
 
 @router.get("/terminate")
@@ -566,7 +572,7 @@ async def terminate():
             "and will not terminate by default."
             "curl get to /force_terminate to terminate instead.",
         )
-    raise HTTPException(503, "Terminating server")
+    raise ShutdownException("Terminating server")
 
 
 @router.get("/stock_info/{ticker}")
@@ -654,19 +660,18 @@ async def exit_app():
     raise ValueError("Server is shutting down")
 
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc: HTTPException):
-    """Override the default exception handler to allow for graceful shutdowns"""
-    if exc.status_code == 503:
-        # here is where we terminate all running processes
-        task = BackgroundTask(exit_app)
-        return PlainTextResponse(
-            "Server is shutting down", status_code=exc.status_code, background=task
-        )
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=jsonable_encoder({"detail": exc.detail}),
-    )
+# @app.exception_handler(HTTPException)
+# async def http_exception_handler(request, exc: HTTPException):
+#     """Override the default exception handler to allow for graceful shutdowns"""
+#     if exc.status_code == 503:
+#         # here is where we terminate all running processes
+
+#     return JSONResponse(
+#         status_code=exc.status_code,
+#         content=jsonable_encoder(
+#             {"detail": "Issue with provider authentication, you must re-login"}
+#         ),
+#     )
 
 
 ## Build async routes
@@ -695,6 +700,22 @@ for path in router_routes:
         local_func = make_function(path.endpoint)
         new_path = f"/async_{path.path[1:]}"
         router.post(new_path)(local_func)
+
+
+@app.exception_handler(ShutdownException)
+async def shutdown_handler(request: Request, exc: ConfigurationError):
+    task = BackgroundTask(exit_app)
+    return PlainTextResponse(
+        "Server is shutting down", status_code=503, background=task
+    )
+
+
+@app.exception_handler(ConfigurationError)
+async def provider_auth_handler(request: Request, exc: ConfigurationError):
+    return JSONResponse(
+        status_code=401,
+        content=jsonable_encoder({"detail": str(exc)}),
+    )
 
 
 app.include_router(router)
