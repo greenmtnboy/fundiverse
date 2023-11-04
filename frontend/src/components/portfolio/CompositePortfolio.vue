@@ -66,12 +66,16 @@
                 and are needed to fetch up-to-date stock information as you set up your portfolio. If you're just getting started,
                 you can sign up for a Alpaca paper account in minutes and explore with fake money, no bank account provided.
             </v-alert>
+            <v-alert type="info" v-if="!selectedIndex" closable close-label="Dismiss Hint">Click the configure button to 
+                set up an index to build against for this portfolio. You can choose from a variety of pre-built indexes, or
+                build your own! You'll need an index set to start purchasing stocks.
+            </v-alert>
         </v-card-text>
         <v-card-actions>
             <ConfirmPurchase :selectedIndex="selectedIndex" :targetSize="portfolio.target_size" :cash="portfolio.cash"
                 :providers="portfolio.keys" :portfolioName="portfolio.name" :disabled="portfolio.loading" />
             <v-btn :disabled="portfolio.keys.length === 0" @click="navigatePortfolio">
-                Set Index
+                Configure
             </v-btn>
             <ProviderLoginPopup :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
 
