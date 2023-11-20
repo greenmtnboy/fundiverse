@@ -28,7 +28,7 @@
     "vue": "^3.2.47",
     "vue-router": "^4.2.4",
     "vue3-shortkey": "^4.0.0",
-    "vuetify": "^3.3.19",
+    "vuetify": "^3.4.2",
     "vuex": "^4.1.0",
     "webfontloader": "^1.6.28"
   },
