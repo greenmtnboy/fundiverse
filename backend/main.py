@@ -689,7 +689,8 @@ for path in router_routes:
                 arg: Any = Body(None),
             ):
                 guid = str(uuid.uuid4())
-                parsed_arg = list(args.values())[0].parse_obj(arg)
+                arg_model:BaseModel = list(args.values())[0]
+                parsed_arg = arg_model.model_validate(arg)
                 background_tasks.add_task(
                     run_task, IN_APP_CONFIG, guid, endpoint, parsed_arg
                 )
