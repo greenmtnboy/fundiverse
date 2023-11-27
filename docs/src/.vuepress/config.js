@@ -19,7 +19,17 @@ module.exports = {
     ['link', { rel: "apple-touch-icon", sizes: "180x180", href: "/favicon.png"}],
     ['meta', { name: 'theme-color', content: '#3eaf7c' }],
     ['meta', { name: 'apple-mobile-web-app-capable', content: 'yes' }],
-    ['meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black' }]
+    ['meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black' }],
+    ['script', {
+      async: true,
+      src: 'https://www.googletagmanager.com/gtag/js?id=G-3P8R2SW79T'
+  }],
+    ['script', {}, `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+
+gtag('config', 'G-3P8R2SW79T');
+`],
   ],
 
   /**
@@ -87,7 +97,5 @@ module.exports = {
   plugins: [
     '@vuepress/plugin-back-to-top',
     '@vuepress/plugin-medium-zoom',
-    ['@vuepress/plugin-google-analytics', { ga: 'G-3P8R2SW79T' }],
-
   ]
 }
