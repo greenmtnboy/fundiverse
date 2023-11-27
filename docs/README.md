@@ -1,3 +1,7 @@
+## Static Site Generation
+
+
+### Deployment
 Copy to static serving site.
 
 Build, then copy files
@@ -6,4 +10,6 @@ Build, then copy files
 
 Optionally, if copying off WSL
 
-`cp -r dist /mnt/c/Users/user/docs_dist`
+`cp -r src/.vuepress/dist /mnt/c/Users/ethan/docs_dist`
+
+Suggest using filezilla to copy. 
