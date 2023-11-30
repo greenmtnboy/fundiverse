@@ -51,6 +51,7 @@ from py_portfolio_index import (
     PurchaseStrategy,
     generate_composite_order_plan,
     AVAILABLE_PROVIDERS,
+    Logger
 )
 from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
@@ -64,13 +65,16 @@ from fastapi.responses import PlainTextResponse
 from starlette.background import BackgroundTask
 import asyncio
 import traceback
-from logging import getLogger
+from logging import getLogger, StreamHandler
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 SERVE_PORT = 3042
 
 logger = getLogger(__name__)
+# hook into py-portfolio-index-logger
+Logger.addHandler(StreamHandler())
+logger.addHandler(StreamHandler())
 
 
 class ShutdownException(Exception):
@@ -476,14 +480,12 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
         ideal_port = deepcopy(INDEXES[input.index])
     except KeyError:
         raise HTTPException(404, f"Index {input.index} not found")
-    ideal_port.exclude(input.stock_exclusions)
+
 
     if input.reweight:
         provider = get_provider_safe(input.provider)
 
         ideal_port.reweight_to_present(provider=provider)
-    for item in input.list_exclusions:
-        ideal_port.exclude(STOCK_LISTS[item])
     for mutation in input.stock_modifications:
         ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=0.001)
     for list_mutation in input.list_modifications:
@@ -492,6 +494,9 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
             weight=list_mutation.scale,
             min_weight=0.001,
         )
+    ideal_port.exclude(input.stock_exclusions)
+    for item in input.list_exclusions:
+        ideal_port.exclude(STOCK_LISTS[item])
     return ideal_port
 
 
@@ -609,6 +614,7 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
                 value=order.value,
                 qty=order.qty,
             )
+            logger.info(f'Placing order for {order.ticker} with {order.provider}')
             providers[order.provider].handle_order_element(transformed_order)
             order.status = OrderStatus.PLACED
             output.append(order)
@@ -731,8 +737,7 @@ def run():
     import sys
 
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        print("running in a PyInstaller bundle")
-
+        print("running in a PyInstaller bundle, sending stdout to devnull")
         f = open(os.devnull, "w")
         sys.stdout = f
         run = uvicorn.run(
