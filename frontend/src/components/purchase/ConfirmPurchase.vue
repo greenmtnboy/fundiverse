@@ -80,6 +80,7 @@
                 </v-row>
                 <v-row v-else>
                     <v-col v-if="displayBatch" cols=12>
+
                         <template v-for="element in displayBatch" :key="element.ticker">
 
                             <v-list-item> <v-chip :color="element.order_type === 'BUY' ? 'green' : 'red'" small outlined>{{
@@ -103,7 +104,12 @@
                         </template>
                         <v-pagination v-model="page" class="my-4" :length="orderLength"></v-pagination>
                     </v-col>
-                    <v-col v-else> </v-col>
+                    <v-col v-else> 
+                        <v-alert type="info" class="my-4" outlined>
+                            No orders to place. 
+                            <v-btn @click="planPurchase">Replan</v-btn>
+                        </v-alert>
+                    </v-col>
                 </v-row>
 
             </v-card-text>
@@ -119,7 +125,7 @@
                 </v-btn>
                 <v-btn v-if="placedOrders.length > 0" :loading="loading" key="return" class="text-white flex-grow-1 text-none"
                     color="primary" variant="flat" @click="completeOrders()">
-                    Return to Portfolio
+                    Done Reviewing Results
                 </v-btn>
                 <v-btn v-else :disabled="initialLoading || alertVisible" :loading="loading" key="submit"
                     class="text-white flex-grow-1 text-none" color="primary" variant="flat" @click="submit()">
@@ -287,6 +293,7 @@ export default {
         planPurchase() {
 
             this.alertVisible = false;
+            this.page =1;
             this.exception = null;
             this.initialLoading = true;
             return instance.post('plan_composite_purchase', {
@@ -315,6 +322,7 @@ export default {
             this.loading = true;
             this.alertVisible = false;
             this.exception = null;
+            this.placedPage = 1;
             return instance.post('buy_index_from_plan_multi_provider', {
                 'plan': this.plan,
                 'providers': this.providers
