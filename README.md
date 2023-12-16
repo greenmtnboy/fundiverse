@@ -10,7 +10,7 @@ Customize your index funds
 ## Fundiverse lets you own the market - your way
 
 - Money never leaves your brokerage
-- Customize to your priorities, knowledge, or beliefs
+- Customize to your priorities, knowledge, or ethics
 - Index the SP500 with as little as $500 dollars
 
 Indexing has been a gospel of long-term investing for years. The central tenet of buying diverse funds that capture large portions of the market and holding them for a long-duration has proven it's value again and again.
@@ -47,13 +47,15 @@ Fundiverse also makes it easy to exclude companies you can't trade in, such as y
 
 ## How does it work?
 
-Fundiverse is built on an [open-source python framework](https://github.com/greenmtnboy/py-portfolio-index) for building ideal and real portfolios and purchasing large amounts of stocks against various backends to bring the real portfolio in line with the ideal. Fundiverse wraps this in an Electron desktop app, which simplifies the process of creating curated indices and understanding how your changes adjust the composition of the stocks. 
+Fundiverse is built on an [open-source python framework](https://github.com/greenmtnboy/py-portfolio-index) for constructing customized portfolios tracking indexes across hundreds of stocks. Fundiverse wraps this in an Electron desktop app, which simplifies the process of creating curated indices and understanding how your changes adjust the composition of the stocks. 
 
 ## Supported Platforms
-Fundiverse requires you to have an account sent up with one of the following platforms.
+Fundiverse requires you to have an account sent up with one of the following platforms. Alpaca and
+Webull both support paper trading to experiment without connecting a real bank account.
 
 - Alpaca
 - Robinhood
+- Webull
 
 ## Getting Started
 

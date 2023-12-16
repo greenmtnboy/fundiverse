@@ -5,6 +5,7 @@ import instance from '/src/api/instance';
 const storageAPI = {
     setCredential(key: string, value: string) {
         // const buffer = safeStorage.encryptString(value);
+        store.delete(key);
         store.set(key, value);
         // store.set(key, buffer.toString(encoding));
     },

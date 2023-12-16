@@ -48,10 +48,12 @@ from py_portfolio_index import (
     AlpacaProvider,
     PaperAlpacaProvider,
     RobinhoodProvider,
+    WebullProvider,
+    WebullPaperProvider,
     PurchaseStrategy,
     generate_composite_order_plan,
     AVAILABLE_PROVIDERS,
-    Logger
+    Logger,
 )
 from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
@@ -109,15 +111,17 @@ class ActiveConfig:
     @property
     def default_provider(self):
         # get the fastest provider
-        for key, value in self.provider_cache.items():
-            if key == Provider.ALPACA:
-                return key
-        for key, value in self.provider_cache.items():
-            if key == Provider.ALPACA_PAPER:
-                return key
-        for key, value in self.provider_cache.items():
-            if key == Provider.ROBINHOOD:
-                return key
+        priority = [
+            Provider.ALPACA,
+            Provider.ALPACA_PAPER,
+            Provider.ROBINHOOD,
+            Provider.WEBULL,
+            Provider.WEBULL_PAPER,
+        ]
+        for provider in priority:
+            for key, _ in self.provider_cache.items():
+                if key == provider:
+                    return key
         if self.provider_cache:
             return list(self.provider_cache.keys())[0]
         raise HTTPException(401, "No logged in provider specified")
@@ -206,6 +210,8 @@ class LoginRequest(BaseModel):
     secret: str
     provider: Provider
     extra_factor: str | int | None = None
+    device_id: str | None = None
+    trading_pin: str | None = None
     force: bool = False
 
 
@@ -327,8 +333,22 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
             rh_provider = IN_APP_CONFIG.provider_cache.get(Provider.ROBINHOOD, None)
             if not rh_provider:
                 raise HTTPException(401, "No logged in robinhood provider found")
+            IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = rh_provider
             provider = rh_provider
-            IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = provider
+        elif _provider == Provider.WEBULL:
+            wb_provider = IN_APP_CONFIG.provider_cache.get(Provider.WEBULL, None)
+            if not wb_provider:
+                raise HTTPException(401, "No logged in webull provider found")
+            IN_APP_CONFIG.provider_cache[Provider.WEBULL] = wb_provider
+            provider = wb_provider
+        elif _provider == Provider.WEBULL_PAPER:
+            wb_paper_provider = IN_APP_CONFIG.provider_cache.get(
+                Provider.WEBULL_PAPER, None
+            )
+            if not wb_provider:
+                raise HTTPException(401, "No logged in webull provider found")
+            IN_APP_CONFIG.provider_cache[Provider.WEBULL_PAPER] = wb_paper_provider
+            provider = wb_paper_provider
         elif _provider is None:
             raise HTTPException(401, "No logged in provider specified")
         else:
@@ -391,6 +411,20 @@ def login_handler(input: LoginRequest):
             )
             provider = RobinhoodProvider(external_auth=True)
             IN_APP_CONFIG.provider_cache[input.provider] = provider
+        elif input.provider == Provider.WEBULL:
+            environ[WebullProvider.PASSWORD_ENV] = input.secret
+            environ[WebullProvider.USERNAME_ENV] = input.key
+            environ[WebullProvider.TRADE_TOKEN_ENV] = input.trading_pin
+            environ[WebullProvider.DEVICE_ID_ENV] = input.device_id
+            provider = WebullProvider()
+            IN_APP_CONFIG.provider_cache[input.provider] = provider
+        elif input.provider == Provider.WEBULL_PAPER:
+            environ[WebullPaperProvider.PASSWORD_ENV] = input.secret
+            environ[WebullPaperProvider.USERNAME_ENV] = input.key
+            environ[WebullPaperProvider.TRADE_TOKEN_ENV] = input.trading_pin
+            environ[WebullPaperProvider.DEVICE_ID_ENV] = input.device_id
+            provider = WebullPaperProvider()
+            IN_APP_CONFIG.provider_cache[input.provider] = provider
         else:
             raise HTTPException(404, "Selected provider not supported yet")
         IN_APP_CONFIG.logged_in = input.provider.value
@@ -429,20 +463,25 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     for key in input.providers:
         item = IN_APP_CONFIG.provider_cache.get(key, None)
         if not item:
-            raise HTTPException(401, f"Must log into {key} to refresh this portfolio.")
+            raise HTTPException(
+                401, f"Must log into {key} to refresh any element in this portfolio."
+            )
         # key, item in IN_APP_CONFIG.provider_cache.items():
-        item.clear_cache()
-        rport = item.get_holdings()
-        IN_APP_CONFIG.holding_cache[key] = rport
-        pl = item.get_profit_or_loss()
+        if key in input.providers_to_refresh:
+            item.clear_cache()
+            rport = item.get_holdings()
+            rport.profit_and_loss = item.get_profit_or_loss()
+            IN_APP_CONFIG.holding_cache[key] = rport
+        else:
+            rport = IN_APP_CONFIG.holding_cache[key]
         active[key] = RealPortfolioOutput(
             name=f"{key.name}",
             holdings=rport.holdings,
             cash=rport.cash,
             provider=key,
-            profit_or_loss=pl,
+            profit_or_loss=rport.profit_and_loss,
         )
-        profit_and_loss += pl
+        profit_and_loss += rport.profit_and_loss
         raw.append(rport)
     internal = CompositePortfolio(raw)
     return CompositePortfolioOutput(
@@ -480,7 +519,6 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
         ideal_port = deepcopy(INDEXES[input.index])
     except KeyError:
         raise HTTPException(404, f"Index {input.index} not found")
-
 
     if input.reweight:
         provider = get_provider_safe(input.provider)
@@ -614,7 +652,7 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
                 value=order.value,
                 qty=order.qty,
             )
-            logger.info(f'Placing order for {order.ticker} with {order.provider}')
+            logger.info(f"Placing order for {order.ticker} with {order.provider}")
             providers[order.provider].handle_order_element(transformed_order)
             order.status = OrderStatus.PLACED
             output.append(order)
@@ -695,7 +733,7 @@ for path in router_routes:
                 arg: Any = Body(None),
             ):
                 guid = str(uuid.uuid4())
-                arg_model:BaseModel = list(args.values())[0]
+                arg_model: BaseModel = list(args.values())[0]
                 parsed_arg = arg_model.model_validate(arg)
                 background_tasks.add_task(
                     run_task, IN_APP_CONFIG, guid, endpoint, parsed_arg

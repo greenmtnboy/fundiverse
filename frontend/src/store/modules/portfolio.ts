@@ -131,6 +131,7 @@ const actions = {
             const response = await instance.post(`composite_portfolio/refresh`, args)
 
             const parsed = new CompositePortfolioModel(response.data)
+            // this is information that is only available locally
             parsed.target_size = existing.target_size
             commit('updateCompositePortfolio', parsed);
             commit('setPortfolioLoadingStatus', false)

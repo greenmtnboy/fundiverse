@@ -8,7 +8,7 @@
                 </v-col><v-col class="text-right" col="4">
                     <span>
                         <v-chip v-if="portfolio.profit_and_loss"
-                            :color="portfolio.profit_and_loss.value > 0 ? 'green' : 'red'" small outlined>
+                            :color="portfolioColor" small outlined>
                             <span class="pr-2">Portfolio Return: </span>
                             <CurrencyItem :value=portfolio.profit_and_loss />
                         </v-chip></span></v-col>
@@ -57,7 +57,8 @@
             <v-divider class="pb-4 pt-0"></v-divider>
 
             <template v-for="sportfolio in portfolio.components" :key="sportfolio.name">
-                <SubPortfolio :id="sportfolio.name" :portfolio="sportfolio" :parentName="portfolio.name" />
+                <SubPortfolio :id="sportfolio.name" :portfolio="sportfolio" :parentName="portfolio.name"
+                :refresh="()=>refreshChild(sportfolio)" />
             </template>
             <!-- <div v-for="sportfolio in portfolio.components" :key="sportfolio.name"> 
                 {{ sportfolio.holdings }}</div> -->
@@ -148,6 +149,15 @@ export default {
             }
             return 0;
         },
+        portfolioColor() {
+            if (this.portfolio.profit_and_loss.value >0) {
+                return 'green'
+            }
+            else if (this.portfolio.profit_and_loss.value < 0) {
+                return 'red'
+            }
+            return 'gray'
+        },
         selectedIndex() {
             if (!this.customizations) {
                 return null
@@ -190,10 +200,14 @@ export default {
         navigatePortfolio() {
             this.$router.push({ path: `composite_portfolio/${this.portfolio.name}` })
         },
+        async refreshChild(sportfolio) {
+            await this.refreshCompositePortfolio({ portfolioName: this.portfolio.name, keys: this.portfolio.keys, keys_to_refresh:[sportfolio.provider] })
+            await this.saveCompositePortfolios();
+        },
         async refresh() {
             this.error = null;
             try {
-                await this.refreshCompositePortfolio({ portfolioName: this.portfolio.name, keys: this.portfolio.keys })
+                await this.refreshCompositePortfolio({ portfolioName: this.portfolio.name, keys: this.portfolio.keys, keys_to_refresh:this.portfolio.keys })
                 await this.saveCompositePortfolios();
             } catch (e) {
                 this.error = e
