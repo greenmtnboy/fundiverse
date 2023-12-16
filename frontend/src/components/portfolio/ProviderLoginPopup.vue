@@ -3,8 +3,7 @@
         <template v-slot:activator="{ props }">
             <v-tooltip v-if="loginSuccess">
                 <template v-slot:activator="{ props }">
-                    <v-btn v-bind="props" transition="fade-transition" class="text-none"
-                     color="green" size="compact" icon>
+                    <v-btn v-bind="props" transition="fade-transition" class="text-none" color="green" size="compact" icon>
                         <v-icon>mdi-check</v-icon>
                     </v-btn>
                 </template>
@@ -12,7 +11,7 @@
             </v-tooltip>
             <v-tooltip v-else-if="error">
                 <template v-slot:activator="{ props }">
-                    <v-btn v-bind="props"  @click="forceOpenModal"   color="primary" >
+                    <v-btn v-bind="props" @click="forceOpenModal" color="primary">
                         {{ label }}
                     </v-btn>
                 </template>
@@ -25,18 +24,22 @@
         <v-card class="mx-auto" min-width="344" title="Login to Provider">
             <v-form v-model="form" @submit.prevent="login">
                 <v-container>
+                    {{ selectedProvider }}
                     <v-select :readonly="loading || !providerSelectable" :rules="[required]" v-model="selectedProvider"
                         color="primary" :items="availableProviders" @update:modelValue="providerSelected"
                         label="Provider Type" variant="underlined"></v-select>
-                    <v-text-field :readonly="loading" :rules="[required]" v-model="key" color="primary"
-                        :label="loginDisplay" variant="underlined"></v-text-field>
-                    <v-text-field :readonly="loading" :rules="[required]" v-model="secret" color="primary"
-                        :label="secretDisplay" :append-icon="showPass ? 'mdi-eye' : 'mdi-eye-off'"
-                        :type="showPass ? 'text' : 'password'"
-                         @click:append="showPass = !showPass"
-                        variant="underlined"></v-text-field>
-                    <v-text-field v-if="extraLogin" :readonly="loading" :rules="[required]"
-                     v-model="factor" color="primary"
+                    <template v-if="providerKeyValues[this.selectedProvider]" v-for="key in providerLoginKeys">
+                        <v-text-field v-if="key.type == 'secret'" :readonly="loading" :rules="[required]"
+                            v-model="providerKeyValues[selectedProvider][key.key]"
+                            color="primary" :label="key.label"
+                            variant="underlined" :append-icon="showPass ? 'mdi-eye' : 'mdi-eye-off'"
+                            :type="showPass ? 'text' : 'password'" @click:append="showPass = !showPass"></v-text-field>
+                        <v-text-field v-else :readonly="loading" :rules="[required]"
+                            v-model="providerKeyValues[selectedProvider][key.key]"
+                            color="primary" :label="key.label"
+                            variant="underlined"></v-text-field>
+                    </template>
+                    <v-text-field v-if="extraLogin" :readonly="loading" :rules="[required]" v-model="factor" color="primary"
                         label="Extra Factor" :append-icon="showFactor ? 'mdi-eye' : 'mdi-eye-off'"
                         :type="showFactor ? 'text' : 'password'" @click:append="showFactor = !showFactor"
                         variant="underlined"></v-text-field>
@@ -89,6 +92,7 @@ export default {
             error: '' as string,
             extraLogin: false,
             dialog: false,
+            providerKeyValues: {} as any
         };
     },
     props: {
@@ -123,24 +127,9 @@ export default {
         availableProviders() {
             return this.providers.filter(item => !this.providerKeys.includes(item));
         },
-        loginDisplay() {
-            if (this.selectedProvider == 'alpaca') {
-                return 'API Key'
-            }
-            else if (this.selectedProvider == 'robinhood') {
-                return 'Username'
-            }
-            return 'Login'
+        providerLoginKeys() {
+            return this.getProviderLoginKeys(this.selectedProvider)
         },
-        secretDisplay() {
-            if (this.selectedProvider == 'alpaca') {
-                return 'API Secret'
-            }
-            else if (this.selectedProvider == 'robinhood') {
-                return 'Password'
-            }
-            return 'Secret'
-        }
     },
     methods: {
 
@@ -148,23 +137,47 @@ export default {
         required(v) {
             return !!v || 'Field is required'
         },
-        forceOpenModal(){
+        forceOpenModal() {
             // this.getDefaults()
             this.dialog = true;
         },
+        getProviderLoginKeys(provider) {
+                if (['alpaca', 'alpaca_paper'].includes(provider)) {
+                    return [{ 'key': 'key', 'label': 'API Key' },
+                    { 'key': 'secret', 'label': 'API Secret', 'type': 'secret' }]
+                }
+                else if (provider == 'robinhood') {
+                    return [{ 'key': 'key', 'label': 'Username' },
+                    { 'key': 'secret', 'label': 'Password', 'type': 'secret' }]
+                }
+                else if (['webull', 'webull_paper'].includes(provider)) {
+                    return [{ 'key': 'key', 'label': 'Email' },
+                    { 'key': 'secret', 'label': 'Password', 'type': 'secret' },
+                    { 'key': 'device_id', 'label': 'Device ID', 'type': 'secret' },
+                    { 'key': 'trading_pin', 'label': 'Trading Pin', 'type': 'secret' }]
+                }
+                return [{ 'key': 'key', 'label': 'Login' },
+                { 'key': 'secret', 'label': 'Password', 'type': 'secret' }]
+        },
         getDefaults(provider) {
-            let key_key = 'key-'.concat(provider)
-            let secret_key = 'secret-'.concat(provider)
-            let saved_key_key = this.keys.find(obj => obj.key === key_key)
-            let saved_secret_key = this.keys.find(obj => obj.key === secret_key)
-            if (saved_key_key) {
-                this.key = saved_key_key.value
+            // loop through providerKeys
+            let keys = this.getProviderLoginKeys(provider)
+            let values = {}
+            this.providerKeyValues[provider] = {}
+            let foundAll = true
+            for (let i = 0; i < keys.length; i++) {
+                let key = keys[i].key.concat('-').concat(provider)
+                let saved_key_value = this.keys.find(obj => obj.key === key)
+                if (saved_key_value) {
+                    values[keys[i].key] = saved_key_value.value
+                }
+                else {
+                    values[keys[i].key] = null
+                    foundAll = false
+                }
             }
-            if (saved_secret_key) {
-                this.secret = saved_secret_key.value
-            }
-
-            return saved_key_key && saved_secret_key
+            this.providerKeyValues[provider] = values
+            return foundAll
         },
         providerSelected() {
             this.getDefaults(this.selectedProvider)
@@ -193,43 +206,35 @@ export default {
             this.error = '';
             this.extraLogin = false;
             let command = {
-                'key': this.key,
-                'secret': this.secret,
+                ...this.providerKeyValues[this.selectedProvider],
                 'provider': this.selectedProvider,
             }
             if (this.factor) {
-                command = {
-                    'key': this.key,
-                    'secret': this.secret,
-                    'provider': this.selectedProvider,
-                    // @ts-ignore: this only exists sometimes
-                    'extra_factor': this.factor
-                }
+                command = { ...command, 'extra_factor': this.factor }
             }
             return instance.post('login', command).then(() => {
                 this.setLoggedIn({ 'provider': this.selectedProvider });
 
                 if (this.saveCredentials) {
-                    this.storeSavedValue({
-                        'key': 'key-'.concat(this.selectedProvider),
-                        'value': this.key
-                    });
-                    this.storeSavedValue({
-                        'key': 'secret-'.concat(this.selectedProvider),
-                        'value': this.secret
-                    });
+                    for (let i = 0; i < this.providerLoginKeys.length; i++) {
+                        let key = this.providerLoginKeys[i].key.concat('-').concat(this.selectedProvider)
+                        this.storeSavedValue({
+                            'key': key,
+                            'value': this.providerKeyValues[this.selectedProvider][this.providerLoginKeys[i].key]
+                        });
+                    }
                 }
                 this.dialog = false;
                 if (this.provider == null) {
                     this.pushEmptyProvider({ portfolioName: this.portfolioName, key: this.selectedProvider })
-                    this.probeLogin({provider: this.selectedProvider})
+                    this.probeLogin({ provider: this.selectedProvider })
                     if (refresh) {
-                        return this.refreshCompositePortfolio({ portfolioName: this.portfolioName})
+                        return this.refreshCompositePortfolio({ portfolioName: this.portfolioName })
                     }
 
                 }
                 else {
-                    this.probeLogin({provider: this.provider})
+                    this.probeLogin({ provider: this.provider })
                     if (refresh) {
                         return this.refreshCompositePortfolio({ portfolioName: this.portfolioName })
                     }
@@ -259,8 +264,8 @@ export default {
                     return
                 }
 
-                Promise.all([this.probeLogin({provider:this.provider}), this.getDefaults(this.provider)]).then(() => {
-                    if (this.key && this.secret && !this.loginSuccess) {
+                Promise.all([this.probeLogin({ provider: this.provider }), this.getDefaults(this.provider)]).then(() => {
+                    if (!this.loginSuccess) {
                         this.login(false)
                     }
                 })

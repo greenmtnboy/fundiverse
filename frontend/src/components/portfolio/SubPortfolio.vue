@@ -13,7 +13,7 @@
             <CurrencyItem :loading="portfolio.loading" :value="portfolio.cash" /> cash
         </span>
         <template v-slot:append>
-            <v-chip v-if="portfolio.profit_or_loss" :color="portfolio.profit_or_loss.value > 0 ? 'green' : 'red'" small
+            <v-chip v-if="portfolio.profit_or_loss" :color="portfolioColor" small
                 outlined>
                 <span class="pr-2">Return: </span>
                 <CurrencyItem :value=portfolio.profit_or_loss />
@@ -26,6 +26,10 @@
             <v-btn v-if="loggedIn" @click="removeProvider" color="red" prependIcon="mdi-cancel" variant="text">
                 Remove
             </v-btn>
+            <!-- <v-btn :loading="loading" v-if="refresh" @click="refresh" color="blue" prependIcon="mdi-refresh" variant="text">
+                Refresh
+            </v-btn> -->
+
 
 
 
@@ -42,7 +46,8 @@ import SubPortfolioModel from '/src/models/SubPortfolioModel'
 export default {
     data() {
         return {
-            loggedIn: true
+            loggedIn: true,
+            selfLoading: false
         }
     },
     components: {
@@ -64,14 +69,31 @@ export default {
         portfolio: {
             type: SubPortfolioModel,
             required: true
+        },
+        refresh: {
+            type: Function,
+            required: false,
+            default: () => { }
         }
     },
     computed: {
+        loading() {
+            return this.portfolio.loading
+        },
         portfolioSum() {
             return this.portfolio.holdings.reduce((sum, holding) => sum +  Math.floor(holding.value.value*10000) >>> 0, 0) / 10000;
         },
         portfolioLength() {
             return this.portfolio.holdings.length;
+        },
+        portfolioColor() {
+            if (this.portfolio.profit_or_loss.value >0) {
+                return 'green'
+            }
+            else if (this.portfolio.profit_or_loss.value < 0) {
+                return 'red'
+            }
+            return 'gray'
         },
     }
 }

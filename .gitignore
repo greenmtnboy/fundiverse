@@ -51,3 +51,6 @@ backend/dist
 #playwright
 frontend/playwright-report
 frontend/test-results
+
+#dependencies
+did.bin
