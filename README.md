@@ -54,6 +54,7 @@ Fundiverse requires you to have an account sent up with one of the following pla
 
 - Alpaca
 - Robinhood
+- Webull
 
 ## Getting Started
 
