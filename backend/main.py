@@ -53,7 +53,7 @@ from py_portfolio_index import (
     PurchaseStrategy,
     generate_composite_order_plan,
     AVAILABLE_PROVIDERS,
-    Logger
+    Logger,
 )
 from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
@@ -111,8 +111,13 @@ class ActiveConfig:
     @property
     def default_provider(self):
         # get the fastest provider
-        priority = [Provider.ALPACA, Provider.ALPACA_PAPER, Provider.ROBINHOOD,
-                    Provider.WEBULL, Provider.WEBULL_PAPER]
+        priority = [
+            Provider.ALPACA,
+            Provider.ALPACA_PAPER,
+            Provider.ROBINHOOD,
+            Provider.WEBULL,
+            Provider.WEBULL_PAPER,
+        ]
         for provider in priority:
             for key, _ in self.provider_cache.items():
                 if key == provider:
@@ -337,7 +342,9 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
             IN_APP_CONFIG.provider_cache[Provider.WEBULL] = wb_provider
             provider = wb_provider
         elif _provider == Provider.WEBULL_PAPER:
-            wb_paper_provider = IN_APP_CONFIG.provider_cache.get(Provider.WEBULL_PAPER, None)
+            wb_paper_provider = IN_APP_CONFIG.provider_cache.get(
+                Provider.WEBULL_PAPER, None
+            )
             if not wb_provider:
                 raise HTTPException(401, "No logged in webull provider found")
             IN_APP_CONFIG.provider_cache[Provider.WEBULL_PAPER] = wb_paper_provider
@@ -456,7 +463,9 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     for key in input.providers:
         item = IN_APP_CONFIG.provider_cache.get(key, None)
         if not item:
-            raise HTTPException(401, f"Must log into {key} to refresh any element in this portfolio.")
+            raise HTTPException(
+                401, f"Must log into {key} to refresh any element in this portfolio."
+            )
         # key, item in IN_APP_CONFIG.provider_cache.items():
         if key in input.providers_to_refresh:
             item.clear_cache()
@@ -510,7 +519,6 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
         ideal_port = deepcopy(INDEXES[input.index])
     except KeyError:
         raise HTTPException(404, f"Index {input.index} not found")
-
 
     if input.reweight:
         provider = get_provider_safe(input.provider)
@@ -644,7 +652,7 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
                 value=order.value,
                 qty=order.qty,
             )
-            logger.info(f'Placing order for {order.ticker} with {order.provider}')
+            logger.info(f"Placing order for {order.ticker} with {order.provider}")
             providers[order.provider].handle_order_element(transformed_order)
             order.status = OrderStatus.PLACED
             output.append(order)
@@ -725,7 +733,7 @@ for path in router_routes:
                 arg: Any = Body(None),
             ):
                 guid = str(uuid.uuid4())
-                arg_model:BaseModel = list(args.values())[0]
+                arg_model: BaseModel = list(args.values())[0]
                 parsed_arg = arg_model.model_validate(arg)
                 background_tasks.add_task(
                     run_task, IN_APP_CONFIG, guid, endpoint, parsed_arg
