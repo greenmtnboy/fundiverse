@@ -142,7 +142,8 @@ const actions = {
             if (error instanceof Error) {
                 errorString = error.toString()
             }
-
+            console.log('error refreshing')
+            console.log(errorString)
             commit('setPortfolioLoadingStatus', { name: portfolioName, status: false, error: errorString })
             throw error
         }
@@ -213,6 +214,9 @@ const mutations = {
 
             });
             state.compositePortfolios[existingIndex].loading = data.status;
+            if (data.error) {
+                state.compositePortfolios[existingIndex].error = data.error;
+            }
         }
     },
     savePortfolio(state) {

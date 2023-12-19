@@ -6,7 +6,8 @@ Click ‘add portfolio’ to create your first portfolio. Add a dashing name.
 Groups of stocks that you are purchasing are called `portfolios`. A single brokerage
 can be attached to a single portfolio, but a portfolio can contain multiple brokerages.
 
-It is commont to have a `paper` and `real` portfolio.
+A common pattern is having a `paper` and `real` portfolio; the paper lets you experiment
+while the real contains your actual investments.
 
 Now you need to connect to a brokerage that lets you buy and hold stocks.
 

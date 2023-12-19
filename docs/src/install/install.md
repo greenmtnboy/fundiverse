@@ -1,6 +1,6 @@
 # Installation
 
-Fundiverse is a electron desktop app with versions for windows, mac, and linux.
+Fundiverse is a desktop app with versions for windows, mac, and linux. It is built on the `electron` framework, used by Slack, VS Code, and other common tools. 
 
 You install the app, and then locally configure it to connect to your brokerage. Fundiverse does not
 communicate with anything other than your configered brokerages.

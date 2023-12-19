@@ -12,4 +12,4 @@ If it doesn’t auto-run, find in start menu, run.
 
 ### Troubleshooting
 
-Fundiverse requires internet acccess to communicate with your brokerage. If you are behind a firewall, you may need to allow fundiverse to access the internet.
+Fundiverse requires internet acccess to communicate with your brokerage. If you are behind a firewall, you may need to allow the fundiverse backend to access the internet.
