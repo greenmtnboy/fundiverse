@@ -21,10 +21,11 @@
                 {{ label }}
             </v-btn>
         </template>
-        <v-card class="mx-auto" min-width="344" title="Login to Provider">
+        <v-card class="mx-auto" min-width="344" :title="selectedProvider ? `Login to ${ selectedProvider}` : 'Provider' "
+        >
             <v-form v-model="form" @submit.prevent="login">
                 <v-container>
-                    {{ selectedProvider }}
+
                     <v-select :readonly="loading || !providerSelectable" :rules="[required]" v-model="selectedProvider"
                         color="primary" :items="availableProviders" @update:modelValue="providerSelected"
                         label="Provider Type" variant="underlined"></v-select>
