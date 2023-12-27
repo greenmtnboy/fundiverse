@@ -330,25 +330,32 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
             # Robinhood requires potential two factor auth
             # cannot safely instantiate default handler
             # even in dev
+
             rh_provider = IN_APP_CONFIG.provider_cache.get(Provider.ROBINHOOD, None)
-            if not rh_provider:
+            if rh_provider:
+                IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = rh_provider
+                provider = rh_provider
+            else:
                 raise HTTPException(401, "No logged in robinhood provider found")
-            IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = rh_provider
-            provider = rh_provider
+
         elif _provider == Provider.WEBULL:
             wb_provider = IN_APP_CONFIG.provider_cache.get(Provider.WEBULL, None)
-            if not wb_provider:
+            if wb_provider:
+                IN_APP_CONFIG.provider_cache[Provider.WEBULL] = wb_provider
+                provider = wb_provider
+            else:
                 raise HTTPException(401, "No logged in webull provider found")
-            IN_APP_CONFIG.provider_cache[Provider.WEBULL] = wb_provider
-            provider = wb_provider
+
         elif _provider == Provider.WEBULL_PAPER:
             wb_paper_provider = IN_APP_CONFIG.provider_cache.get(
                 Provider.WEBULL_PAPER, None
             )
-            if not wb_provider:
+            if wb_paper_provider:
+                IN_APP_CONFIG.provider_cache[Provider.WEBULL_PAPER] = wb_paper_provider
+                provider = wb_paper_provider
+            else:
                 raise HTTPException(401, "No logged in webull provider found")
-            IN_APP_CONFIG.provider_cache[Provider.WEBULL_PAPER] = wb_paper_provider
-            provider = wb_paper_provider
+
         elif _provider is None:
             raise HTTPException(401, "No logged in provider specified")
         else:
@@ -412,6 +419,8 @@ def login_handler(input: LoginRequest):
             provider = RobinhoodProvider(external_auth=True)
             IN_APP_CONFIG.provider_cache[input.provider] = provider
         elif input.provider == Provider.WEBULL:
+            assert input.trading_pin is not None
+            assert input.device_id is not None
             environ[WebullProvider.PASSWORD_ENV] = input.secret
             environ[WebullProvider.USERNAME_ENV] = input.key
             environ[WebullProvider.TRADE_TOKEN_ENV] = input.trading_pin
@@ -419,6 +428,8 @@ def login_handler(input: LoginRequest):
             provider = WebullProvider()
             IN_APP_CONFIG.provider_cache[input.provider] = provider
         elif input.provider == Provider.WEBULL_PAPER:
+            assert input.trading_pin is not None
+            assert input.device_id is not None
             environ[WebullPaperProvider.PASSWORD_ENV] = input.secret
             environ[WebullPaperProvider.USERNAME_ENV] = input.key
             environ[WebullPaperProvider.TRADE_TOKEN_ENV] = input.trading_pin

@@ -93,7 +93,7 @@ export default {
             return new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: currency,
-            }).format(Math.round(this.value.value * 100) / 100);
+            }).format(Math.round(Number(this.value.value) * 100) / 100);
         }
     }
 

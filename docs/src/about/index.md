@@ -29,4 +29,4 @@ This also means that you actually own stock in these companies, and if you wante
 
 ## Created By
 
-Long term passive investors who wanted more direct control over their money. 
+Long-term investors who wanted more direct control over their money. 

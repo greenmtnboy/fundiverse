@@ -86,6 +86,21 @@ gtag('config', 'G-3P8R2SW79T');
           title: 'First Portfolio',
           path: 'first-portfolio',
           collapsable: false,
+        },
+        {
+          title: 'Alpaca',
+          path: 'install-alpaca',
+          collapsable: false,
+        },
+        {
+          title: 'Robinhood',
+          path: 'install-robinhood',
+          collapsable: false,
+        },
+        {
+          title: 'Webull',
+          path: 'install-webull',
+          collapsable: false,
         }
       ],
     }
