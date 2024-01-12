@@ -8,6 +8,8 @@ Robinhood access uses a open-source library that is not officially supported by 
 ### Prod
 Create an account on robinhood as normal. Remember your username and password.
 
+<br>    
+
 If you have two-factor authentication enabled, after your first auth attempt youwill be prompted to enter a code. This code will be sent to your phone. Entire this code in the 'extra factor' field in the login form and continue.
 
 ::: tip

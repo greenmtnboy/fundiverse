@@ -2,4 +2,6 @@
 
 Fundiverse is distributed on linux via the snap store. 
 
-Run ```snap install fundiverse``` to install the app, and then it can be started as normal.
+<br>
+
+Run ```snap install fundiverse``` to install the app, which can then be directly run using the ```fundiverse``` command.

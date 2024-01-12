@@ -30,6 +30,7 @@ pnpm-debug.log*
 *.code-workspace
 .ruff_cache
 .pytest_cache
+*.mjs
 
 #Electron-builder output
 frontend/dist_electron
