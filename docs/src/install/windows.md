@@ -4,9 +4,15 @@ The windows intaller can be downloaded directly from the [github release page](h
 
 ### Downloading
 
-Open the latest release and download the EXE.
+<div>Open the latest release and download the EXE.</div>
 
-Once it is downloaded, double click on the file to install it. Windows will warn that this file is by an untrusted publisher. This is currently true; you will need to bypass this warning to install.
+<br>
+
+Once it is downloaded, double click on the file to install it. Windows will warn that this file is by an untrusted publisher; you will need to bypass this warning to install.
+
+::: warning
+You may be prompted about needing to grant a program network access when you first run; this the fundiverse backend and you will need to click yes to ensure that the app works.
+:::
 
 If it doesn’t auto-run, find in start menu, run. 
 

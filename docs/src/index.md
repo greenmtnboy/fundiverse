@@ -14,6 +14,3 @@ features:
   details: Index the market with as little as $500 dollars and build portfolios of thousands of stocks with a click!
 ---
 
-::: slot footer
-GPL Licensed | Contributions Welcome | [Source](https://github.com/greenmtnboy/fundiverse)
-:::
