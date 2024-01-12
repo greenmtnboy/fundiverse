@@ -1,4 +1,8 @@
-on: push
+on: 
+  push:
+    branches:
+      # - main
+      - doc-v2
 name: 🚀 Deploy website on push
 jobs:
   web-deploy:
@@ -11,11 +15,12 @@ jobs:
     - name: Use Node.js 16
       uses: actions/setup-node@v2
       with:
-        node-version: '16'
+        node-version: '18'
         
     - name: 🔨 Build Project
       working-directory: ./docs
       run: |
+        cd docs
         npm install
         npm run build
     

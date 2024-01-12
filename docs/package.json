@@ -10,7 +10,7 @@
   "repository": "https://github.com/greenmtnboy/fundiverse/fundiverse",
   "scripts": {
     "dev": "vuepress dev src",
-    "build": "export NODE_OPTIONS=--openssl-legacy-provider && vuepress build src"
+    "build": "vuepress build src"
   },
   "license": "MIT",
   "devDependencies": {
