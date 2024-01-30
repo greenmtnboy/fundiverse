@@ -1,37 +1,59 @@
 
 
 <template>
-    <TargetPortfolioView :portfolio="portfolio" :targetSize="targetSize"></TargetPortfolioView>
+    <v-card theme="dark" class="sharp">
+        <v-card-title>Customize Portfolio</v-card-title>
+        <v-card-subtitle>
+            <v-tabs v-model="activeSelector">
+                <v-tab value='index'>
+                    Select Base Index
+                </v-tab>
+                <v-tab value='lists'>
+                    By Stock List
+                </v-tab>
+                <v-tab value='stocks'>
+                    By Stock
+                </v-tab>
+            </v-tabs>
+        </v-card-subtitle>
+        <v-card-body>
+            <StockListSetter v-if="activeSelector == 'lists'" />
+            <IndexSetter v-else-if="activeSelector == 'index'" />
+        </v-card-body>
+    </v-card>
+    <v-divider />
+    <TargetPortfolioView :portfolio="demoPortfolio" :targetSize="portfolioTarget"></TargetPortfolioView>
 </template>
-  
+<style>
+.sharp {
+    border-radius: 0;
+}
+</style>
 <script lang="ts">
 import TargetPortfolioView from "./target_portfolio/TargetPortfolioView.vue";
-import TargetPortfolioModel from './models/TargetPortfolioModel';
-import TargetPortfolioElementModel from './models/TargetPortfolioElementModel';
+import StockListSetter from "./target_portfolio/StockListSetter.vue";
+import IndexSetter from "./target_portfolio/IndexSetter.vue"
+import {mapGetters, mapActions} from 'vuex';
 export default {
     components: {
         TargetPortfolioView,
+        StockListSetter,
+        IndexSetter,
     },
     data() {
         return {
-            targetSize: 100_000,
-            portfolio: new TargetPortfolioModel({
-                holdings: [
-                    new TargetPortfolioElementModel(
-                    {
-                        ticker: 'AAPL',
-                        weight: 0.5,
-                    }),
-                    new TargetPortfolioElementModel(
-                    {
-                        ticker: 'TSLA',
-                        weight: 0.5,
-                    }),
-                ],
-                source_date: '2023-01-01',
-                name: 'test',
-            })
+            activeSelector: 'index',
         }
+    },
+    methods: {
+        ...mapActions(['getStockLists', 'getIndexes'])
+    },
+    computed: {
+        ...mapGetters(['demoPortfolio', 'portfolioTarget']),
+    },
+    mounted() {
+        this.getStockLists()
+        this.getIndexes()
     }
 }
 </script>

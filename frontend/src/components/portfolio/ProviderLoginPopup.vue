@@ -229,18 +229,13 @@ export default {
                 if (this.provider == null) {
                     this.pushEmptyProvider({ portfolioName: this.portfolioName, key: this.selectedProvider })
                     this.probeLogin({ provider: this.selectedProvider })
-                    if (refresh) {
-                        return this.refreshCompositePortfolio({ portfolioName: this.portfolioName })
-                    }
-
                 }
                 else {
                     this.probeLogin({ provider: this.provider })
-                    if (refresh) {
+                }
+                if (refresh) {
                         return this.refreshCompositePortfolio({ portfolioName: this.portfolioName })
                     }
-
-                }
 
             }).catch((exc) => {
                 if (exc instanceof exceptions.auth_extra) {

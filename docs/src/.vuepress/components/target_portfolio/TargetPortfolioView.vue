@@ -1,12 +1,18 @@
 <template>
-    <v-card title="Demo Portfolio">
+    <v-card :title="`Holdings (${portfolio.holdings.length})`" theme="dark" class="sharp">
         <v-list class="pt-0" density="compact" v-if="portfolio.holdings.length > 0">
             <template v-for="element in shortList" :key="element.ticker">
                 <TargetPortfolioElement :element="element" :totalPortfolioSize="targetSize" />
             </template>
         </v-list>
+        <v-card-actions><v-btn @click="displayLength=displayLength+10">See more</v-btn></v-card-actions>
     </v-card>
 </template>
+<style>
+.sharp {
+    border-radius: 0;
+}
+</style>
 
 <script lang="ts">
 import TargetPortfolioElement from "./TargetPortfolioElement.vue";
@@ -19,7 +25,7 @@ export default {
     },
     data() {
         return {
-            displayLength:20,
+            displayLength:50,
         }
     },
     props: {
