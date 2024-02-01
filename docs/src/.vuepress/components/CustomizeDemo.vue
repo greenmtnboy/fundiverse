@@ -34,6 +34,7 @@ import TargetPortfolioView from "./target_portfolio/TargetPortfolioView.vue";
 import StockListSetter from "./target_portfolio/StockListSetter.vue";
 import IndexSetter from "./target_portfolio/IndexSetter.vue"
 import {mapGetters, mapActions} from 'vuex';
+
 export default {
     components: {
         TargetPortfolioView,
@@ -46,7 +47,7 @@ export default {
         }
     },
     methods: {
-        ...mapActions(['getStockLists', 'getIndexes'])
+        ...mapActions(['getStockLists', 'getIndexes', 'getPython']),
     },
     computed: {
         ...mapGetters(['demoPortfolio', 'portfolioTarget']),
@@ -54,6 +55,8 @@ export default {
     mounted() {
         this.getStockLists()
         this.getIndexes()
+        this.getPython()
+        // this.genBackend()
     }
 }
 </script>

@@ -27,7 +27,7 @@
       "/src/.vuepress/*": ["src/.vuepress/*"]
   }
   },
-  "include": ["src/**/*.png", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "electron"],
+  "include": ["src/**/*.png", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
   // "references": [{ "path": "./tsconfig.node.json" }]
   
 }

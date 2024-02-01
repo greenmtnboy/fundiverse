@@ -2,6 +2,8 @@ import { description } from '../../package'
 import { getDirname, path } from '@vuepress/utils'
 import { hopeTheme } from "vuepress-theme-hope";
 import registerComponentsPlugin from '@vuepress/plugin-register-components'
+import { viteBundler } from '@vuepress/bundler-vite'
+import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 const __dirname = getDirname(import.meta.url)
 
@@ -21,20 +23,23 @@ export default {
    * ref：https://v1.vuepress.vuejs.org/config/#head
    */
   head: [
-    ['link', { rel: "apple-touch-icon", sizes: "180x180", href: "/favicon.png"}],
+    ['link', { rel: "apple-touch-icon", sizes: "180x180", href: "/favicon.png" }],
     ['meta', { name: 'theme-color', content: '#3eaf7c' }],
     ['meta', { name: 'apple-mobile-web-app-capable', content: 'yes' }],
     ['meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black' }],
     ['script', {
       async: true,
       src: 'https://www.googletagmanager.com/gtag/js?id=G-3P8R2SW79T'
-  }],
+    }],
     ['script', {}, `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 
 gtag('config', 'G-3P8R2SW79T');
 `],
+
+
+
   ],
 
   /**
@@ -55,8 +60,8 @@ gtag('config', 'G-3P8R2SW79T');
     },
     logo: '/logo-only-transparent-png.png',
     clientConfigFile: path.resolve(__dirname, './client.ts'),
-    displayFooter:true,
-    footer:'GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a>',
+    displayFooter: true,
+    footer: 'GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a>',
     navbar: [
       {
         text: 'Get Started',
@@ -126,5 +131,42 @@ gtag('config', 'G-3P8R2SW79T');
     }),
     '@vuepress/plugin-back-to-top',
     '@vuepress/plugin-medium-zoom',
-  ]
+  ],
+  bundler: viteBundler({
+    viteOptions: {
+      optimizeDeps: {
+        exclude: ['pyodide']
+      },
+      plugs: [viteStaticCopy({
+        targets: [
+          {
+            src: 'node_modules/pyodide/pyodide.asm.js',
+            dest: '/pyodide'
+          },
+          {
+            src: 'node_modules/pyodide/pyodide.mjs',
+            dest: '/pyodide'
+          },
+          {
+            src: 'node_modules/pyodide/pyodide.asm.wasm',
+            dest: '/pyodide'
+          },
+          {
+            src: 'node_modules/pyodide/python_stdlib.zip',
+            dest: '/pyodide'
+          },
+          {
+            src: 'node_modules/pyodide/pyodide-lock.json',
+            dest: '/pyodide'
+          },
+        ]
+      })],
+      resolve: {
+        alias: {
+          'node-fetch': 'axios',
+        },
+      },
+    },
+    vuePluginOptions: {},
+  }),
 }

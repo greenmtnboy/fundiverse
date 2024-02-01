@@ -5,6 +5,7 @@ import ListModification from '../../models/ListModification';
 import StockModification from '../../models/StockModification';
 
 import { instance } from '../../api/instance'
+import { loadPyodide } from 'pyodide';
 
 const storageAPI = {
     getPortfolio(): TargetPortfolioModel {
@@ -32,6 +33,7 @@ const state = {
     stockLists: {},
     indexes: {},
     customization: storageAPI.getCustomization(),
+    python: null,
 };
 
 
@@ -44,12 +46,24 @@ const getters = {
 };
 
 const actions = {
+    async getPython({ commit }, data) {
+        let pyodide = await loadPyodide();
+        pyodide.runPythonAsync("1+1").then((r) =>console.log(r))
+        await pyodide.loadPackage("micropip");
+        const micropip = pyodide.pyimport("micropip");
+        await micropip.install('py-portfolio-index');
+        pyodide.runPythonAsync("1+2").then((r) =>console.log(r))
+        commit('getPython', pyodide)
+    },
     async setPortfolioSize({ commit }, data) {
         commit('setPortfolioSize', data)
     },
-    async getIndexes({ commit }) {
-        const data = await instance.get('/indexes_full')
-        commit('setIndexes', data.data.loaded)
+    async getIndexes({ commit, getters }) {
+        let python = getters.python
+        let data = await python.runPythonAsync(`_ = [INDEXES[x] for x in INDEXES.keys]
+        x.model_dump()
+        `)
+        commit('setIndexes', data.loaded)
     },
     async getStockLists({ commit }) {
         const data = await instance.get('/stock_lists')
@@ -108,6 +122,9 @@ const actions = {
 };
 
 const mutations = {
+    async getPython(state, data) {
+        state.python = data
+    },
     setPortfolioSize(state, data) {
         state.portfolioTarget = data.size;
     },
