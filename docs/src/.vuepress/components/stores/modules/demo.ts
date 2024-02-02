@@ -1,10 +1,7 @@
 import TargetPortfolioModel from '../../models/TargetPortfolioModel';
-import TargetPortfolioElementModel from '../../models/TargetPortfolioElementModel';
 import PortfolioCustomization from '../../models/PortfolioCustomization';
 import ListModification from '../../models/ListModification';
 import StockModification from '../../models/StockModification';
-
-import { instance } from '../../api/instance'
 import { loadPyodide } from 'pyodide';
 
 const storageAPI = {
@@ -27,13 +24,43 @@ const storageAPI = {
     }
 }
 
+async function updatePortfolio(python, customization:PortfolioCustomization) {
+    python.globals.set("customization", customization);
+    await python.runPythonAsync(`
+from copy import deepcopy
+from py_portfolio_index import INDEXES
+import js
+ideal_port = deepcopy(INDEXES[customization.indexPortfolio])
+
+for mutation in customization.stockModifications:
+    ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=0.001)
+for list_mutation in customization.listModifications:
+    ideal_port.reweight(
+        STOCK_LISTS[list_mutation.list],
+        weight=list_mutation.scale,
+        min_weight=0.001,
+    )
+ideal_port.exclude(customization.excludedTickers)
+for item in customization.excludedLists:
+    ideal_port.exclude(STOCK_LISTS[item])
+IDEAL_PORT = ideal_port.json()
+    `)
+    let data = python.globals.get("IDEAL_PORT") //.toJS({proxies:false})
+    let final = JSON.parse(data)
+    final.name = customization.indexPortfolio
+    let output = new TargetPortfolioModel(final)
+    return output
+
+
+}
+
 const state = {
     demoPortfolio: storageAPI.getPortfolio(),
     portfolioTarget: 100_000,
     stockLists: {},
     indexes: {},
     customization: storageAPI.getCustomization(),
-    python: null,
+    python: null
 };
 
 
@@ -43,68 +70,110 @@ const getters = {
     stockLists: state => state.stockLists,
     indexes: state => state.indexes,
     portfolioCustomization: state => state.customization,
+    stockListsLoading: state => state.stockLists.size === 0,
+    indexesLoading: state => state.indexes.size === 0,
+    pythonLoading: state => state.python == null,
+    python: state => state.python,
 };
 
 const actions = {
     async getPython({ commit }, data) {
         let pyodide = await loadPyodide();
-        pyodide.runPythonAsync("1+1").then((r) =>console.log(r))
-        await pyodide.loadPackage("micropip");
-        const micropip = pyodide.pyimport("micropip");
+        // hardcoded as pyiodide had repeated issues loading this
+        await pyodide.loadPackage('micropip')
+        const micropip = pyodide.pyimport("micropip")
         await micropip.install('py-portfolio-index');
-        pyodide.runPythonAsync("1+2").then((r) =>console.log(r))
         commit('getPython', pyodide)
     },
     async setPortfolioSize({ commit }, data) {
         commit('setPortfolioSize', data)
     },
+    async getStockInfo({commit, getters}, data) {
+        
+        let python = getters.python
+        python.globals.set("ticker", data);
+        let _ = await python.runPythonAsync(`
+from py_portfolio_index.common import (
+    get_basic_stock_info,
+)
+basic = get_basic_stock_info(ticker, fail_on_missing=False)
+if basic:
+    raw_data = basic.json()
+else:
+    raw_data = '{}'
+
+        `)
+        let resp = python.globals.get("raw_data") //.toJS({proxies:false})
+        return JSON.parse(resp)
+    },
     async getIndexes({ commit, getters }) {
         let python = getters.python
-        let data = await python.runPythonAsync(`_ = [INDEXES[x] for x in INDEXES.keys]
-        x.model_dump()
-        `)
-        commit('setIndexes', data.loaded)
+        let _ = await python.runPythonAsync(`
+from py_portfolio_index import INDEXES
+_ = [INDEXES[x] for x in INDEXES.keys]
+INDEX_DUMP = INDEXES.json()
+`)
+        let data = python.globals.get("INDEX_DUMP") //.toJS({proxies:false})
+        commit('setIndexes', JSON.parse(data).loaded)
     },
-    async getStockLists({ commit }) {
-        const data = await instance.get('/stock_lists')
-        commit('setStockLists', data.data.loaded)
+    async getStockLists({ commit, getters }) {
+        let python = getters.python
+        let _ = await python.runPythonAsync(`
+from py_portfolio_index import STOCK_LISTS
+_ = [STOCK_LISTS[x] for x in STOCK_LISTS.keys]
+STOCK_LIST_DUMP = STOCK_LISTS.json()
+`)
+        let data = python.globals.get("STOCK_LIST_DUMP") //.toJS({proxies:false})
+        commit('setStockLists', JSON.parse(data).loaded)
     },
-    async setPortfolioTargetIndex({ commit }, data) {
+    async setPortfolioTargetIndex({ commit, dispatch }, data) {
         if (!data.index) {
             return
         }
         commit('setPortfolioTargetIndex', data)
         commit('saveCustomizations')
+        dispatch('refreshPortfolio')
     },
-    async excludeStock({ commit }, data) {
+    async refreshPortfolio({commit, getters}) {
+        let newPort = await updatePortfolio(getters.python, getters.portfolioCustomization)
+        commit('refreshPortfolio', newPort)
+    },
+    async excludeStock({ commit, dispatch }, data) {
         commit('excludeStock', data)
         commit('saveCustomizations')
+        dispatch('refreshPortfolio')
     },
-    async removeStockExclusion({ commit }, data) {
+    async removeStockExclusion({ commit, dispatch }, data) {
         commit('removeStockExclusion', data)
         commit('saveCustomizations')
+        dispatch('refreshPortfolio')
     },
-    async modifyStock({ commit }, data) {
+    async modifyStock({ commit, dispatch }, data) {
         commit('modifyStock', data)
         commit('saveCustomizations')
+        dispatch('refreshPortfolio')
     },
-    async removeStockModification({ commit }, data) {
+    async removeStockModification({ commit, dispatch }, data) {
         commit('removeStockModification', data)
         commit('saveCustomizations')
+        dispatch('refreshPortfolio')
     },
 
-    async excludeList({ commit }, data) {
+    async excludeList({ commit, dispatch }, data) {
         commit('excludeList', data)
         commit('saveCustomizations')
+        dispatch('refreshPortfolio')
     },
-    async removeListExclusion({ commit }, data) {
+    async removeListExclusion({ commit, dispatch }, data) {
         commit('removeListExclusion', data)
         commit('saveCustomizations')
+        dispatch('refreshPortfolio')
     },
 
-    async modifyList({ commit }, data) {
+    async modifyList({ commit, dispatch }, data) {
         commit('modifyList', data)
         commit('saveCustomizations')
+        dispatch('refreshPortfolio')
     },
     async saveCustomizations({ commit },) {
         commit('saveCustomizations')
@@ -190,9 +259,11 @@ const mutations = {
         customization.excludedTickers = new Set()
     },
     setPortfolioTargetIndex(state, data) {
-        const customization = state.customization;
-        customization.indexPortfolio = data.index
-        state.demoPortfolio = state.indexes[data.index]
+        state.customization.indexPortfolio = data.index
+
+    },
+    refreshPortfolio(state, data) {
+        state.demoPortfolio = data
     }
 };
 

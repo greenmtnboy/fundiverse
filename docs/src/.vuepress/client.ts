@@ -5,12 +5,9 @@ import 'vuetify/styles'
 // import Vuetify from 'vuetify'
 // Vuetify
 import { createVuetify } from 'vuetify'
-import { VCard, VCardTitle, VChip, VChipGroup, VTabs, VTab, VList, VListItem, VTooltip, VTextField, VSwitch, VBtnToggle, VInput, VSelect, VCardText, VCardActions, VCardSubtitle, VDivider } from 'vuetify/components'
+import { VCard, VCardTitle, VBtn, VProgressLinear, VChip, VChipGroup, VTabs, VSkeletonLoader, VTab, VList, VListItem, VTooltip, VTextField, VSwitch, VBtnToggle, VInput, VSelect, VCardText, VCardActions, VCardSubtitle, VDivider } from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { store } from './components/stores/index'
-import { viteBundler } from '@vuepress/bundler-vite'
-import { defineUserConfig } from 'vuepress'
-import { ref, readonly } from 'vue';
 
 export default defineClientConfig({
 
@@ -34,6 +31,9 @@ export default defineClientConfig({
     app.component("VTabs", VTabs);
     app.component("VChip", VChip);
     app.component("VChipGroup", VChipGroup);
+    app.component("VSkeletonLoader", VSkeletonLoader);
+    app.component("VProgressLinear", VProgressLinear);
+    app.component("VBtn", VBtn);
     // app.component("VSelectItem", VSelectItem)
 
   },

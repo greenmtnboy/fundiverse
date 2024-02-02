@@ -2,9 +2,13 @@
     <v-card title="List Settings" theme="dark" class="pb-4">
         <v-card-text>
             <p class="pa-4">
-                You can custom the portfolio by excluding or adjusting the weight of common lists of stocks.
-            These lists are community sourced and can be edited on github by submitting PRs to the py-portfolio-index repo.</p>
-            <v-select v-model="list" :items="indexKeys" density="compact" variant="solo" label="Stock List"></v-select>
+                You can custom the portfolio by excluding or adjusting the weight of premade lists of stocks.
+            </p>
+            <p class="pa-4">
+                Select your list in the dropdown, and then either adjust the weight or exclude it. Click the Submit
+                button to update the index.
+            </p>
+                <v-select v-model="list" :items="indexKeys" density="compact" variant="solo" label="Stock List"></v-select>
             <v-chip-group active-class="primary">
                 <v-chip v-for="tag in listMembers" :key="tag" :value="tag" label>
                     {{ tag }}
@@ -25,7 +29,7 @@
         <v-card-actions class="justify-center px-6 py-3">
             <v-btn :disabled="!hasValidChanges" class="text-white flex-grow-1 text-none" color="primary" variant="flat"
                 @click="submit()">
-                Modify
+                Submit
             </v-btn>
         </v-card-actions>
     </v-card>
@@ -42,7 +46,6 @@ export default {
     name: "TailorListPopup",
     data: () => ({
         list: '',
-        stockLists: {},
         excluded: false,
         dialog: false,
         weight: 100,
@@ -55,9 +58,9 @@ export default {
         },
     },
     computed: {
-        ...mapGetters(['portfolioCustomizations']),
+        ...mapGetters(['portfolioCustomization', 'stockLists']),
         customizations() {
-            return this.portfolioCustomizations
+            return this.portfolioCustomization
         },
         mutations() {
             return this.customizations.stockModifications.length + this.customizations.listModifications.length + this.customizations.excludedLists.size + this.customizations.excludedTickers.size
@@ -95,19 +98,19 @@ export default {
         },
     },
     methods: {
-        ...mapActions(['excludeList', 'modifyList', 'getStockLists']),
+        ...mapActions(['excludeList', 'modifyList']),
         submit() {
-            // if (this.excluded) {
-            //     this.excludeList({portfolioName:this.portfolioName, list:this.list});
-            // } else {
-            //     this.modifyList({
-            //         'portfolioName': this.portfolioName,
-            //         'list': this.list,
-            //         'scale': this.weight / 100,
-            //         // 'minWeight': this.minWeight
-            //     })
-            // }
-            // this.dialog = false;
+            if (this.excluded) {
+                this.excludeList({portfolioName:this.portfolioName, list:this.list});
+            } else {
+                this.modifyList({
+                    'portfolioName': this.portfolioName,
+                    'list': this.list,
+                    'scale': this.weight / 100,
+                    // 'minWeight': this.minWeight
+                })
+            }
+            this.dialog = false;
         }
     },
 }

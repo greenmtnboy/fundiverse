@@ -137,7 +137,7 @@ gtag('config', 'G-3P8R2SW79T');
       optimizeDeps: {
         exclude: ['pyodide']
       },
-      plugs: [viteStaticCopy({
+      plugins: [viteStaticCopy({
         targets: [
           {
             src: 'node_modules/pyodide/pyodide.asm.js',
