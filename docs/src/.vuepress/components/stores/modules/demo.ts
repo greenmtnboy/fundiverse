@@ -77,7 +77,10 @@ const getters = {
 };
 
 const actions = {
-    async getPython({ commit }, data) {
+    async getPython({ commit, getters }, data) {
+        if (getters.python) {
+            return
+        }
         let pyodide = await loadPyodide();
         // hardcoded as pyiodide had repeated issues loading this
         await pyodide.loadPackage('micropip')

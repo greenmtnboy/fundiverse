@@ -5,7 +5,7 @@ import 'vuetify/styles'
 // import Vuetify from 'vuetify'
 // Vuetify
 import { createVuetify } from 'vuetify'
-import { VCard, VCardTitle, VBtn, VProgressLinear, VChip, VChipGroup, VTabs, VSkeletonLoader, VTab, VList, VListItem, VTooltip, VTextField, VSwitch, VBtnToggle, VInput, VSelect, VCardText, VCardActions, VCardSubtitle, VDivider } from 'vuetify/components'
+import { VCard, VCardTitle, VIcon, VBtn, VProgressLinear, VChip, VChipGroup, VTabs, VSkeletonLoader, VTab, VList, VListItem, VTooltip, VTextField, VSwitch, VBtnToggle, VInput, VSelect, VCardText, VCardActions, VCardSubtitle, VDivider } from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { store } from './components/stores/index'
 
@@ -34,6 +34,7 @@ export default defineClientConfig({
     app.component("VSkeletonLoader", VSkeletonLoader);
     app.component("VProgressLinear", VProgressLinear);
     app.component("VBtn", VBtn);
+    app.component("VIcon", VIcon);
     // app.component("VSelectItem", VSelectItem)
 
   },
