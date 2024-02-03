@@ -142,9 +142,10 @@ const actions = {
             if (error instanceof Error) {
                 errorString = error.toString()
             }
-            console.log('error refreshing')
-            console.log(errorString)
             commit('setPortfolioLoadingStatus', { name: portfolioName, status: false, error: errorString })
+            keys.forEach((element, _) => {
+                commit('probeLogin', { provider: element, loggedIn: false })
+            })
             throw error
         }
     },
@@ -169,6 +170,7 @@ const actions = {
         catch (error) {
             commit('setError', error)
             commit('setPortfolioLoadingStatus', { name: null, status: false })
+
             return
         }
     },

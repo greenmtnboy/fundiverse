@@ -14,7 +14,7 @@ Once it is downloaded, double click on the file to install it. Windows will warn
 You may be prompted about needing to grant a program network access when you first run; this the fundiverse backend and you will need to click yes to ensure that the app works.
 :::
 
-If it doesn’t auto-run, find in start menu, run. 
+If it doesn’t auto-run, find in start menu, run.
 
 ### Troubleshooting
 

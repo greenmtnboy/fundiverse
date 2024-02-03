@@ -107,7 +107,7 @@
                     <v-col v-else> 
                         <v-alert type="info" class="my-4" outlined>
                             No orders to place. 
-                            <v-btn @click="planPurchase">Replan</v-btn>
+                            <v-btn color="primary" variant="flat" density="compact" @click="planPurchase">Replan</v-btn>
                         </v-alert>
                     </v-col>
                 </v-row>

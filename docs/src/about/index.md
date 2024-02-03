@@ -10,22 +10,21 @@ An example of the customization screen:
 
 ![alt text](/fundiverse_new.png "Portfolio Customization Screen")
 
-
 ## Details
 
-Stocks - representing a share of ownership in one of the producing entities on capitalist society - have historically been one of the most consistent ways of creating a long-term passive income stream.  
+Stocks - representing a share of ownership in one of the producing entities on capitalist society - have historically been one of the most consistent ways of creating a long-term passive income stream.
 
 <br>
   
-Stocks have consistently returned around 7% after inflation historically. This is no guarantee of future performance, of course.  
+Stocks have consistently returned around 7% after inflation historically. This is no guarantee of future performance, of course.
 
 <br>
 
-This means in 20 years, you will have ~4x what you originally put in. Even better, historical analysis predicts that if you take out 3-4% of your portfolio each year, you'll never run out (even with typical market fluctuations). That means that if you have 2000 dollars invested, you can safely spend 60 dollars per year forever out of the gains of that portfolio. If you have 100,000, that’s 6,000 per year forever, and so on - this is the basis of a sustainable stock-based retirement portfolio.  
+This means in 20 years, you will have ~4x what you originally put in. Even better, historical analysis predicts that if you take out 3-4% of your portfolio each year, you'll never run out (even with typical market fluctuations). That means that if you have 2000 dollars invested, you can safely spend 60 dollars per year forever out of the gains of that portfolio. If you have 100,000, that’s 6,000 per year forever, and so on - this is the basis of a sustainable stock-based retirement portfolio.
 
 <br>
 
-The most common way to access stocks is through a retirement portfolio. There, you should invest in index funds, which represent a broad slice of the market.  This diversification across a wide range of assets is the best way to ensure you get consistent 7% (post-inflation) returns seen by the market as a whole.
+The most common way to access stocks is through a retirement portfolio. There, you should invest in index funds, which represent a broad slice of the market. This diversification across a wide range of assets is the best way to ensure you get consistent 7% (post-inflation) returns seen by the market as a whole.
 
 <br>
 
@@ -41,4 +40,4 @@ This also means that you actually own stock in these companies, and if you wante
 
 ## Created By
 
-Long-term investors who wanted more direct control over their money. 
+Long-term investors who wanted more direct control over their money.

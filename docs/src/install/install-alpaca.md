@@ -1,6 +1,7 @@
 ## Alpaca Setup
 
 ### Paper
+
 Go to [https://alpaca.markets/](https://alpaca.markets/)
 
 <br>
@@ -19,8 +20,8 @@ Generate an API key in sidebar on right, save it.
 
 Go back to your portfolio. Click add provider. Select ‘alpaca paper’ as the type, add in your key and secret. Optionally check ‘save login info’ to persist this for next time you open the app.
 
-
 ### Prod
+
 Go to [https://alpaca.markets/](https://alpaca.markets/)
 
 <br>
