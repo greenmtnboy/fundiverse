@@ -17,17 +17,16 @@
                 </v-tab>
             </v-tabs>
         </v-card-subtitle>
-        <v-card-body>
+        <div>
             <StockListSetter v-if="activeSelector == 'lists'" />
             <IndexSetter v-else-if="activeSelector == 'index'" />
             <StockSetter v-else-if="activeSelector == 'stocks'" />
-        </v-card-body>
+        </div>
     </v-card>
     <v-divider />
     <v-skeleton-loader v-if="indexesLoading" type="card"></v-skeleton-loader>
     <TargetPortfolioView v-else-if="demoPortfolio.holdings" :portfolio="demoPortfolio" :targetSize="portfolioTarget">
     </TargetPortfolioView>
-    
 </template>
 <style>
 .sharp {
@@ -60,12 +59,16 @@ export default {
         ...mapGetters(['demoPortfolio', 'portfolioTarget', 'indexesLoading', 'pythonLoading']),
     },
     mounted() {
-
-        this.getPython().then(() => {
-            this.getIndexes()
-            this.getStockLists()
-        })
-        // this.genBackend()
+        let pyodideScript = document.createElement('script')
+        pyodideScript.setAttribute('src', 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js')
+        pyodideScript.onload = () => {
+            this.getPython().then(() => {
+                console.log('pyodide loaded')
+                this.getIndexes()
+                this.getStockLists()
+            })
+        };
+        document.head.appendChild(pyodideScript)
     }
 }
 </script>

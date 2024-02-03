@@ -3,6 +3,7 @@
 Docs are built with vuepress.
 
 ### Deployment
+
 Copy to static serving site.
 
 Build, then copy files

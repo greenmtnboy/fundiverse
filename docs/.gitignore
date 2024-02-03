@@ -1,2 +1,3 @@
 .cache
 .temp
+src/.vuepress/dist/*

@@ -1,16 +1,38 @@
-import { defineClientConfig } from '@vuepress/client'
+import { defineClientConfig } from "@vuepress/client";
 // Styles
 // import '@mdi/font/css/materialdesignicons.css'
-import 'vuetify/styles'
+import "vuetify/styles";
 // import Vuetify from 'vuetify'
 // Vuetify
-import { createVuetify } from 'vuetify'
-import { VCard, VCardTitle, VIcon, VBtn, VProgressLinear, VChip, VChipGroup, VTabs, VSkeletonLoader, VTab, VList, VListItem, VTooltip, VTextField, VSwitch, VBtnToggle, VInput, VSelect, VCardText, VCardActions, VCardSubtitle, VDivider } from 'vuetify/components'
-import * as directives from 'vuetify/directives'
-import { store } from './components/stores/index'
+import { createVuetify } from "vuetify";
+import {
+  VCard,
+  VCardTitle,
+  VIcon,
+  VBtn,
+  VProgressLinear,
+  VChip,
+  VChipGroup,
+  VTabs,
+  VSkeletonLoader,
+  VTab,
+  VList,
+  VListItem,
+  VTooltip,
+  VTextField,
+  VSwitch,
+  VBtnToggle,
+  VInput,
+  VSelect,
+  VCardText,
+  VCardActions,
+  VCardSubtitle,
+  VDivider,
+} from "vuetify/components";
+import * as directives from "vuetify/directives";
+import { store } from "./components/stores/index";
 
 export default defineClientConfig({
-
   enhance({ app, router, siteData }) {
     app.use(createVuetify());
     app.use(store);
@@ -36,10 +58,8 @@ export default defineClientConfig({
     app.component("VBtn", VBtn);
     app.component("VIcon", VIcon);
     // app.component("VSelectItem", VSelectItem)
-
   },
-  setup() {
-  },
+  setup() {},
   layouts: {},
   rootComponents: [],
 });

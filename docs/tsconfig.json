@@ -14,7 +14,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "preserve",
-    "forceConsistentCasingInFileNames": false, 
+    "forceConsistentCasingInFileNames": false,
     /* Linting */
     "strict": true,
     "noImplicitAny": false,
@@ -24,10 +24,15 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "/src/*": ["src/*"],
-      "/src/.vuepress/*": ["src/.vuepress/*"]
-  }
+      "/src/.vuepress/*": ["src/.vuepress/*"],
+    },
   },
-  "include": ["src/**/*.png", "src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "include": [
+    "src/**/*.png",
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+  ],
   // "references": [{ "path": "./tsconfig.node.json" }]
-  
 }

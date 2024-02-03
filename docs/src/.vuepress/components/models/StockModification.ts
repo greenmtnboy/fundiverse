@@ -1,10 +1,9 @@
-
 export default class StockModification {
-    ticker: string
-    scale?: number
+  ticker: string;
+  scale?: number;
 
-    constructor(ticker, scale) {
-        this.ticker = ticker
-        this.scale = scale
-    }
-} 
+  constructor(ticker, scale) {
+    this.ticker = ticker;
+    this.scale = scale;
+  }
+}

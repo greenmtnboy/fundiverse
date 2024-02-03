@@ -1,4 +1,3 @@
-
 ## Basic Usage
 
 Click ‘add portfolio’ to create and name your first portfolio.
@@ -6,7 +5,7 @@ Click ‘add portfolio’ to create and name your first portfolio.
 <br>
 
 Groups of stocks that you are purchasing are called `portfolios`. A single brokerage
-can only be attached to a single portfolio, but a portfolio can contain multiple brokerages. 
+can only be attached to a single portfolio, but a portfolio can contain multiple brokerages.
 
 <br>
 
@@ -21,8 +20,8 @@ Now you need to connect to a brokerage that lets you buy and hold stocks.
 
 Alpaca is an easy one to get started with, so we'll use that for this demo
 
-
 ## Alpaca Setup
+
 Go to [https://alpaca.markets/](https://alpaca.markets/)
 
 <br>
@@ -49,11 +48,9 @@ Your portfolio view should now look something like this.
 
 ![alt text](/portfolio-view.png "Portfolio View")
 
-
 ## Create and Customize Index
 
-Now that you’re connected to your brokerage, click ‘configure’ to set the index you want to use. For example, you could pick the sp500 or large cap stocks. You can also customize this index by adding/removing/reweighting particular stocks or lists of stocks. 
-
+Now that you’re connected to your brokerage, click ‘configure’ to set the index you want to use. For example, you could pick the sp500 or large cap stocks. You can also customize this index by adding/removing/reweighting particular stocks or lists of stocks.
 
 ## Index Customization Screen
 
@@ -71,17 +68,17 @@ You can start out your portfolio with only a portion of your total goal! If you 
 
 <br>
 
- Click the custom button to adjust this index further, such as by excluding some stocks or overweighting or underweighting certain lists. 
+Click the custom button to adjust this index further, such as by excluding some stocks or overweighting or underweighting certain lists.
 
 ![alt text](/fundiverse_new.png "Portfolio Customization Screen")
 
 ## Placing Orders
 
-Now it's time to make your portfolio a reality. 
+Now it's time to make your portfolio a reality.
 
 <br>
 
-Click the 'buy' button to plan out your orders - this may take some time. You can either have the app attempt to get the stocks with the largest difference from their ultimate target price first, or spread out the amount of money you have over many stocks. 
+Click the 'buy' button to plan out your orders - this may take some time. You can either have the app attempt to get the stocks with the largest difference from their ultimate target price first, or spread out the amount of money you have over many stocks.
 
 <br>
 
@@ -92,7 +89,6 @@ Fundiverse will find the current prices of the stocks to buy and then place orde
 ::: warning
 Spreading out across all stocks for very large indexes - like the total market - may result in an extremely large number of orders, which will increase the variability of your purchases.
 :::
-
 
 Once the process is done, you'll have a list of planned orders, and where they will be placed.
 
@@ -106,4 +102,4 @@ Click submit to place the orders. You'll be returned a list of which were placed
 
 <br>
 
-That's it! You now own your stocks! 
+That's it! You now own your stocks!
