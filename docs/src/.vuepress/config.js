@@ -151,8 +151,7 @@ gtag('config', 'G-3P8R2SW79T');
       optimizeDeps: {
         exclude: ["pyodide"],
       },
-      plugins: [
-      ],
+      plugins: [],
       resolve: {
         alias: {
           "node-fetch": "axios",
