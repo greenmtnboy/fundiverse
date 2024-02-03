@@ -88,6 +88,8 @@ gtag('config', 'G-3P8R2SW79T');
       },
     ],
     sidebar: {
+      "/about/": [],
+      "/demo/": [],
       "/install/": [
         {
           text: "Overview",
