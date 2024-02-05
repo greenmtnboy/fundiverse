@@ -194,7 +194,7 @@ const mutations = {
 
     },
     modifyStock(state, data) {
-        safeGetCustomization(state, data.portfolioName).stockModifications.push(new StockModification(data.ticker, data.scale))
+        safeGetCustomization(state, data.portfolioName).stockModifications.push(new StockModification(data.ticker, data.scale, data.minWeight))
     },
     removeStockModification(state, data) {
         const customization = safeGetCustomization(state, data.portfolioName)

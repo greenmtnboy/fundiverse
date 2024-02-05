@@ -1,11 +1,14 @@
 import { defineClientConfig } from "@vuepress/client";
 // Styles
 // import '@mdi/font/css/materialdesignicons.css'
+import 'material-design-icons-iconfont/dist/material-design-icons.css'
 import "vuetify/styles";
 // import Vuetify from 'vuetify'
 // Vuetify
 import { createVuetify } from "vuetify";
 import {
+  VBanner,
+  VBannerText,
   VCard,
   VCardTitle,
   VIcon,
@@ -44,6 +47,7 @@ export default defineClientConfig({
     app.component("VTooltip", VTooltip);
     app.component("VDivider", VDivider);
     app.component("VCardActions", VCardActions);
+    app.component("VCardSubtitle", VCardSubtitle);
     app.component("VSelect", VSelect);
     app.component("VInput", VInput);
     app.component("VToggle", VBtnToggle);
@@ -57,9 +61,11 @@ export default defineClientConfig({
     app.component("VProgressLinear", VProgressLinear);
     app.component("VBtn", VBtn);
     app.component("VIcon", VIcon);
+    app.component("VBanner", VBanner);
+    app.component("VBannerText", VBannerText);
     // app.component("VSelectItem", VSelectItem)
   },
-  setup() {},
+  setup() {}, 
   layouts: {},
   rootComponents: [],
 });

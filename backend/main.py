@@ -58,7 +58,8 @@ from py_portfolio_index import (
 from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
 from py_portfolio_index.enums import Provider
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from pydantic.alias_generators import to_camel
 
 from copy import deepcopy
 
@@ -263,6 +264,7 @@ class ListMutation(BaseModel):
 class StockMutation(BaseModel):
     ticker: str
     scale: float
+    min_weight: float
 
 
 class ProviderResponse(BaseModel):
@@ -283,6 +285,12 @@ class TargetPortfolioRequest(BaseModel):
     purchase_strategy: PurchaseStrategy = PurchaseStrategy.LARGEST_DIFF_FIRST
     provider: Provider | None = None
     providers: List[Provider] = Field(default_factory=list)
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
 
 class BuyRequest(TargetPortfolioRequest):
@@ -536,7 +544,7 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
 
         ideal_port.reweight_to_present(provider=provider)
     for mutation in input.stock_modifications:
-        ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=0.001)
+        ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=mutation.min_weight)
     for list_mutation in input.list_modifications:
         ideal_port.reweight(
             STOCK_LISTS[list_mutation.list],

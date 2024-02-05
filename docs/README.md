@@ -4,7 +4,8 @@ Docs are built with vuepress.
 
 ### Deployment
 
-Copy to static serving site.
+Docs are served via a static website provider.
+
 
 Build, then copy files
 
@@ -12,6 +13,6 @@ Build, then copy files
 
 Optionally, if copying off WSL
 
-`cp -r src/.vuepress/dist /mnt/c/Users/ethan/docs_dist`
+`sudo npm run build && cp -r src/.vuepress/dist /mnt/c/Users/ethan/docs_dist`
 
 Suggest using filezilla to copy.
