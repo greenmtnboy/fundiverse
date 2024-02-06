@@ -22,7 +22,7 @@ const safeDOM = {
     if (Array.from(parent.children).find((e) => e === child)) {
       parent.removeChild(child);
     }
-  }
+  },
 };
 function useLoading() {
   const className = `loaders-css__square-spin`;
@@ -67,7 +67,7 @@ function useLoading() {
     removeLoading() {
       safeDOM.remove(document.head, oStyle);
       safeDOM.remove(document.body, oDiv);
-    }
+    },
   };
 }
 const { appendLoading, removeLoading } = useLoading();

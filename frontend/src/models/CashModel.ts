@@ -1,9 +1,9 @@
 export default class CashModel {
-    currency:string;
-    value: number;
+  currency: string;
+  value: number;
 
-    constructor({currency, value}) {
-        this.currency = currency;
-        this.value = value;
-    }
-} 
+  constructor({ currency, value }) {
+    this.currency = currency;
+    this.value = value;
+  }
+}

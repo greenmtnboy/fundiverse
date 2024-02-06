@@ -2,49 +2,39 @@
  * @see https://www.electron.build/configuration/configuration
  */
 {
-  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.electron.fundiverse",
-  "asar": true,
-  "buildDependenciesFromSource": true,
-  "npmRebuild": true,
-  "directories": {
-    "output": "release/${version}"
+  $schema: "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  appId: "com.electron.fundiverse",
+  asar: true,
+  buildDependenciesFromSource: true,
+  npmRebuild: true,
+  directories: {
+    output: "release/${version}",
   },
-  "files": [
-    "./index.html",
-    "dist-electron",
-    "dist"
-  ],
-  "mac": {
-    "artifactName": "${productName}_${version}.${ext}",
-    "target": [
-      "dmg"
-    ]
+  files: ["./index.html", "dist-electron", "dist"],
+  mac: {
+    artifactName: "${productName}_${version}.${ext}",
+    target: ["dmg"],
   },
-  "win": {
-    "target": [
+  win: {
+    target: [
       {
-        "target": "nsis",
-        "arch": [
-          "x64"
-        ]
-      }
+        target: "nsis",
+        arch: ["x64"],
+      },
     ],
-    "artifactName": "${productName}_${version}.${ext}"
+    artifactName: "${productName}_${version}.${ext}",
   },
-  "linux": {
-    "target": [
-      "snap"
-    ],
-    "category": "Development"
+  linux: {
+    target: ["snap"],
+    category: "Development",
   },
-  "snap" : {
-      "base": "core22"
-    },
-  "nsis": {
-    "oneClick": false,
-    "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": true
-  }
+  snap: {
+    base: "core22",
+  },
+  nsis: {
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    deleteAppDataOnUninstall: true,
+  },
 }

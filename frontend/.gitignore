@@ -1,0 +1,57 @@
+.vscode
+.venv
+.DS_Store
+node_modules
+/dist
+/dist_electron
+
+
+__pycache__
+
+# local env files
+.env
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.code-workspace
+.ruff_cache
+.pytest_cache
+*.mjs
+
+#Electron-builder output
+frontend/dist_electron
+frontend/dist-electron
+#frontend/build
+frontend/dist
+frontend/release
+frontend/public/fundiverse-backend
+fundiverse-backend
+frontend/public/fundiverse-backend.exe
+
+#docs output
+docs/src/.vuepress/dist
+
+#pyinstaller output
+backend/build
+backend/dist
+
+#playwright
+frontend/playwright-report
+frontend/test-results
+
+#dependencies
+did.bin

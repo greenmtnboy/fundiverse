@@ -8,17 +8,23 @@
     <v-divider />
     <v-container>
       <v-row dense>
-        <v-col cols=12 min-width="300px">
+        <v-col cols="12" min-width="300px">
           <template v-if="portfolioLoadingStatus">
-            <v-progress-linear height="10" indeterminate color="primary"></v-progress-linear>
+            <v-progress-linear
+              height="10"
+              indeterminate
+              color="primary"
+            ></v-progress-linear>
           </template>
-          <template v-for="portfolio in compositePortfolios" :key="portfolio.name">
+          <template
+            v-for="portfolio in compositePortfolios"
+            :key="portfolio.name"
+          >
             <CompositePortfolio :portfolio="portfolio" />
           </template>
         </v-col>
       </v-row>
     </v-container>
-
   </v-card>
 </template>
 <style>
@@ -33,21 +39,20 @@
 }
 </style>
 <script lang="ts">
-
 //Components
 //API
 
-import CompositePortfolio from '/src/components/portfolio/CompositePortfolio.vue';
-import AddPortfolioPopup from './portfolio/AddPortfolioPopup.vue';
-import AddIndexPopup from './target_portfolio/AddIndexPopup.vue';
-import { mapGetters, mapActions } from 'vuex';
+import CompositePortfolio from "/src/components/portfolio/CompositePortfolio.vue";
+import AddPortfolioPopup from "./portfolio/AddPortfolioPopup.vue";
+import AddIndexPopup from "./target_portfolio/AddIndexPopup.vue";
+import { mapGetters, mapActions } from "vuex";
 
 export default {
   name: "ManagePortfolioListView",
   components: {
     CompositePortfolio,
     AddPortfolioPopup,
-    AddIndexPopup
+    AddIndexPopup,
   },
   data() {
     return {
@@ -55,11 +60,15 @@ export default {
       portfolios: [],
       showSaveSuccess: false,
       showLoadSuccess: false,
-      saving:false
+      saving: false,
     };
   },
   computed: {
-    ...mapGetters(['compositePortfolios', 'portfolioLoadingStatus', 'provider']),
+    ...mapGetters([
+      "compositePortfolios",
+      "portfolioLoadingStatus",
+      "provider",
+    ]),
     // provider() {
     //   return this.$store.getters.provider;
     // },
@@ -76,25 +85,33 @@ export default {
           if (!value || /^[0-9\\.]+$/.test(value)) {
             return true;
           }
-          return 'Only numbers are allowed.';
-        }
+          return "Only numbers are allowed.";
+        },
       ];
     },
     displayLength() {
-      return this.$store.getters.displayLength
+      return this.$store.getters.displayLength;
     },
     maxLength() {
       if (!this.targetPortfolio) {
-        return this.portfolio.holdings.length
+        return this.portfolio.holdings.length;
       }
-      return Math.max(this.portfolio.holdings.length, this.targetPortfolio.holdings.length)
-    }
+      return Math.max(
+        this.portfolio.holdings.length,
+        this.targetPortfolio.holdings.length,
+      );
+    },
   },
   methods: {
     // ...mapActions(['refreshCompositePortfolios']),
-    ...mapActions(['saveCompositePortfolios', 'loadCompositePortfolios', 'loadCustomizations', 'loadIndexes']),
+    ...mapActions([
+      "saveCompositePortfolios",
+      "loadCompositePortfolios",
+      "loadCustomizations",
+      "loadIndexes",
+    ]),
     async savePortfolios() {
-      this.saving=true;
+      this.saving = true;
       await this.saveCompositePortfolios();
       // Reset the success state after a delay
       setTimeout(() => {
@@ -121,8 +138,7 @@ export default {
   async mounted() {
     await this.loadPortfolios();
     await this.loadCustomizations();
-    await this.loadIndexes()
+    await this.loadIndexes();
   },
 };
 </script>
-  

@@ -1,7 +1,6 @@
 // import Store from 'electron-store';
 // // import instance from '/src/api/instance'
 
-
 // // store order history
 // const store = new Store<Record<string, Object>>({
 //     name: 'history',
@@ -15,7 +14,6 @@
 //         // store.set(key, buffer.toString(encoding));
 //     },
 
-
 //     getPortfolios(): Array<Object> {
 //         const data = store.get('customIndexes', []) as Array<any>
 //         const parsed = data.map(dict => new TargetPortfolioModel(dict));
@@ -28,18 +26,15 @@
 //     return data
 // }
 
-
 // const state = {
 //     indexes: []
 // };
-
 
 // const getters = {
 //     indexes: state => state.indexes,
 //     indexNames: state => state.indexes.map((item) => item.name).sort()
 
 // };
-
 
 // // const helpers = {
 // // };
@@ -66,15 +61,12 @@
 //     }
 // };
 
-
-
 // const mutations = {
 //     setIndexes(state, indexes ) {
 //         state.indexes = indexes
 
 //     }
 // };
-
 
 // export default {
 //     state,
