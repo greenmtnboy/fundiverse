@@ -40,7 +40,7 @@ const storageAPI = {
       }
       try {
         item.value.stockModifications = item.value.stockModifications.map(
-          (item) => new StockModification(item.ticker, item.scale),
+          (item) => new StockModification(item.ticker, item.scale, null),
         );
       } catch (e) {
         item.value.stockModifications = [];
