@@ -30,9 +30,9 @@ export default class CompositePortfolioModel {
         this.profit_and_loss = profit_and_loss
         this.error = null
     }
-
+    
     get totalValue() {
-        return this.holdings.reduce((sum, holding) => sum + Math.floor(parseFloat(holding.value.value) * 10000) >>> 0, 0) / 10000
+        return this.holdings.reduce((sum, holding) => BigInt(sum + BigInt(Math.floor(parseFloat(holding.value.value) * 10000))) >> BigInt(0), BigInt(0)) / BigInt(10000)
     }
 
     valueInIndex(index: TargetPortfolioModel) {
