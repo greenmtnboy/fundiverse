@@ -1,4 +1,4 @@
-from typing import List, Dict, Annotated, Callable, Any
+from typing import List, Dict, Annotated, Callable, Any, Optional
 import dotenv
 
 dotenv.load_dotenv()
@@ -263,8 +263,15 @@ class ListMutation(BaseModel):
 
 class StockMutation(BaseModel):
     ticker: str
-    scale: float
-    min_weight: float
+    scale: float | None
+    min_weight: Optional[float] = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
 
 
 class ProviderResponse(BaseModel):
@@ -286,11 +293,6 @@ class TargetPortfolioRequest(BaseModel):
     provider: Provider | None = None
     providers: List[Provider] = Field(default_factory=list)
 
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        populate_by_name=True,
-        from_attributes=True,
-    )
 
 
 class BuyRequest(TargetPortfolioRequest):
@@ -532,6 +534,7 @@ async def stock_lists():
     _ = [STOCK_LISTS[x] for x in STOCK_LISTS.keys]
     return STOCK_LISTS
 
+DEFAULT_MIN_WEIGHT =0.001
 
 def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
     try:
@@ -544,12 +547,12 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
 
         ideal_port.reweight_to_present(provider=provider)
     for mutation in input.stock_modifications:
-        ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=mutation.min_weight)
+        ideal_port.reweight([mutation.ticker], weight=mutation.scale or 1.0, min_weight=mutation.min_weight or DEFAULT_MIN_WEIGHT)
     for list_mutation in input.list_modifications:
         ideal_port.reweight(
             STOCK_LISTS[list_mutation.list],
             weight=list_mutation.scale,
-            min_weight=0.001,
+            min_weight=DEFAULT_MIN_WEIGHT,
         )
     ideal_port.exclude(input.stock_exclusions)
     for item in input.list_exclusions:

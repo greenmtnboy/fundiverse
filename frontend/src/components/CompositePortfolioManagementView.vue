@@ -140,10 +140,6 @@ export default {
   },
   data() {
     return {
-      targetPortfolio: null,
-      // targetPortfolios: new TargetPortfolioListModel({
-      //   'loaded': initHoldings
-      // }),
       portfolioTarget: null,
       reweightTarget: false,
       selectedIndex: null,
@@ -164,7 +160,10 @@ export default {
   },
   computed: {
     ...mapGetters(['compositePortfolios', 'portfolioCustomizations', 'indexNames',
-      'getCustomizationByName']),
+      'getCustomizationByName', 'getTargetPortfolioByName']),
+    targetPortfolio() {
+      return this.getTargetPortfolioByName(this.portfolio.name)
+    },
     routerDebug() {
       return this.$route.params;
     },
@@ -241,7 +240,8 @@ export default {
       'saveCompositePortfolios', 'saveCustomizations', 'loadCustomizations', 'getStockLists',
       'loadIndexes',
       'setPortfolioTargetIndex',
-      'setPortfolioSize']),
+      'setPortfolioSize',
+      'setTargetPortfolio']),
     handlePortfolioSearchText: debounce(function () {
       // Code to execute after the debounce delay
       this.searchQuery = this.searchQueryInternal
@@ -271,11 +271,12 @@ export default {
       }).then((response) => {
         const portfolioHoldings = response.data.holdings.map(
           dict => new TargetPortfolioElementModel(dict));
-        this.targetPortfolio = new TargetPortfolioModel({
+        const targetPortfolio = new TargetPortfolioModel({
           'holdings': portfolioHoldings,
           'source_date': response.data.source_date,
           'name': target
-        });
+        })
+        this.setTargetPortfolio({ portfolioName: this.portfolioName, targetPortfolio: targetPortfolio });
         if (newValue) {
           this.setPortfolioTargetIndex({ portfolioName: this.portfolioName, index: target })
         }

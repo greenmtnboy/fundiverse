@@ -18,12 +18,15 @@
                 <v-text-field class="pb-2" v-model="ticker" label="Ticker" color="blue-darken-4" density="compact"
                     hide-details variant="solo" inline inset @update:modelValue="handleTickerInputUpdate"></v-text-field>
                 <v-banner lines="two" icon="$warning" color="primary">
-                    <v-banner-text v-if="updateType == 'reweight'">
-                        This ticker is already in the index, you can exclude it or reweight the current % by a new %. (100%
+                    <v-banner-text v-if="!tickerValidated">
+                        Enter a ticker to reweight or modify.
+                    </v-banner-text>
+                    <v-banner-text v-else-if="updateType == 'reweight'">
+                        {{ ticker}} is already in the index, you can exclude it or reweight the current % by a new %. (100%
                         would mantain currrent weight.)
                     </v-banner-text>
                     <v-banner-text v-else>
-                        This ticker is not in the index, you can add it with a base % target. (1% would be 1% of your target
+                        {{ ticker}}  is not in the index, you can add it with a base {{weight}}% target. (1% would be 1% of your target
                         index.)
                     </v-banner-text>
                 </v-banner>
@@ -55,8 +58,10 @@
 
 <script lang="ts">
 import {
-    mapActions
+    mapActions,
+    mapGetters,
 } from 'vuex'
+
 export default {
     name: "TailorStockPopup",
     data() {
@@ -77,6 +82,7 @@ export default {
         },
     },
     computed: {
+        ...mapGetters(['getTargetPortfolioByName']),
         hasValidChanges() {
             return this.excluded || this.weight != 100 || this.minWeight != 0;
         },
@@ -90,12 +96,16 @@ export default {
                 }
             ];
         },
+        targetPortfolio() {
+            return this.getTargetPortfolioByName(this.portfolioName)
+        }
     },
     methods: {
-        ...mapActions(['excludeStock', 'modifyStock']),
+        ...mapActions(['excludeStock', 'modifyStock', ]),
         handleTickerInputUpdate() {
             this.tickerValidated = false;
-            if (this.portfolio.contains({ ticker: this.ticker })) {
+            
+            if (this.targetPortfolio.contains({ ticker: this.ticker })) {
                 this.updateType = 'reweight'
                 this.weight = 100
 
@@ -104,7 +114,10 @@ export default {
                 this.updateType = 'add'
                 this.weight = 1
             }
-            this.tickerValidated = true;
+            if (this.ticker.length>0) {
+                this.tickerValidated = true;
+            }
+            
         },
         submit() {
             if (this.excluded) {
@@ -112,20 +125,21 @@ export default {
             } else {
                 if (this.updateType == 'add') {
                     this.modifyStock({
-                    portfolioName: this.portfolioName,
-                    ticker: this.ticker,
-                    scale: null,
-                    minWeight: this.weight /100,
-                });
+                        portfolioName: this.portfolioName,
+                        ticker: this.ticker,
+                        scale: null,
+                        minWeight: this.weight / 100,
+                    });
                 }
                 else {
-                this.modifyStock({
-                    portfolioName: this.portfolioName,
-                    ticker: this.ticker,
-                    scale: this.weight / 100,
-                    minWeight: null,
-                    // 'minWeight': this.minWeight
-                });
+                    this.modifyStock({
+                        portfolioName: this.portfolioName,
+                        ticker: this.ticker,
+                        scale: this.weight / 100,
+                        minWeight: null,
+                        // 'minWeight': this.minWeight
+                    });
+                }
             }
             this.dialog = false;
         }

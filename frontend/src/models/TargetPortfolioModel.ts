@@ -12,4 +12,8 @@ export default class TargetPortfolio {
     this.source_date = source_date;
     this.name = name
   }
+
+  contains({ticker}) {
+    return this.holdings.some(item=> item.ticker == ticker)
+  }
 }

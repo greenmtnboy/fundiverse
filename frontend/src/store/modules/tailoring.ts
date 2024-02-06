@@ -3,6 +3,7 @@
 import store from '/src/store/local';
 import PortfolioCustomization from '/src/models/PortfolioCustomization';
 import StockModification from '/src/models/StockModification';
+import TargetPortfolioModel from '/src/models/TargetPortfolioModel';
 import instance from '/src/api/instance'
 import ListModification from "/src/models/ListModification";
 
@@ -65,7 +66,8 @@ function customizationDefault(): Map<String, PortfolioCustomization> {
 
 const state = {
     customizations: customizationDefault(),
-    stockLists: []
+    stockLists: [],
+    targetPortfolios: new Map(),
     // excludedTickers: new Set(),
     // excludedLists: new Set(),
     // stockModifications: [],
@@ -83,7 +85,10 @@ const getters = {
     stockLists: state => state.stockLists,
     getCustomizationByName: (state) => (name) => {
         return safeGetCustomization(state, name);
-    }
+    },
+    getTargetPortfolioByName: (state) => (name) => {
+        return safeGetTargetPortfolio(state, name);
+    },
     // totalModifications: state => state.stockModifications.length + state.listModifications.length + state.excludedLists.size + state.excludedTickers.size,
 };
 
@@ -96,6 +101,10 @@ const actions = {
         await instance.get('stock_lists').then((response) => {
             commit('setStockLists', { stockLists: response.data.loaded, })
         });
+    },
+
+    async setTargetPortfolio({commit}, data) {
+        commit('setTargetPortfolio', data)
     },
 
     async setStockLists({ commit }, data) {
@@ -170,7 +179,23 @@ function safeGetCustomization(state, name: String) {
     });
     state.customizations.set(name, newPortfolio)
     return newPortfolio
+}
 
+function safeGetTargetPortfolio(state, name: String) {
+    if (!name) {
+        throw new Error('No name provided for getting target')
+    }
+    const target = state.targetPortfolios.get(name)
+    if (target) {
+        return target
+    }
+    const newPortfolio = new TargetPortfolioModel({
+        holdings:[],
+        source_date:'2000-01-01',
+        name:'placeholder'
+    });
+    state.targetPortfolios.set(name, newPortfolio)
+    return newPortfolio
 }
 
 
@@ -182,8 +207,11 @@ const mutations = {
         const customization = safeGetCustomization(state, data.portfolioName);
         customization.excludedTickers.add(data.ticker)
     },
+    setTargetPortfolio(state, data) {
+        state.targetPortfolios.set(data.portfolioName,data.targetPortfolio)
+
+    },
     removeStockExclusion(state, data) {
-        console.log(data)
         const customization = safeGetCustomization(state, data.portfolioName)
         if (data.mode === 'exclusion') {
             customization.excludedTickers.delete(data.ticker)
