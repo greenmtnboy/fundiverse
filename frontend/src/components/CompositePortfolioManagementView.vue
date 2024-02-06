@@ -207,9 +207,12 @@ export default {
       return this.$store.getters.provider;
     },
     portfolioSum() {
-      return this.portfolio.totalValue;
+      return Number(this.portfolio.totalValue);
     },
     portfolioPercentOfGoal() {
+      if (!this.portfolioTarget) {
+        return 100
+      }
       return Math.round((this.portfolioSum / this.portfolioTarget) * 100);
     },
     portfolioPercentOfTarget() {

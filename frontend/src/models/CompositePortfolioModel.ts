@@ -32,7 +32,7 @@ export default class CompositePortfolioModel {
     }
     
     get totalValue() {
-        return this.holdings.reduce((sum, holding) => BigInt(sum + BigInt(Math.floor(parseFloat(holding.value.value) * 10000))) >> BigInt(0), BigInt(0)) / BigInt(10000)
+        return Number(this.holdings.reduce((sum, holding) => BigInt(sum + BigInt(Math.floor(parseFloat(holding.value.value || '0') * 10000))) >> BigInt(0), BigInt(0)) / BigInt(10000))
     }
 
     valueInIndex(index: TargetPortfolioModel) {
@@ -40,7 +40,7 @@ export default class CompositePortfolioModel {
             return []
         }
         const indexTickers = index.holdings.reduce((set, holding) => set.add(holding.ticker), new Set())
-        return this.holdings.filter((element) => indexTickers.has(element.ticker)).reduce((sum, holding) => sum + Math.floor(parseFloat(holding.value.value)*10000) >>> 0, 0) / 10000;
+        return Number(this.holdings.filter((element) => indexTickers.has(element.ticker)).reduce((sum, holding) => BigInt(sum + BigInt(Math.floor(parseFloat(holding.value.value || '0')*10000))) >> BigInt(0), BigInt(0)) / BigInt(10000));
 
     }
 } 
