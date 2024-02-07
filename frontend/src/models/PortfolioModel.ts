@@ -1,9 +1,9 @@
-import PortfolioElementModel from "./PortfolioElementModel"; 
+import PortfolioElementModel from "./PortfolioElementModel";
 
 export default class PortfolioModel {
-    holdings:Array<PortfolioElementModel>;
+  holdings: Array<PortfolioElementModel>;
 
-    constructor(holdings) {
-        this.holdings = holdings
-    }
-} 
+  constructor(holdings) {
+    this.holdings = holdings;
+  }
+}

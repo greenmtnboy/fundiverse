@@ -1,10 +1,9 @@
-
 export default class ListModification {
-    list: string
-    scale?: number
+  list: string;
+  scale?: number;
 
-    constructor(list, scale) {
-        this.list = list
-        this.scale = scale
-    }
-} 
+  constructor(list, scale) {
+    this.list = list;
+    this.scale = scale;
+  }
+}

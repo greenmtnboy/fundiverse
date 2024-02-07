@@ -1,7 +1,9 @@
 <template>
   <v-card title="Index Settings" theme="dark" class="pb-4">
     <v-card-text>
-      <p class="pa-4">Select the base index to use for your portfolio.</p>
+      <p class="pa-4">Select the base index to use for your portfolio.
+An index is a collection of stocks and assigned weights which usually tracks the entire market or a subset of the market. 
+Total Market is a common index used by VTI and other familiar 'index funds'.</p>
       <v-select
         v-model="list"
         :items="indexKeys"
@@ -21,7 +23,7 @@
         variant="solo"
         @input="handlePortfolioSizeInput"
         label="Target Portfolio Size"
-        v-model="portfolioTarget"
+        v-model="portfolioTargetLocal"
         :rules="numberValidationRules"
       >
       </v-text-field>
@@ -47,14 +49,14 @@ export default {
     minWeight: 0,
     portfolioTargetLocal: 100_000,
   }),
-  props: {},
+  props: { },
   computed: {
     ...mapGetters(["portfolioTarget", "indexes", "portfolioCustomization"]),
     listMembers() {
       return this.stockLists[this.list];
     },
     indexKeys() {
-      return Object.keys(this.indexes);
+      return Object.keys(this.indexes).sort();
     },
     hasValidChanges() {
       return this.excluded || this.weight != 100 || this.minWeight != 0;

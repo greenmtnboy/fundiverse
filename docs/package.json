@@ -16,6 +16,7 @@
   "devDependencies": {
     "@vuepress/plugin-google-analytics": "^1.9.10",
     "@vuepress/plugin-register-components": "^2.0.0-rc.0",
+    "material-design-icons-iconfont": "^6.7.0",
     "vuepress": "^2.0.0-rc.0"
   },
   "dependencies": {

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,11 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fundiverse</title>
   </head>
-  <script>var exports = {};</script>
+  <script>
+    var exports = {};
+  </script>
   <body>
     <div id="app" class="app-loading">
       <style>
-        body, .app-loading {
+        body,
+        .app-loading {
           position: absolute;
           top: 0;
           right: 0;
@@ -37,7 +40,7 @@
           display: table-cell;
           text-align: center;
           vertical-align: middle;
-          color:#999;
+          color: #999;
           font-size: 14px;
         }
         .preloader {
@@ -54,58 +57,53 @@
           height: 10px;
           width: 10px;
           border-radius: 50%;
-          box-shadow: 1px 1px #646cff,
-                      1px 2px rgba(0, 0, 0 , 0.25);
+          box-shadow:
+            1px 1px #646cff,
+            1px 2px rgba(0, 0, 0, 0.25);
           transform: rotateX(50deg) rotateY(0deg) rotateZ(45deg);
         }
         .preloader .layer:nth-of-type(1) {
           background: #646cff;
           margin-top: 36px;
-          animation: movedown  0.8s cubic-bezier(0.39, 0.575, 0.565, 1)  0.4s infinite normal;
+          animation: movedown 0.8s cubic-bezier(0.39, 0.575, 0.565, 1) 0.4s
+            infinite normal;
         }
         .preloader .layer:nth-of-type(2) {
           background: #646cff;
           margin-top: 18px;
         }
         .preloader .layer:nth-of-type(3) {
-          background:#646cff;
-          animation: moveup  0.8s cubic-bezier(0.39, 0.575, 0.565, 1) infinite normal;
+          background: #646cff;
+          animation: moveup 0.8s cubic-bezier(0.39, 0.575, 0.565, 1) infinite
+            normal;
         }
         @keyframes moveup {
-          0%, 60%, 100% {
-            transform: 
-              rotateX(50deg)
-              rotateY(0deg)
-              rotateZ(45deg)
-              translateZ(0);
+          0%,
+          60%,
+          100% {
+            transform: rotateX(50deg) rotateY(0deg) rotateZ(45deg) translateZ(0);
           }
           25% {
-            transform:
-              rotateX(50deg)
-              rotateY(0deg)
-              rotateZ(45deg)
+            transform: rotateX(50deg) rotateY(0deg) rotateZ(45deg)
               translateZ(5px);
           }
         }
         @keyframes movedown {
-          0%, 60%, 100% {
-            transform: 
-              rotateX(50deg)
-              rotateY(0deg)
-              rotateZ(45deg)
-              translateZ(0);
+          0%,
+          60%,
+          100% {
+            transform: rotateX(50deg) rotateY(0deg) rotateZ(45deg) translateZ(0);
           }
           25% {
-            transform:
-              rotateX(50deg)
-              rotateY(0deg)
-              rotateZ(45deg)
+            transform: rotateX(50deg) rotateY(0deg) rotateZ(45deg)
               translateZ(-5px);
           }
         }
       </style>
       <div class="preloader-wrap">
-        <div class="preloader"><i class="layer"></i><i class="layer"></i><i class="layer"></i></div>
+        <div class="preloader">
+          <i class="layer"></i><i class="layer"></i><i class="layer"></i>
+        </div>
         <span>Loading</span>
       </div>
     </div>

@@ -1,11 +1,11 @@
 <template>
   <v-app>
-
     <v-app-bar color="primary" density="compact">
-      <v-app-bar-title>Fundiverse
-      </v-app-bar-title>
+      <v-app-bar-title>Fundiverse </v-app-bar-title>
       <v-spacer></v-spacer>
-      <p class=" d-flex justify-center text-center">Don't pick a stock. Picks lots of stocks.</p>
+      <p class="d-flex justify-center text-center">
+        Don't pick a stock. Picks lots of stocks.
+      </p>
       <v-spacer></v-spacer>
       <template v-slot:append>
         <!-- <v-icon v-if="isLoggedIn" color="success">mdi-check</v-icon>
@@ -17,10 +17,9 @@
           <span>Must re-login to {{ provider }}!</span>
         </v-tooltip>
         <p>{{ provider }}</p> -->
-        <v-btn  @click="gotoHome()" icon density="compact">
+        <v-btn @click="gotoHome()" icon density="compact">
           <v-icon>mdi-home</v-icon>
         </v-btn>
-
       </template>
     </v-app-bar>
     <v-main>
@@ -30,30 +29,26 @@
 </template>
 
 <script lang="ts">
-import { mapGetters } from 'vuex';
+import { mapGetters } from "vuex";
 export default {
-  name: 'App',
+  name: "App",
 
-  components: {
-  },
+  components: {},
 
-  data: () => ({
-
-  }),
+  data: () => ({}),
   computed: {
     showLoginNav() {
-      return this.$route.name !== 'login';
+      return this.$route.name !== "login";
     },
     provider() {
       return this.$store.getters.provider;
     },
-    ...mapGetters(['isLoggedIn'])
+    ...mapGetters(["isLoggedIn"]),
   },
   methods: {
     gotoHome() {
-      this.$router.push({ path: '/portfolio_list' })
+      this.$router.push({ path: "/portfolio_list" });
     },
-  }
-}
-
+  },
+};
 </script>

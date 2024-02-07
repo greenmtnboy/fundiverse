@@ -2,20 +2,21 @@
 
 ### Open Source Platform
 
-Fundiverse is a electron desktop app with versions for windows, mac, and linux. You download and run it like any other app.
+Fundiverse is an Electron desktop app with versions for Windows, Mac, and Linux. You download and run it like any other program on your computer. 
 
 ::: tip
-Electron is a common packaging format for distributing apps across windows/mac/linux platforms. It is used by many popular tools such as Slack, Discord, and Visual Studio Code.
+Electron is a common packaging format for distributing apps. It is used by many popular tools such as Slack, Discord, and Visual Studio Code.
 :::
 
-### Data Stays With You
 
-You install the app, and then locally configure it to connect to your brokerage by providing it with API keys. Your compute directly talks to the brokerages. Fundiverse does not communicate with anything other than your configered brokerages.
+### Data Stays Private
+
+You install Fundiverse, and then locally configure it to connect to your brokerage (such as Robinhood, Alpaca, or others) by providing it with API keys. Your computer talks directly to the brokerages - Fundiverse will not send data to anything other than the brokerages you have configured. 
 
 ### Bring your Own Brokerage
 
 Fundiverse will use your brokerage to determine what stocks you hold, their current prices, and other market information and then determine
-what orders to place to help build your customized index. It will then place those orders for you given rules you define.
+what orders to place to help build your customized index. You can then have it place those orders for you given rules you define.
 
 ### Get Started Quickly
 

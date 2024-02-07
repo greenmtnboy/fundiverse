@@ -75,7 +75,7 @@ gtag('config', 'G-3P8R2SW79T');
       'GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a>',
     navbar: [
       {
-        text: "Get Started",
+        text: "Install",
         link: "/install/",
       },
       {

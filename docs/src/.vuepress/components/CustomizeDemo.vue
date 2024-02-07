@@ -16,7 +16,7 @@
     <div>
       <StockListSetter v-if="activeSelector == 'lists'" />
       <IndexSetter v-else-if="activeSelector == 'index'" />
-      <StockSetter v-else-if="activeSelector == 'stocks'" />
+      <StockSetter :portfolio="demoPortfolio" v-else-if="activeSelector == 'stocks'" />
     </div>
   </v-card>
   <v-divider />

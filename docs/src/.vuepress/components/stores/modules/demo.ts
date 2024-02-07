@@ -33,7 +33,10 @@ import js
 ideal_port = deepcopy(INDEXES[customization.indexPortfolio])
 
 for mutation in customization.stockModifications:
-    ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=0.001)
+    if mutation.scale:
+        ideal_port.reweight([mutation.ticker], weight=mutation.scale, min_weight=0.001)
+    else:
+        ideal_port.reweight([mutation.ticker], weight=0.0, min_weight=mutation.minWeight)
 for list_mutation in customization.listModifications:
     ideal_port.reweight(
         STOCK_LISTS[list_mutation.list],
@@ -83,7 +86,7 @@ const actions = {
     // hardcoded as pyiodide had repeated issues loading this
     await pyodide.loadPackage("micropip");
     const micropip = pyodide.pyimport("micropip");
-    await micropip.install("py-portfolio-index");
+    await micropip.install("py-portfolio-index>=0.0.38");
     commit("getPython", pyodide);
   },
   async setPortfolioSize({ commit }, data) {
@@ -227,7 +230,7 @@ const mutations = {
   modifyStock(state, data) {
     const customization = state.customization;
     customization.stockModifications.push(
-      new StockModification(data.ticker, data.scale),
+      new StockModification(data.ticker, data.scale, data.minWeight),
     );
   },
   removeStockModification(state, data) {
