@@ -6,6 +6,8 @@
         :value="element.value"
         :ticker="element.ticker"
         :totalPortfolioSize="targetSize"
+        :appreciation="element.appreciation"
+        :dividends="element.dividends"
       />
     </template>
   </v-list>

@@ -55,7 +55,7 @@
         <v-progress-linear
           indeterminate
           reverse
-          color="blue-lighten-3"
+          color="blue-lighten-3" 
           height="20"
         >
         </v-progress-linear>

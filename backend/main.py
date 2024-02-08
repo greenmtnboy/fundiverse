@@ -489,9 +489,12 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
             )
         # key, item in IN_APP_CONFIG.provider_cache.items():
         if key in input.providers_to_refresh:
-            item.clear_cache()
-            rport = item.get_holdings()
-            rport.profit_and_loss = item.get_profit_or_loss()
+            try:
+                item.clear_cache()
+                rport = item.get_holdings()
+                rport.profit_and_loss = item.get_profit_or_loss()
+            except ConfigurationError:
+                IN_APP_CONFIG.provider_cache[key] = None
             IN_APP_CONFIG.holding_cache[key] = rport
         else:
             rport = IN_APP_CONFIG.holding_cache[key]

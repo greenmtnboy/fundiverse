@@ -1,10 +1,33 @@
 <template>
   <v-list-item :min-height="15">
     <div>
-      <TickerDisplay :ticker="ticker" />
-      <p class="text-medium-emphasis">
-        <CurrencyItem :value="value"></CurrencyItem> ({{ elementWeight }}%)
-      </p>
+      <v-row>
+        <v-col cols="9">
+          <TickerDisplay :ticker="ticker" />
+          <p class="text-medium-emphasis">
+            <CurrencyItem :value="value"></CurrencyItem> ({{ elementWeight }}%)
+          </p>
+        </v-col>
+        <v-col cols="3" class="text-right pr-10">
+          <v-tooltip>
+            <template v-slot:activator="{ props }">
+              <v-chip
+                v-bind="props"
+                small
+                :color="plColor"
+                outlined
+                class="text-low-emphasis"
+                ><CurrencyItem v-if="profit" :value="profit"> </CurrencyItem
+              ></v-chip>
+            </template>
+            <span
+              >Dividends:
+              <CurrencyItem v-if="dividends" :value="dividends" /> Appreciation:
+              <CurrencyItem v-if="appreciation" :value="appreciation"
+            /></span>
+          </v-tooltip>
+        </v-col>
+      </v-row>
     </div>
     <template v-slot:append>
       <v-tooltip v-if="unsettled">
@@ -49,6 +72,7 @@
 <script lang="ts">
 import CurrencyItem from "../generic/CurrencyItem.vue";
 import TickerDisplay from "../generic/TickerDisplay.vue";
+import CurrencyModel from "/src/models/CurrencyModel";
 const comparisonThreshold = 0.1;
 
 export default {
@@ -68,7 +92,7 @@ export default {
       required: true,
     },
     value: {
-      type: Object,
+      type: CurrencyModel,
       required: true,
     },
     targetWeight: {
@@ -83,8 +107,24 @@ export default {
       type: Boolean,
       required: false,
     },
+    appreciation: {
+      type: CurrencyModel,
+      required: false,
+    },
+    dividends: {
+      type: CurrencyModel,
+      required: false,
+    },
   },
   computed: {
+    plColor() {
+      if (this.profit.value > 0) {
+        return "green";
+      } else if (this.profit.value < 0) {
+        return "red";
+      }
+      return "gray";
+    },
     onGoal() {
       if (!this.totalPortfolioSize) {
         return false;
@@ -93,6 +133,15 @@ export default {
         Math.abs(this.elementWeight - this.targetWeightDisplay) <
         comparisonThreshold
       );
+    },
+    profit() {
+      if (!this.dividends || !this.appreciation) {
+        return new CurrencyModel({ value: 0.0, currency: "USD" });
+      }
+      return new CurrencyModel({
+        value: Number(this.dividends.value) + Number(this.appreciation.value),
+        currency: this.dividends.currency,
+      });
     },
     overGoal() {
       if (!this.totalPortfolioSize) {
