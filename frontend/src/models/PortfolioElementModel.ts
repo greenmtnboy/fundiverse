@@ -28,11 +28,4 @@ export default class PortfolioElementModel {
     this.dividends = new CurrencyModel(dividends);
     this.appreciation = new CurrencyModel(appreciation);
   }
-
-  profit() {
-    var defCurrency = new CurrencyModel({ value: 0.0, currency: "USD" });
-    return (this.dividends || defCurrency).add(
-      this.appreciation || defCurrency,
-    );
-  }
 }
