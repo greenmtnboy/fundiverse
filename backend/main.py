@@ -273,7 +273,6 @@ class StockMutation(BaseModel):
     )
 
 
-
 class ProviderResponse(BaseModel):
     available: List[Provider]
 
@@ -292,7 +291,6 @@ class TargetPortfolioRequest(BaseModel):
     purchase_strategy: PurchaseStrategy = PurchaseStrategy.LARGEST_DIFF_FIRST
     provider: Provider | None = None
     providers: List[Provider] = Field(default_factory=list)
-
 
 
 class BuyRequest(TargetPortfolioRequest):
@@ -494,7 +492,7 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
                 rport = item.get_holdings()
                 rport.profit_and_loss = item.get_profit_or_loss()
             except ConfigurationError:
-                IN_APP_CONFIG.provider_cache[key] = None
+                del IN_APP_CONFIG.provider_cache[key]
             IN_APP_CONFIG.holding_cache[key] = rport
         else:
             rport = IN_APP_CONFIG.holding_cache[key]
@@ -537,7 +535,9 @@ async def stock_lists():
     _ = [STOCK_LISTS[x] for x in STOCK_LISTS.keys]
     return STOCK_LISTS
 
-DEFAULT_MIN_WEIGHT =0.001
+
+DEFAULT_MIN_WEIGHT = 0.001
+
 
 def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
     try:
@@ -550,7 +550,11 @@ def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
 
         ideal_port.reweight_to_present(provider=provider)
     for mutation in input.stock_modifications:
-        ideal_port.reweight([mutation.ticker], weight=mutation.scale or 1.0, min_weight=mutation.min_weight or DEFAULT_MIN_WEIGHT)
+        ideal_port.reweight(
+            [mutation.ticker],
+            weight=mutation.scale or 1.0,
+            min_weight=mutation.min_weight or DEFAULT_MIN_WEIGHT,
+        )
     for list_mutation in input.list_modifications:
         ideal_port.reweight(
             STOCK_LISTS[list_mutation.list],
