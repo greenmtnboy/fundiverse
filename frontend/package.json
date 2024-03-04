@@ -37,7 +37,7 @@
     "@playwright/test": "^1.37.1",
     "@vitejs/plugin-vue": "^4.1.0",
     "electron": "^27.0.2",
-    "electron-builder": "^24.6.4",
+    "electron-builder": "^24.13.3",
     "prettier": "3.2.5",
     "sass": "^1.66.1",
     "sass-loader": "^13.3.2",
