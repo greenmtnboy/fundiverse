@@ -3,7 +3,7 @@
 Creating your perfect index is simple. Select your base, your goal in dollars - and then make it yours by reweighting, adding, or removing using premade lists of stocks or single stocks.
 
 ::: warning
-Provided indexes, stock lists, and weights are not investment advice. They are based on published, commonly available percentages and no expected otucomes are provided.
+Provided indexes, stock lists, and weights are not investment advice. They are based on published, commonly available percentages and are not recommendations of any stock.
 :::
 
 

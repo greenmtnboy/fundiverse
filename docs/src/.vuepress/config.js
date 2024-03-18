@@ -50,6 +50,15 @@ gtag('js', new Date());
 gtag('config', 'G-3P8R2SW79T');
 `,
     ],
+    [
+      "script",
+      {},
+      `gtag('event', 'conversion', {
+      'send_to': 'AW-11375592040/WL8wCMTuv-wYEOiEp7Aq',
+      'value': 1.0,
+      'currency': 'USD'
+  });`,
+    ],
   ],
 
   /**
@@ -72,10 +81,10 @@ gtag('config', 'G-3P8R2SW79T');
     clientConfigFile: path.resolve(__dirname, "./client.ts"),
     displayFooter: true,
     meta: {
-      contributors: false
+      contributors: false,
     },
     footer:
-      'GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a>',
+      'Not Stock Advice | GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a>',
     navbar: [
       {
         text: "Install",

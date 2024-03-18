@@ -8,6 +8,13 @@ Fundiverse is an Electron desktop app with versions for Windows, Mac, and Linux.
 Electron is a common packaging format for distributing apps. It is used by many popular tools such as Slack, Discord, and Visual Studio Code.
 :::
 
+### Python Backend
+
+The app is built on top of a python backend that does the heavy lifting of talking to brokerages and placing orders. The python backend is also open source and can be installed and run independently of the Electron app.
+
+::: tip
+Tech savvy? UIs not your thing? Install the python backend directly [here](https://github.com/greenmtnboy/py-portfolio-index) and build your own tools on top.
+:::
 
 ### Data Stays Private
 
