@@ -71,6 +71,9 @@ gtag('config', 'G-3P8R2SW79T');
     logo: "/logo-only-transparent-png.png",
     clientConfigFile: path.resolve(__dirname, "./client.ts"),
     displayFooter: true,
+    meta: {
+      contributors: false
+    },
     footer:
       'GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a>',
     navbar: [
