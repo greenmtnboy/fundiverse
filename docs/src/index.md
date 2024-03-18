@@ -1,8 +1,8 @@
 ---
 home: true
-heroText: Fundiverse
-heroImage: /fundiverse-dolphin.png
-tagline: Open Source Indexing
+heroText: ''
+tagline: ''
+heroImage: /logo-transparent-png.png
 actionText: Quick Start
 actionLink: /install/
 features:
