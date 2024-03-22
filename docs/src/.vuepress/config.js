@@ -84,7 +84,7 @@ gtag('config', 'G-3P8R2SW79T');
       contributors: false,
     },
     footer:
-      'Not Stock Advice | GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a>',
+      'Not Stock Advice | GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a> | <a href="/tos">Terms of Service</a> | <a href="/privacy">Privacy Policy</a>',
     navbar: [
       {
         text: "Install",
