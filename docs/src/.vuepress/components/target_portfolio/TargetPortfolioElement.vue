@@ -8,7 +8,7 @@
         }}%)
       </p>
     </div>
-    <template v-slot:append>
+    <!-- <template v-slot:append>
       <v-tooltip>
         <template v-slot:activator="{ props }">
           <v-btn
@@ -17,17 +17,16 @@
             @click="onClickWrapper"
             icon
             density="compact"
+            :loading="loading"
+            color="warning"
+           
           >
-            <v-icon
-              icon="mdi-cancel"
-              :loading="loading"
-              color="warning"
-            ></v-icon>
+          <span  style="letter-spacing:inherit" class="material-icons pa-0 ba-0">cancel</span>
           </v-btn>
         </template>
         <span>Exclude</span>
       </v-tooltip>
-    </template>
+    </template> -->
   </v-list-item>
 </template>
 

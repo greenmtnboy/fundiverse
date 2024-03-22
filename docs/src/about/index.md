@@ -6,22 +6,27 @@ Fundiverse attempts to capture the best qualities of index funds - low fees, bro
 Fundiverse does not provide investment advice. It is a tool to help you build a portfolio that reflects your values and beliefs. All stock selections are your own.
 :::
 
-## How
+## What
 
 Your personalized index starts with an existing index as a base, which you can then customized by reweighting lists of stocks or individual stocks. Fundiverse then integrates with your brokerage to execute the orders to build your portfolio.
 
-An example of the customization screen:
+<br>
+Use a streamlined UI to connect to your brokerages, track your holdings against the index and purchase what you need to achieve your goals. 
 
-![alt text](/fundiverse_new.png "Portfolio Customization Screen")
+<PortfolioDemo/>
 
-## Tell me More
 
-Stocks - representing a share of ownership in one of the producing entities on capitalist society - have historically been one of the most consistent ways of building long-term wealth. 
+## Philosophy
+
+The stock market has historically been one of the most consistent ways of building long-term wealth.  
+Modern stock investing emphasizes index funds for retail investers - "you can't beat the market". Fundiverse is based on the premise that this wisdom is correct; but that there is still room for personal preference and expression even when building a broadly diversified portfolio.
+
+
+::: tip
+ Buying the market implicitly implies supporting every publically traded company equally - there are many reasons why you may not want to do that. Fundiverse's goal is to give you the freedom to express yourself while achieving your financial goals - all with no cost. 
+:::
+
 
 <br>
 
-Modern stock investing emphasizes index funds for retail investers - "you can't beat the market". Fundiverse is based on the premise that this wisdom is correct; but that there is still room for personal preference and expression even when building a broadly diversified portfolio. Buying the market implicitly implies supporting every publically traded company equally - there are many reasons why some subset may be discounted or preferred by an investor besides pure financial goals. 
-
-<br>
-
-To enable that, Fundiverse lets you take a common index fund, and tweak it. For example, you can exclude oil companies, or weight them more if you think they'll out-perform the market. You could exclude Amazon, Apple, or Meta. 
+That's why Fundiverse is built on index funds. Start with something you know works and then make it your own. For example, you can exclude oil companies, or weight them more if you think they'll out-perform the market. You could exclude Amazon, Apple, or Meta. 

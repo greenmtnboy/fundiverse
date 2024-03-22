@@ -3,12 +3,12 @@
     <v-card-title
       :data-testid="`cmp-port-${portfolio.name}`"
       :key="portfolio.name"
-      style="{display:'flex'}"
+      style="display:'flex'"
     >
       <v-row>
         <v-col col="8">
           {{ portfolio.name }}
-          <span class="text-low-emphasis" style="opacity=0.5; font-size: small"
+          <span class="text-low-emphasis" style="opacity:0.5; font-size: small"
             >({{ timeDisplay }})</span
           > </v-col
         ><v-col class="text-right" col="4">

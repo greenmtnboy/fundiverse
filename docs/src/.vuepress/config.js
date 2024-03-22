@@ -5,6 +5,7 @@ import registerComponentsPlugin from "@vuepress/plugin-register-components";
 import { viteBundler } from "@vuepress/bundler-vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
+
 const __dirname = getDirname(import.meta.url);
 
 export default {
@@ -29,6 +30,8 @@ export default {
     ],
     ["meta", { name: "theme-color", content: "#3eaf7c" }],
     ["meta", { name: "apple-mobile-web-app-capable", content: "yes" }],
+    ['link', { rel: 'stylesheet', href:"https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" }],
+    ['link', { rel: 'stylesheet', href:"https://fonts.googleapis.com/icon?family=Material+Icons" }],
     [
       "meta",
       { name: "apple-mobile-web-app-status-bar-style", content: "black" },
