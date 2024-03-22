@@ -90,16 +90,16 @@ gtag('config', 'G-3P8R2SW79T');
       'Not Stock Advice | GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a> | <a href="/tos">Terms of Service</a> | <a href="/privacy">Privacy Policy</a>',
     navbar: [
       {
-        text: "Install",
-        link: "/install/",
-      },
-      {
         text: "About",
         link: "/about/",
       },
       {
-        text: "Demo",
-        link: "/demo/",
+        text: "Index Lab/Demo",
+        link: "/index_demo/",
+      },
+      {
+        text: "Install",
+        link: "/install/",
       },
     ],
     sidebar: {

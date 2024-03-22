@@ -1,5 +1,5 @@
 <template>
-  <v-card title="List Settings" theme="dark" class="pb-4">
+  <v-card title="List Settings"  class="pb-4 sharp">
     <v-card-text>
       <p class="pa-4">
         You can custom the portfolio by excluding or adjusting the weight of

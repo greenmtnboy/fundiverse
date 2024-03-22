@@ -1,5 +1,5 @@
 <template>
-    <v-card title="Stock Settings" theme="dark">
+    <v-card title="Stock Settings" class="sharp">
         <v-card-text>
             <p class="pb-4">
                 You can exclude a stock entirely with the below toggle, or scale the

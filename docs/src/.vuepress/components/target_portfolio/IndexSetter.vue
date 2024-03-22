@@ -1,9 +1,9 @@
 <template>
-  <v-card title="Index Settings" theme="dark" class="pb-4">
+  <v-card title="Index Settings" class="pb-4 sharp">
     <v-card-text>
       <p class="pa-4">Select the base index to use for your portfolio.
 An index is a collection of stocks and assigned weights which usually tracks the entire market or a subset of the market. 
-Total Market is a common index used by VTI and other familiar 'index funds'.</p>
+Total Market is a common index used by VTI and other familiar 'index funds' and can be a good place to start.</p>
       <v-select
         v-model="list"
         :items="indexKeys"

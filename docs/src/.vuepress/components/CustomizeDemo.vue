@@ -1,6 +1,6 @@
 <template>
-  <v-card theme="dark" class="sharp mt-10">
-    <v-card-title>Create Portfolio</v-card-title>
+  <v-card class="sharp mt-10">
+    <v-card-title>Portfolio Laboratory</v-card-title>
     <v-progress-linear
       v-if="pythonLoading"
       color="primary"

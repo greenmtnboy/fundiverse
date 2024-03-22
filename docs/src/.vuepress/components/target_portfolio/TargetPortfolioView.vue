@@ -1,7 +1,6 @@
 <template>
   <v-card
     :title="`Holdings (${portfolio.holdings.length})`"
-    theme="dark"
     class="sharp"
   >
     <v-list class="pt-0" density="compact" v-if="portfolio.holdings.length > 0">
