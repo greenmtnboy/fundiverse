@@ -509,7 +509,7 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
             profit_or_loss_v2=rport.profit_and_loss,
             profit_or_loss=rport.profit_and_loss.total if rport.profit_and_loss else None,
         )
-        if report.profit_and_loss:
+        if rport.profit_and_loss:
             profit_and_loss += rport.profit_and_loss
         raw.append(rport)
     internal = CompositePortfolio(raw)
