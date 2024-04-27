@@ -5,8 +5,8 @@ import '@mdi/font/css/materialdesignicons.css'
 import "vuetify/styles";
 // import Vuetify from 'vuetify'
 // Vuetify
-import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
 import { createVuetify } from "vuetify";
+import VueGtag from "vue-gtag";
 import {
   VAlert,
   VBanner,
@@ -36,7 +36,6 @@ import {
   VCol,
   VRow,
 } from "vuetify/components";
-import * as directives from "vuetify/directives";
 import { store } from "./components/stores/index";
 import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
 
@@ -50,6 +49,9 @@ export default defineClientConfig({
         mdi,
       },
     },}));
+    app.use(VueGtag, {
+      config: { id: "G-3P8R2SW79T" }
+    })
     app.use(store);
     app.component("VAlert", VAlert);
     app.component("VCard", VCard);

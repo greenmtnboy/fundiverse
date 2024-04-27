@@ -2,8 +2,8 @@
 
 Fundiverse attempts to capture the best qualities of index funds - low fees, broad diversification, ease of use - while allowing you to customize your portfolio to your values and beliefs. It's the middle ground between picking stocks and picking the entire market.
 
-::: tip
-Fundiverse does not provide investment advice. It is a tool to help you build a portfolio that reflects your values and beliefs. All stock selections are your own.
+::: warning
+Fundiverse does not provide investment advice. It is a tool to help those with investing knowledge build a portfolio that reflects their values and beliefs. Do not invest what you cannot afford to lose. All investment decisions are your own.
 :::
 
 ## What

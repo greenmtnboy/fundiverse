@@ -40,7 +40,7 @@ export default {
       "script",
       {
         async: true,
-        src: "https://www.googletagmanager.com/gtag/js?id=G-3P8R2SW79T",
+        src: "https://www.googletagmanager.com/gtag/js?id=G-53FSTW9NTV",
       },
     ],
     [
@@ -50,17 +50,8 @@ export default {
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 
-gtag('config', 'G-3P8R2SW79T');
+gtag('config', 'G-53FSTW9NTV');
 `,
-    ],
-    [
-      "script",
-      {},
-      `gtag('event', 'conversion', {
-      'send_to': 'AW-11375592040/WL8wCMTuv-wYEOiEp7Aq',
-      'value': 1.0,
-      'currency': 'USD'
-  });`,
     ],
   ],
 
@@ -83,6 +74,7 @@ gtag('config', 'G-3P8R2SW79T');
     logo: "/logo-only-transparent-png.png",
     clientConfigFile: path.resolve(__dirname, "./client.ts"),
     displayFooter: true,
+    contributors: false,
     meta: {
       contributors: false,
     },

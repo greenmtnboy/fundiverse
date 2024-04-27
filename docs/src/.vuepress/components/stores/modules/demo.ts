@@ -4,27 +4,35 @@ import ListModification from "../../models/ListModification";
 import StockModification from "../../models/StockModification";
 import TargetPortfolioElementModel from "../../models/TargetPortfolioElementModel";
 import CompositePortfolioModel from "../../models/CompositePortfolioModel";
-import CashModel from "../../models/CashModel";
-import PortfolioModel from "../../models/PortfolioModel";
 import PortfolioElementModel from "../../models/PortfolioElementModel";
 import SubPortfolioModel from "../../models/SubPortfolioModel";
 
-
-const StaticWeights= {
-  'AAPL': {'actual': 20000, 'goal': 20000},
-  'MSFT': {'actual': 17000, 'goal': 17000},
-  'AMZN': {'actual': 13000, 'goal': 13000},
-  'TSLA': {'actual': 10000, 'goal': 10000},
-  'META': {'actual': 10000, 'goal': 10000},
-  'BRK.B': {'actual': 10000, 'goal': 10000},
-  'JPM': {'actual': 5000, 'goal': 5000},
-  'JNJ': {'actual': 5000, 'goal': 5000},
-  'RKLB': {'actual': 1007, 'goal': 0},
-  'HD': {'actual': 0, 'goal': 5000},
+function gtag_report_conversion() { 
+  //  @ts-ignore
+  gtag("event", "conversion", {
+    send_to: "AW-11375592040/7WSQCJ7r4qMZEOiEp7Aq",
+  });
+  console.log('submitted conversion')
+  return false;
 }
 
+const StaticWeights = {
+  AAPL: { actual: 20000, goal: 20000 },
+  MSFT: { actual: 17000, goal: 17000 },
+  AMZN: { actual: 13000, goal: 13000 },
+  TSLA: { actual: 10000, goal: 10000 },
+  META: { actual: 10000, goal: 10000 },
+  "BRK.B": { actual: 10000, goal: 10000 },
+  JPM: { actual: 5000, goal: 5000 },
+  JNJ: { actual: 5000, goal: 5000 },
+  RKLB: { actual: 1007, goal: 0 },
+  HD: { actual: 0, goal: 5000 },
+};
+
 const totalGoal = 100000;
-const totalActual = [...Object.values(StaticWeights)].map(x => x.actual).reduce((partialSum, a) => partialSum + a, 0);
+const totalActual = [...Object.values(StaticWeights)]
+  .map((x) => x.actual)
+  .reduce((partialSum, a) => partialSum + a, 0);
 
 const storageAPI = {
   getPortfolio(): TargetPortfolioModel {
@@ -38,16 +46,19 @@ const storageAPI = {
   // Create a static target
   getStaticDemoTargetPortfolio(): TargetPortfolioModel {
     let targetHoldings = [...Object.entries(StaticWeights)].map((values) => {
-      let ticker = values[0]
+      let ticker = values[0];
       let weight = values[1];
       let goal = weight.goal;
       if (!goal) {
         return null;
       }
-      return new TargetPortfolioElementModel({ ticker:ticker, weight:goal/totalGoal});
-    })
+      return new TargetPortfolioElementModel({
+        ticker: ticker,
+        weight: goal / totalGoal,
+      });
+    });
     let port = new TargetPortfolioModel({
-      holdings: targetHoldings.filter(x => x !== null),
+      holdings: targetHoldings.filter((x) => x !== null),
       source_date: "2023-01-01",
       name: "example_target",
     });
@@ -56,34 +67,45 @@ const storageAPI = {
   // Create a static actual
   getStaticDemoPortfolio(): CompositePortfolioModel {
     let holdings = [...Object.entries(StaticWeights)].map((values) => {
-      let ticker = values[0]
+      let ticker = values[0];
       let weight = values[1];
       return new PortfolioElementModel({
         ticker: ticker,
-        weight: weight.actual / totalActual /100,
-        value: { value: weight.actual + Math.random()*500 -250, currency: "USD" },
-        targetWeight: weight.goal/totalGoal,
-        dividends : { value: Math.random()*100, currency: "USD" },
-        appreciation : { value: Math.random()*1000, currency: "USD" },
+        weight: weight.actual / totalActual / 100,
+        value: {
+          value: weight.actual + Math.random() * 500 - 250,
+          currency: "USD",
+        },
+        targetWeight: weight.goal / totalGoal,
+        dividends: { value: Math.random() * 100, currency: "USD" },
+        appreciation: { value: Math.random() * 1000, currency: "USD" },
+        unit: Math.random() * 100,
+        unsettled: false,
       });
-    })
+    });
     let port = new SubPortfolioModel({
-      holdings:holdings,
-      source_date: "2023-01-01",
+      holdings: holdings,
       name: "test",
-      profit_and_loss: { value: 1100, currency: "USD" },
+      profit_or_loss: { value: 1100, currency: "USD" },
       cash: { value: 10, currency: "USD" },
-    })
-    let profit = holdings.map(x => x.appreciation.value + x.dividends.value).reduce((partialSum, a) => partialSum + a, 0);
+      target_size: totalGoal,
+      provider: "local",
+    });
+    let profit = holdings
+      .map(
+        (x) =>
+          ((x.appreciation && x.appreciation.value) || 0.0) +
+          ((x.dividends && x.dividends.value) || 0.0)
+      )
+      .reduce((partialSum, a) => partialSum + a, 0);
     let composite = new CompositePortfolioModel({
       holdings: port.holdings,
-      source_date: "2023-01-01",
       name: "My Portfolio",
       components: [port],
       profit_and_loss: { value: profit, currency: "USD" },
       cash: { value: 10, currency: "USD" },
       target_size: 100_000,
-      refreshed_at: 1711118442
+      refreshed_at: 1711118442,
     });
     return composite;
   },
@@ -126,7 +148,7 @@ IDEAL_PORT = ideal_port.json()
   let data = python.globals.get("IDEAL_PORT"); //.toJS({proxies:false})
   let final = JSON.parse(data);
   final.name = customization.indexPortfolio;
-  let output = new TargetPortfolioModel(final);
+  let output = TargetPortfolioModel.fromJSON(final);
   return output;
 }
 
@@ -137,8 +159,8 @@ const state = {
   portfolioTarget: 100_000,
   stockLists: {},
   indexes: [storageAPI.getStaticDemoTargetPortfolio()],
-  customization: storageAPI.getCustomization(),
-  staticCustomization: storageAPI.getCustomization('example_target'),
+  customization: storageAPI.getCustomization("example_target"),
+  staticCustomization: storageAPI.getCustomization("example_target"),
   python: null,
 };
 
@@ -176,7 +198,11 @@ const actions = {
   async getStockInfo({ commit, getters }, data) {
     let python = getters.python;
     if (!python) {
-      return {'name': data, 'exchange': 'If connected to a brokerage, this would give you information on the exchange.'}
+      return {
+        name: data,
+        exchange:
+          "If connected to a brokerage, this would give you information on the exchange.",
+      };
     }
     python.globals.set("ticker", data);
     let _ = await python.runPythonAsync(`
@@ -217,6 +243,7 @@ STOCK_LIST_DUMP = STOCK_LISTS.json()
     if (!data.index) {
       return;
     }
+    gtag_report_conversion();
     commit("setPortfolioTargetIndex", data);
     commit("saveCustomizations");
     dispatch("refreshPortfolio");
@@ -288,7 +315,10 @@ const mutations = {
     state.portfolioTarget = data.size;
   },
   setIndexes(state, data) {
-    state.indexes = data;
+    state.indexes = Object.entries(data).reduce((acc, [key, value]) => {
+      acc[key] = TargetPortfolioModel.fromJSON(value);
+      return acc;
+    }, {});
   },
   setStockLists(state, data) {
     state.stockLists = data;

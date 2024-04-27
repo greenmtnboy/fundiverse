@@ -1,6 +1,7 @@
 <template>
   <v-card class="sharp mt-10">
-    <v-card-title>Portfolio Laboratory</v-card-title>
+    <v-card-title v-if="pythonLoading">Portfolio Laboratory (Loading data...)</v-card-title>
+    <v-card-title v-else>Portfolio Laboratory</v-card-title>
     <v-progress-linear
       v-if="pythonLoading"
       color="primary"

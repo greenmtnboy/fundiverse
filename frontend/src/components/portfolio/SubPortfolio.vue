@@ -5,10 +5,7 @@
     </template>
     <v-list-item-title>{{ portfolio.name }}</v-list-item-title>
     <span>
-      <CurrencyItem
-        :loading="portfolio.loading"
-        :value="{ currency: '$', value: portfolioSum }"
-      />
+      <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" />
       in {{ portfolioLength }} stocks
     </span>
     <v-spacer></v-spacer>
@@ -16,7 +13,7 @@
       <CurrencyItem :loading="portfolio.loading" :value="portfolio.cash" /> cash
     </span>
     <template v-slot:append>
-      <v-chip
+      <!-- <v-chip
         v-if="portfolio.profit_or_loss"
         :color="portfolioColor"
         small
@@ -24,23 +21,27 @@
       >
         <span class="pr-2">Return: </span>
         <CurrencyItem :value="portfolio.profit_or_loss" />
-      </v-chip>
+      </v-chip> -->
+      <v-tooltip>
+        <template v-slot:activator="{ props }">
+          <v-chip v-if="portfolio.profit_or_loss" v-bind="props" :color="portfolioColor" small outlined>
+            <span class="pr-2">Return: </span>
+            <CurrencyItem
+              :value="portfolio.profit_or_loss.value ? portfolio.profit_or_loss : { currency: 'USD', value: portfolio.profit_or_loss }" />
+          </v-chip>
+        </template>
+        <span>Dividends:
+          <CurrencyItem v-if="portfolio.dividends" :value="portfolio.dividends" /> Appreciation:
+          <CurrencyItem v-if="portfolio.appreciation" :value="portfolio.appreciation" />
+        </span>
+      </v-tooltip>
+
       <v-spacer />
-      <ProviderLoginPopup
-        stateful
-        :provider="portfolio.provider"
-        :portfolioName="parentName"
-      ></ProviderLoginPopup>
+      <ProviderLoginPopup stateful :provider="portfolio.provider" :portfolioName="parentName"></ProviderLoginPopup>
       <!-- <v-btn v-if="loggedIn" color="green" icon="mdi-check" variant="text"></v-btn> -->
       <!-- <v-btn v-else color="grey-lighten-1" icon="mdi-login" variant="text"></v-btn> -->
       <v-spacer />
-      <v-btn
-        v-if="loggedIn"
-        @click="removeProvider"
-        color="red"
-        prependIcon="mdi-cancel"
-        variant="text"
-      >
+      <v-btn v-if="loggedIn" @click="removeProvider" color="red" prependIcon="mdi-cancel" variant="text">
         Remove
       </v-btn>
       <!-- <v-btn :loading="loading" v-if="refresh" @click="refresh" color="blue" prependIcon="mdi-refresh" variant="text">
@@ -88,7 +89,7 @@ export default {
     refresh: {
       type: Function,
       required: false,
-      default: () => {},
+      default: () => { },
     },
   },
   computed: {

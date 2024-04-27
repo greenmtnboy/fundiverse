@@ -11,6 +11,7 @@ Total Market is a common index used by VTI and other familiar 'index funds' and 
         density="compact"
         variant="solo"
         label="Base Index"
+        :disabled="pythonLoading"
       ></v-select>
       <v-chip-group active-class="primary">
         <v-chip v-for="tag in listMembers" :key="tag" :value="tag" label>
@@ -25,6 +26,7 @@ Total Market is a common index used by VTI and other familiar 'index funds' and 
         label="Target Portfolio Size"
         v-model="portfolioTargetLocal"
         :rules="numberValidationRules"
+        :disabled="pythonLoading"
       >
       </v-text-field>
       <!-- <v-text-field v-model="minWeight" :disabled="excluded" :rules="numberValidationRules" color="blue-darken-4" label="Minimum Weighting" density="compact" variant="solo" hide-details inline inset></v-text-field> -->
@@ -35,6 +37,7 @@ Total Market is a common index used by VTI and other familiar 'index funds' and 
 <script lang="ts">
 import { mapActions, mapGetters } from "vuex";
 
+// @ts-ignore
 import pkg from "lodash";
 const { debounce } = pkg;
 
@@ -51,7 +54,7 @@ export default {
   }),
   props: { },
   computed: {
-    ...mapGetters(["portfolioTarget", "indexes", "portfolioCustomization"]),
+    ...mapGetters(["portfolioTarget", "indexes", "portfolioCustomization", "pythonLoading"]),
     listMembers() {
       return this.stockLists[this.list];
     },

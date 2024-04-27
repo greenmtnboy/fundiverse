@@ -14,7 +14,9 @@ export default class CompositePortfolioModel {
   components: Array<SubPortfolioModel>;
   type?: string;
   refreshed_at: number;
-  profit_and_loss?: number;
+  profit_and_loss?: CashModel;
+  dividends: CashModel;
+  appreciation: CashModel;
   error?: string | null;
 
   constructor({
@@ -24,7 +26,10 @@ export default class CompositePortfolioModel {
     target_size,
     components,
     refreshed_at,
-    profit_and_loss,
+    profit_or_loss,
+    profit_or_loss_v2,
+    dividends,
+    appreciation,
   }) {
     this.name = name;
     this.loading = false;
@@ -33,16 +38,37 @@ export default class CompositePortfolioModel {
     this.target_size = target_size;
     const scomponents: Array<any> = components as Array<any>;
     this.keys = reactive(
-      Object.entries(scomponents).map(([_, component]) => component.provider),
+      Object.entries(scomponents).map(([_, component]) => component.provider)
     );
     this.components = reactive(
       Object.entries(scomponents).map(
-        ([_, component]) => new SubPortfolioModel(component),
-      ),
+        ([_, component]) => new SubPortfolioModel(component)
+      )
     );
     this.refreshed_at = refreshed_at;
-    this.profit_and_loss = profit_and_loss;
+    if (profit_or_loss && profit_or_loss.value) {
+      this.profit_and_loss = new CashModel(profit_or_loss);
+    } else {
+      this.profit_and_loss = new CashModel({
+        currency: "USD",
+        value: profit_or_loss,
+      });
+    }
+
+    if (profit_or_loss_v2) {
+      this.dividends = new CashModel(profit_or_loss_v2.dividends);
+      this.appreciation = new CashModel(profit_or_loss_v2.appreciation);
+    } else {
+      this.dividends = new CashModel({ currency: "USD", value: 0.0 });
+      this.appreciation = new CashModel({ currency: "USD", value: 0.0 });
+    }
     this.error = null;
+    if (dividends) {
+      this.dividends = new CashModel(dividends);
+    }
+    if (appreciation) {
+      this.appreciation = new CashModel(appreciation);
+    }
   }
 
   get totalValue() {
@@ -51,12 +77,10 @@ export default class CompositePortfolioModel {
         (sum, holding) =>
           BigInt(
             sum +
-              BigInt(
-                Math.floor(parseFloat(holding.value.value || "0") * 10000),
-              ),
+              BigInt(Math.floor(parseFloat(holding.value.value || "0") * 10000))
           ) >> BigInt(0),
-        BigInt(0),
-      ) / BigInt(10000),
+        BigInt(0)
+      ) / BigInt(10000)
     );
   }
 
@@ -66,7 +90,7 @@ export default class CompositePortfolioModel {
     }
     const indexTickers = index.holdings.reduce(
       (set, holding) => set.add(holding.ticker),
-      new Set(),
+      new Set()
     );
     return Number(
       this.holdings
@@ -76,11 +100,11 @@ export default class CompositePortfolioModel {
             BigInt(
               sum +
                 BigInt(
-                  Math.floor(parseFloat(holding.value.value || "0") * 10000),
-                ),
+                  Math.floor(parseFloat(holding.value.value || "0") * 10000)
+                )
             ) >> BigInt(0),
-          BigInt(0),
-        ) / BigInt(10000),
+          BigInt(0)
+        ) / BigInt(10000)
     );
   }
 }

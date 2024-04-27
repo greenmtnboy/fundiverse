@@ -44,7 +44,7 @@ const state = {
 };
 
 function flattenProviders(
-  portfolios: Array<CompositePortfolioModel>,
+  portfolios: Array<CompositePortfolioModel>
 ): Array<string> {
   const flatArray: Array<string> = [];
 
@@ -70,7 +70,7 @@ const actions = {
   async addNewCompositePortfolio({ commit, getters }, data) {
     // check that we don't already have a portfolio with this name
     const existingIndex = getters.compositePortfolios.findIndex(
-      (item) => item.name === data.name,
+      (item) => item.name === data.name
     );
     if (existingIndex !== -1) {
       throw new Error(`Portfolio ${data.name} already exists!`);
@@ -82,7 +82,13 @@ const actions = {
       target_size: data.target_size,
       components: [],
       refreshed_at: Math.floor(Date.now() / 1000),
-      profit_and_loss: 0.0,
+      profit_or_loss: 0.0,
+      profit_or_loss_v2: {
+        dividends: { currency: "$", value: 0.0 },
+        appreciation: { currency: "$", value: 0.0 },
+      },
+      appreciation: { currency: "$", value: 0.0 },
+      dividends: { currency: "$", value: 0.0 },
     });
     commit("addCompositePortfolios", newPortfolio);
     commit("savePortfolio");
@@ -111,7 +117,7 @@ const actions = {
     const portfolioName = data.portfolioName;
     let keys = data.keys;
     const existingIndex = getters.compositePortfolios.findIndex(
-      (item) => item.name === data.portfolioName,
+      (item) => item.name === data.portfolioName
     );
     const existing = getters.compositePortfolios[existingIndex];
     if (existingIndex === -1) {
@@ -163,7 +169,7 @@ const actions = {
         const newPortfolio: CompositePortfolioModel =
           new CompositePortfolioModel(element);
         const existingIndex = state.compositePortfolios.findIndex(
-          (item) => item.name === element.name,
+          (item) => item.name === element.name
         );
         if (existingIndex === -1) {
           commit("addCompositePortfolios", newPortfolio);
@@ -171,7 +177,7 @@ const actions = {
           const current = state.compositePortfolios[existingIndex];
           this.refreshCompositePortfolio(
             { commit, getters },
-            { portfolioName: current.name, keys: current.keys },
+            { portfolioName: current.name, keys: current.keys }
           );
         }
       });
@@ -205,12 +211,12 @@ const mutations = {
   },
   removeCompositePortfolio(state, data) {
     state.compositePortfolios = state.compositePortfolios.filter(
-      (item) => item.name !== data.portfolioName,
+      (item) => item.name !== data.portfolioName
     );
   },
   setPortfolioSize(state, data) {
     const existingIndex = state.compositePortfolios.findIndex(
-      (item) => item.name === data.portfolioName,
+      (item) => item.name === data.portfolioName
     );
     state.compositePortfolios[existingIndex].target_size = data.size;
   },
@@ -219,7 +225,7 @@ const mutations = {
       state.portfolioLoadingStatus = data.status;
     } else {
       const existingIndex = state.compositePortfolios.findIndex(
-        (item) => item.name === data.name,
+        (item) => item.name === data.name
       );
       state.compositePortfolios[existingIndex].components.forEach(
         (element, _) => {
@@ -227,7 +233,7 @@ const mutations = {
           if (data.error) {
             element.error = data.error;
           }
-        },
+        }
       );
       state.compositePortfolios[existingIndex].loading = data.status;
       if (data.error) {
@@ -246,20 +252,20 @@ const mutations = {
   },
   removeProvider(state, data) {
     const existingIndex = state.compositePortfolios.findIndex(
-      (item) => item.name === data.portfolioName,
+      (item) => item.name === data.portfolioName
     );
     if (existingIndex === -1) {
       return;
     }
     const current = state.compositePortfolios[existingIndex];
     current.components = current.components.filter(
-      (item) => item.provider !== data.provider,
+      (item) => item.provider !== data.provider
     );
     current.keys = current.keys.filter((item) => item !== data.provider);
   },
   pushNewProvider(state, data) {
     const existingIndex = state.compositePortfolios.findIndex(
-      (item) => item.name === data.portfolioName,
+      (item) => item.name === data.portfolioName
     );
     if (existingIndex === -1) {
       return;
@@ -276,6 +282,10 @@ const mutations = {
       holdings: [],
       cash: { currency: "$", value: 1000.0 },
       profit_or_loss: { currency: "$", value: 0.0 },
+      profit_or_loss_v2: {
+        dividends: { currency: "$", value: 0.0 },
+        appreciation: { currency: "$", value: 0.0 },
+      },
     });
     newSub.loading = true;
     current.components.push(newSub);
@@ -283,7 +293,7 @@ const mutations = {
   },
   updateCompositePortfolio(state, data) {
     const existingIndex = state.compositePortfolios.findIndex(
-      (item) => item.name === data.name,
+      (item) => item.name === data.name
     );
 
     // If an existing element is found, replace it with the new element

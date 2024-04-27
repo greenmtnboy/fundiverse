@@ -1,5 +1,5 @@
 export default class CurrencyModel {
-  value: string;
+  value: number;
   currency: string;
   constructor({ value, currency }) {
     this.value = value;

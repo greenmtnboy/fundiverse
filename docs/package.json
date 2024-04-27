@@ -28,6 +28,7 @@
     "lodash": "^4.17.21",
     "pyodide": "^0.25.0",
     "vite-plugin-static-copy": "^1.0.1",
+    "vue-gtag": "^2.0.1",
     "vuepress-theme-hope": "^2.0.0-rc.10",
     "vuetify": "^3.4.9",
     "vuex": "^4.1.0"

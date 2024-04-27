@@ -1,29 +1,26 @@
 <template>
   <v-card class="ma-4">
-    <v-card-title
-      :data-testid="`cmp-port-${portfolio.name}`"
-      :key="portfolio.name"
-      style="display:'flex'"
-    >
+    <v-card-title :data-testid="`cmp-port-${portfolio.name}`" :key="portfolio.name" style="display:'flex'">
       <v-row>
         <v-col col="8">
           {{ portfolio.name }}
-          <span class="text-low-emphasis" style="opacity:0.5; font-size: small"
-            >({{ timeDisplay }})</span
-          > </v-col
-        ><v-col class="text-right" col="4">
+          <span class="text-low-emphasis" style="opacity:0.5; font-size: small">({{ timeDisplay }})</span>
+        </v-col><v-col class="text-right" col="4">
           <span>
-            <v-chip
-              v-if="portfolio.profit_and_loss"
-              :color="portfolioColor"
-              small
-              outlined
-            >
-              <span class="pr-2">Portfolio Return: </span>
-              <CurrencyItem
-                :value="portfolio.profit_and_loss"
-              /> </v-chip></span
-        ></v-col>
+            <v-tooltip>
+              <template v-slot:activator="{ props }">
+                <v-chip v-if="portfolio.profit_and_loss" v-bind="props" :color="portfolioColor" small outlined>
+                  <span class="pr-2">Portfolio Return: </span>
+                  <CurrencyItem
+                    :value="portfolio.profit_and_loss.value ? portfolio.profit_and_loss : { currency: 'USD', value: portfolio.profit_and_loss }" />
+                </v-chip>
+              </template>
+              <span>Dividends:
+                <CurrencyItem v-if="portfolio.dividends" :value="portfolio.dividends" /> Appreciation:
+                <CurrencyItem v-if="portfolio.appreciation" :value="portfolio.appreciation" />
+              </span>
+            </v-tooltip>
+          </span></v-col>
       </v-row>
     </v-card-title>
     <v-alert type="error" v-if="portfolio.error">{{ portfolio.error }}</v-alert>
@@ -32,15 +29,13 @@
         <p class="text-high-emphasis font-weight-black text--primary">
           A portfolio across {{ portfolio.components.length }} providers with
           target size
-          <CurrencyItem
-            :value="{ currency: '$', value: portfolio.target_size }"
-          />
+          <CurrencyItem :value="{ currency: '$', value: portfolio.target_size }" />
         </p>
         <p v-if="selectedIndex">
           Based on index
           <span class="font-weight-black" :style="{ color: 'purple' }">{{
-            this.selectedIndex
-          }}</span>
+      this.selectedIndex
+    }}</span>
           with {{ customizationCount }} customizations.
         </p>
         <p v-else :style="{ color: 'orange' }">
@@ -52,37 +47,20 @@
       <template v-if="portfolio.loading">
         <v-progress-linear indeterminate color="green-lighten-3" height="20">
         </v-progress-linear>
-        <v-progress-linear
-          indeterminate
-          reverse
-          color="blue-lighten-3"
-          height="20"
-        >
+        <v-progress-linear indeterminate reverse color="blue-lighten-3" height="20">
         </v-progress-linear>
       </template>
       <template v-else>
-        <v-progress-linear
-          color="green-lighten-3"
-          v-model="portfolioInTargetPercent"
-          height="20"
-        >
+        <v-progress-linear color="green-lighten-3" v-model="portfolioInTargetPercent" height="20">
           <p class="text-high-emphasis font-weight-black">
-            <CurrencyItem
-              :loading="portfolio.loading"
-              :value="{ currency: '$', value: portfolioInTargetSum }"
-            />, {{ portfolioInTargetPercent }}% of target with index stocks
+            <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioInTargetSum }" />, {{
+      portfolioInTargetPercent }}% of target with index stocks
           </p>
         </v-progress-linear>
-        <v-progress-linear
-          color="blue-lighten-3"
-          v-model="portfolioPercentOfTarget"
-          height="20"
-        >
+        <v-progress-linear color="blue-lighten-3" v-model="portfolioPercentOfTarget" height="20">
           <p class="text-high-emphasis font-weight-black">
-            <CurrencyItem
-              :loading="portfolio.loading"
-              :value="{ currency: '$', value: portfolioSum }"
-            />, {{ portfolioPercentOfTarget }}% of target including all stocks
+            <CurrencyItem :loading="portfolio.loading" :value="{ currency: '$', value: portfolioSum }" />, {{
+      portfolioPercentOfTarget }}% of target including all stocks
           </p>
         </v-progress-linear>
       </template>
@@ -90,68 +68,38 @@
     <v-card-text class="pt-0">
       <v-divider class="pb-4 pt-0"></v-divider>
 
-      <template
-        v-for="sportfolio in portfolio.components"
-        :key="sportfolio.name"
-      >
-        <SubPortfolio
-          :id="sportfolio.name"
-          :portfolio="sportfolio"
-          :parentName="portfolio.name"
-          :refresh="() => refreshChild(sportfolio)"
-        />
+      <template v-for="sportfolio in portfolio.components" :key="sportfolio.name">
+        <SubPortfolio :id="sportfolio.name" :portfolio="sportfolio" :parentName="portfolio.name"
+          :refresh="() => refreshChild(sportfolio)" />
       </template>
       <!-- <div v-for="sportfolio in portfolio.components" :key="sportfolio.name"> 
                 {{ sportfolio.holdings }}</div> -->
-      <v-alert
-        type="info"
-        v-if="portfolio.keys.length === 0"
-        closable
-        close-label="Dismiss Hint"
-        >Add a provider to get started! Providers are the actual brokerages that
+      <v-alert type="info" v-if="portfolio.keys.length === 0" closable close-label="Dismiss Hint">Add a provider to get
+        started! Providers are the actual brokerages that
         can hold your stocks and are needed to fetch up-to-date stock
         information as you set up your portfolio. If you're just getting
         started, you can sign up for a Alpaca paper account in minutes and
         explore with fake money, no bank account provided.
       </v-alert>
-      <v-alert
-        type="info"
-        v-if="!selectedIndex"
-        closable
-        close-label="Dismiss Hint"
-        >Click the configure button to set up an index to build against for this
+      <v-alert type="info" v-if="!selectedIndex" closable close-label="Dismiss Hint">Click the configure button to set
+        up an
+        index to build against for this
         portfolio. You can choose from a variety of pre-built indexes, or build
         your own! You'll need an index set to start purchasing stocks.
       </v-alert>
     </v-card-text>
     <v-card-actions>
-      <ConfirmPurchase
-        :selectedIndex="selectedIndex"
-        :targetSize="portfolio.target_size"
-        :cash="portfolio.cash"
-        :providers="portfolio.keys"
-        :portfolioName="portfolio.name"
-        :disabled="portfolio.loading"
-      />
+      <ConfirmPurchase :selectedIndex="selectedIndex" :targetSize="portfolio.target_size" :cash="portfolio.cash"
+        :providers="portfolio.keys" :portfolioName="portfolio.name" :disabled="portfolio.loading" />
       <v-btn :disabled="portfolio.keys.length === 0" @click="navigatePortfolio">
         Configure
       </v-btn>
-      <ProviderLoginPopup
-        :portfolioName="portfolio.name"
-        :providerKeys="portfolio.keys"
-      />
+      <ProviderLoginPopup :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
 
-      <v-btn
-        :disabled="portfolio.keys.length === 0 || portfolio.loading"
-        @click="refresh"
-      >
+      <v-btn :disabled="portfolio.keys.length === 0 || portfolio.loading" @click="refresh">
         Refresh
       </v-btn>
-      <ConfirmationButton
-        :dataTestId="`btn-del-${portfolio.name}`"
-        :onClick="remove"
-        text="Delete"
-      />
+      <ConfirmationButton :dataTestId="`btn-del-${portfolio.name}`" :onClick="remove" text="Delete" />
       <!-- <v-btn :disabled="portfolio.loading" @click="remove"  color="red" prependIcon="mdi-cancel">
                 Delete
             </v-btn> -->
