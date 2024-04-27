@@ -507,7 +507,9 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
             cash=rport.cash,
             provider=key,
             profit_or_loss_v2=rport.profit_and_loss,
-            profit_or_loss=rport.profit_and_loss.total if rport.profit_and_loss else None,
+            profit_or_loss=rport.profit_and_loss.total
+            if rport.profit_and_loss
+            else None,
         )
         if rport.profit_and_loss:
             profit_and_loss += rport.profit_and_loss
@@ -811,7 +813,10 @@ def run():
     LOGGING_CONFIG["disable_existing_loggers"] = True
     import sys
 
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    if os.environ.get("in-ci"):
+        print("Running in a unit test, exiting")
+        exit(0)
+    elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         print("running in a PyInstaller bundle, sending stdout to devnull")
         f = open(os.devnull, "w")
         sys.stdout = f

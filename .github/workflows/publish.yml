@@ -20,9 +20,9 @@ jobs:
         os: [ubuntu-22.04, windows-latest]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4.1.4
       - name: Set up Python 3.11
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5.1.0
         with:
           python-version: "3.11"
       - run: pip install -r backend/requirements.txt

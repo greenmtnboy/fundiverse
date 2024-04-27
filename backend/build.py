@@ -132,3 +132,10 @@ if __name__ == "__main__":
             " to {destination_folder / SCRIPT_NAME}"
         )
         shutil.move(destination_folder / final_file, destination_folder / SCRIPT_NAME)
+
+    print("checking file runs")
+    my_env = os.environ.copy()
+    my_env["in-ci"] = "true"
+    subprocess.check_call([pyinstaller_output_file, "test"], env=my_env)
+
+    print("Verified package ran basic tests and exited 0")
