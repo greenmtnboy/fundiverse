@@ -21,6 +21,8 @@ export default class SubPortfolioModel {
     provider,
     profit_or_loss_v2,
     profit_or_loss,
+    dividends,
+    appreciation
   }) {
     this.name = name;
     this.holdings = reactive(holdings);
@@ -35,6 +37,12 @@ export default class SubPortfolioModel {
     } else {
       this.dividends = new CashModel({ currency: "USD", value: 0.0 });
       this.appreciation = new CashModel({ currency: "USD", value: 0.0 });
+    }
+    if (dividends) {
+      this.dividends = new CashModel(dividends)
+    }
+    if (appreciation) {
+      this.appreciation = new CashModel(appreciation)
     }
   }
 }

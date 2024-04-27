@@ -14,7 +14,7 @@ export default class CompositePortfolioModel {
   components: Array<SubPortfolioModel>;
   type?: string;
   refreshed_at: number;
-  profit_and_loss?: CashModel;
+  profit_or_loss?: CashModel;
   dividends: CashModel;
   appreciation: CashModel;
   error?: string | null;
@@ -47,9 +47,9 @@ export default class CompositePortfolioModel {
     );
     this.refreshed_at = refreshed_at;
     if (profit_or_loss && profit_or_loss.value) {
-      this.profit_and_loss = new CashModel(profit_or_loss);
+      this.profit_or_loss = new CashModel(profit_or_loss);
     } else {
-      this.profit_and_loss = new CashModel({
+      this.profit_or_loss = new CashModel({
         currency: "USD",
         value: profit_or_loss,
       });

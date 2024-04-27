@@ -286,6 +286,8 @@ const mutations = {
         dividends: { currency: "$", value: 0.0 },
         appreciation: { currency: "$", value: 0.0 },
       },
+      dividends: { currency: "$", value: 0.0 },
+      appreciation: { currency: "$", value: 0.0 },
     });
     newSub.loading = true;
     current.components.push(newSub);

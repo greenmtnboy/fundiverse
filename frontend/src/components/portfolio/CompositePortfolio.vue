@@ -9,10 +9,10 @@
           <span>
             <v-tooltip>
               <template v-slot:activator="{ props }">
-                <v-chip v-if="portfolio.profit_and_loss" v-bind="props" :color="portfolioColor" small outlined>
+                <v-chip v-if="portfolio.profit_or_loss" v-bind="props" :color="portfolioColor" small outlined>
                   <span class="pr-2">Portfolio Return: </span>
                   <CurrencyItem
-                    :value="portfolio.profit_and_loss.value ? portfolio.profit_and_loss : { currency: 'USD', value: portfolio.profit_and_loss }" />
+                    :value="portfolio.profit_or_loss.value ? portfolio.profit_or_loss : { currency: 'USD', value: portfolio.profit_or_loss }" />
                 </v-chip>
               </template>
               <span>Dividends:
@@ -169,9 +169,9 @@ export default {
       return 0;
     },
     portfolioColor() {
-      if (this.portfolio.profit_and_loss.value > 0) {
+      if (this.portfolio.profit_or_loss.value > 0) {
         return "green";
-      } else if (this.portfolio.profit_and_loss.value < 0) {
+      } else if (this.portfolio.profit_or_loss.value < 0) {
         return "red";
       }
       return "gray";
