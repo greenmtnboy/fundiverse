@@ -38,12 +38,12 @@ export default class CompositePortfolioModel {
     this.target_size = target_size;
     const scomponents: Array<any> = components as Array<any>;
     this.keys = reactive(
-      Object.entries(scomponents).map(([_, component]) => component.provider)
+      Object.entries(scomponents).map(([_, component]) => component.provider),
     );
     this.components = reactive(
       Object.entries(scomponents).map(
-        ([_, component]) => new SubPortfolioModel(component)
-      )
+        ([_, component]) => new SubPortfolioModel(component),
+      ),
     );
     this.refreshed_at = refreshed_at;
     if (profit_or_loss && profit_or_loss.value) {
@@ -77,10 +77,12 @@ export default class CompositePortfolioModel {
         (sum, holding) =>
           BigInt(
             sum +
-              BigInt(Math.floor(parseFloat(holding.value.value || "0") * 10000))
+              BigInt(
+                Math.floor(parseFloat(holding.value.value || "0") * 10000),
+              ),
           ) >> BigInt(0),
-        BigInt(0)
-      ) / BigInt(10000)
+        BigInt(0),
+      ) / BigInt(10000),
     );
   }
 
@@ -90,7 +92,7 @@ export default class CompositePortfolioModel {
     }
     const indexTickers = index.holdings.reduce(
       (set, holding) => set.add(holding.ticker),
-      new Set()
+      new Set(),
     );
     return Number(
       this.holdings
@@ -100,11 +102,11 @@ export default class CompositePortfolioModel {
             BigInt(
               sum +
                 BigInt(
-                  Math.floor(parseFloat(holding.value.value || "0") * 10000)
-                )
+                  Math.floor(parseFloat(holding.value.value || "0") * 10000),
+                ),
             ) >> BigInt(0),
-          BigInt(0)
-        ) / BigInt(10000)
+          BigInt(0),
+        ) / BigInt(10000),
     );
   }
 }

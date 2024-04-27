@@ -281,7 +281,7 @@ export default {
           profit_or_loss: 0.0,
           profit_or_loss_v2: null,
           dividends: { value: 0, currency: "$" },
-          appreciation:  { value: 0, currency: "$" }
+          appreciation: { value: 0, currency: "$" },
         });
       }
       return matched;
