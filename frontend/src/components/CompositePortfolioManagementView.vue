@@ -278,7 +278,10 @@ export default {
           cash: { value: 0, currency: "$" },
           target_size: 50000,
           refreshed_at: null,
-          profit_and_loss: 0,
+          profit_or_loss: 0.0,
+          profit_or_loss_v2: null,
+          dividends: { value: 0, currency: "$" },
+          appreciation: { value: 0, currency: "$" },
         });
       }
       return matched;

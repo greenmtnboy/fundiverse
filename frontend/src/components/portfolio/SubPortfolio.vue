@@ -16,7 +16,7 @@
       <CurrencyItem :loading="portfolio.loading" :value="portfolio.cash" /> cash
     </span>
     <template v-slot:append>
-      <v-chip
+      <!-- <v-chip
         v-if="portfolio.profit_or_loss"
         :color="portfolioColor"
         small
@@ -24,7 +24,40 @@
       >
         <span class="pr-2">Return: </span>
         <CurrencyItem :value="portfolio.profit_or_loss" />
-      </v-chip>
+      </v-chip> -->
+      <v-tooltip>
+        <template v-slot:activator="{ props }">
+          <v-chip
+            v-if="portfolio.profit_or_loss"
+            v-bind="props"
+            :color="portfolioColor"
+            small
+            outlined
+          >
+            <span class="pr-2">Return: </span>
+            <CurrencyItem
+              :value="
+                portfolio.profit_or_loss.value
+                  ? portfolio.profit_or_loss
+                  : { currency: 'USD', value: portfolio.profit_or_loss }
+              "
+            />
+          </v-chip>
+        </template>
+        <span
+          >Dividends:
+          <CurrencyItem
+            v-if="portfolio.dividends"
+            :value="portfolio.dividends"
+          />
+          Appreciation:
+          <CurrencyItem
+            v-if="portfolio.appreciation"
+            :value="portfolio.appreciation"
+          />
+        </span>
+      </v-tooltip>
+
       <v-spacer />
       <ProviderLoginPopup
         stateful

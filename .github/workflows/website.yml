@@ -1,7 +1,7 @@
 on: 
   push:
     branches:
-      # - main
+      - main
       - doc-v2
 name: 🚀 Deploy website on push
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: 🚚 Get latest code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4.1.4
 
     - name: Use Node.js 16
       uses: actions/setup-node@v2

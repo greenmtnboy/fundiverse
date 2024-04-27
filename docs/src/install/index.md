@@ -32,3 +32,10 @@ A portfolio will be set up with a target size and can either be fully funded or 
 ::: tip
 Your portfolio can even span multiple brokerages!
 :::
+
+
+### Issues and Support
+
+Issues can be opened on the [Github page](https://github.com/greenmtnboy/fundiverse/issues) for support.
+
+

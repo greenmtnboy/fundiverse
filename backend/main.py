@@ -37,6 +37,7 @@ from py_portfolio_index.models import (
     Money,
     OrderType,
     OrderElement,
+    ProfitModel,
 )
 from pytz import UTC
 
@@ -222,6 +223,7 @@ class RealPortfolioOutput(BaseModel):
     cash: Money | None
     provider: Provider | None
     profit_or_loss: Money | None = None
+    profit_or_loss_v2: ProfitModel | None
 
 
 class CompositePortfolioOutput(BaseModel):
@@ -231,7 +233,8 @@ class CompositePortfolioOutput(BaseModel):
     components: Dict[str, RealPortfolioOutput]
     target_size: float = 250_000
     refreshed_at: int
-    profit_and_loss: Money | None = None
+    profit_or_loss: Money | None = None
+    profit_or_loss_v2: ProfitModel | None
 
 
 class OrderStatus(Enum):
@@ -478,7 +481,9 @@ async def get_portfolio(_provider: Provider):
 def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     active: Dict[str, RealPortfolioOutput] = {}
     raw = []
-    profit_and_loss = Money(value=0.0)
+    profit_and_loss = ProfitModel(
+        appreciation=Money(value=0.0), dividends=Money(value=0.0)
+    )
     for key in input.providers:
         item = IN_APP_CONFIG.provider_cache.get(key, None)
         if not item:
@@ -488,7 +493,7 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
         # key, item in IN_APP_CONFIG.provider_cache.items():
         if key in input.providers_to_refresh:
             try:
-                item.clear_cache()
+                item.clear_cache(skip_clearing=["instrument_to_symbol_map"])
                 rport = item.get_holdings()
                 rport.profit_and_loss = item.get_profit_or_loss()
             except ConfigurationError:
@@ -501,9 +506,13 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
             holdings=rport.holdings,
             cash=rport.cash,
             provider=key,
-            profit_or_loss=rport.profit_and_loss,
+            profit_or_loss_v2=rport.profit_and_loss,
+            profit_or_loss=rport.profit_and_loss.total
+            if rport.profit_and_loss
+            else None,
         )
-        profit_and_loss += rport.profit_and_loss
+        if rport.profit_and_loss:
+            profit_and_loss += rport.profit_and_loss
         raw.append(rport)
     internal = CompositePortfolio(raw)
     return CompositePortfolioOutput(
@@ -512,7 +521,8 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
         cash=internal.cash,
         components=active,
         refreshed_at=int(datetime.now(tz=UTC).timestamp()),
-        profit_and_loss=profit_and_loss,
+        profit_or_loss_v2=profit_and_loss,
+        profit_or_loss=profit_and_loss.total,
     )
 
 
@@ -803,7 +813,10 @@ def run():
     LOGGING_CONFIG["disable_existing_loggers"] = True
     import sys
 
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    if os.environ.get("in-ci"):
+        print("Running in a unit test, exiting")
+        exit(0)
+    elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         print("running in a PyInstaller bundle, sending stdout to devnull")
         f = open(os.devnull, "w")
         sys.stdout = f

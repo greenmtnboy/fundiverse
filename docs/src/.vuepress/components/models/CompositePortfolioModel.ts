@@ -4,6 +4,12 @@ import SubPortfolioModel from "./SubPortfolioModel";
 import TargetPortfolioModel from "./TargetPortfolioModel";
 import { reactive } from "vue";
 
+function safeConvertPortfolio(input: any): SubPortfolioModel {
+  if (input != null && input.constructor === SubPortfolioModel) {
+    return input;
+  }
+  return new PortfolioElementModel(input);
+}
 export default class CompositePortfolioModel {
   name: string;
   loading: boolean;
@@ -14,9 +20,7 @@ export default class CompositePortfolioModel {
   components: Array<SubPortfolioModel>;
   type?: string;
   refreshed_at: number;
-  profit_or_loss?: CashModel;
-  dividends: CashModel;
-  appreciation: CashModel;
+  profit_and_loss?: number;
   error?: string | null;
 
   constructor({
@@ -26,10 +30,7 @@ export default class CompositePortfolioModel {
     target_size,
     components,
     refreshed_at,
-    profit_or_loss,
-    profit_or_loss_v2,
-    dividends,
-    appreciation,
+    profit_and_loss,
   }) {
     this.name = name;
     this.loading = false;
@@ -42,33 +43,12 @@ export default class CompositePortfolioModel {
     );
     this.components = reactive(
       Object.entries(scomponents).map(
-        ([_, component]) => new SubPortfolioModel(component),
+        ([_, component]) => safeConvertPortfolio(component),
       ),
     );
     this.refreshed_at = refreshed_at;
-    if (profit_or_loss && profit_or_loss.value) {
-      this.profit_or_loss = new CashModel(profit_or_loss);
-    } else {
-      this.profit_or_loss = new CashModel({
-        currency: "USD",
-        value: profit_or_loss,
-      });
-    }
-
-    if (profit_or_loss_v2) {
-      this.dividends = new CashModel(profit_or_loss_v2.dividends);
-      this.appreciation = new CashModel(profit_or_loss_v2.appreciation);
-    } else {
-      this.dividends = new CashModel({ currency: "USD", value: 0.0 });
-      this.appreciation = new CashModel({ currency: "USD", value: 0.0 });
-    }
+    this.profit_and_loss = profit_and_loss;
     this.error = null;
-    if (dividends) {
-      this.dividends = new CashModel(dividends);
-    }
-    if (appreciation) {
-      this.appreciation = new CashModel(appreciation);
-    }
   }
 
   get totalValue() {

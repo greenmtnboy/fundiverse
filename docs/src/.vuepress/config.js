@@ -5,6 +5,7 @@ import registerComponentsPlugin from "@vuepress/plugin-register-components";
 import { viteBundler } from "@vuepress/bundler-vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
+
 const __dirname = getDirname(import.meta.url);
 
 export default {
@@ -29,6 +30,8 @@ export default {
     ],
     ["meta", { name: "theme-color", content: "#3eaf7c" }],
     ["meta", { name: "apple-mobile-web-app-capable", content: "yes" }],
+    ['link', { rel: 'stylesheet', href:"https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" }],
+    ['link', { rel: 'stylesheet', href:"https://fonts.googleapis.com/icon?family=Material+Icons" }],
     [
       "meta",
       { name: "apple-mobile-web-app-status-bar-style", content: "black" },
@@ -37,7 +40,7 @@ export default {
       "script",
       {
         async: true,
-        src: "https://www.googletagmanager.com/gtag/js?id=G-3P8R2SW79T",
+        src: "https://www.googletagmanager.com/gtag/js?id=G-53FSTW9NTV",
       },
     ],
     [
@@ -47,17 +50,8 @@ export default {
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 
-gtag('config', 'G-3P8R2SW79T');
+gtag('config', 'G-53FSTW9NTV');
 `,
-    ],
-    [
-      "script",
-      {},
-      `gtag('event', 'conversion', {
-      'send_to': 'AW-11375592040/WL8wCMTuv-wYEOiEp7Aq',
-      'value': 1.0,
-      'currency': 'USD'
-  });`,
     ],
   ],
 
@@ -80,23 +74,24 @@ gtag('config', 'G-3P8R2SW79T');
     logo: "/logo-only-transparent-png.png",
     clientConfigFile: path.resolve(__dirname, "./client.ts"),
     displayFooter: true,
+    contributors: false,
     meta: {
       contributors: false,
     },
     footer:
-      'Not Stock Advice | GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a>',
+      'Not Stock Advice | GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a> | <a href="/tos">Terms of Service</a> | <a href="/privacy">Privacy Policy</a>',
     navbar: [
-      {
-        text: "Install",
-        link: "/install/",
-      },
       {
         text: "About",
         link: "/about/",
       },
       {
-        text: "Demo",
-        link: "/demo/",
+        text: "Index Lab/Demo",
+        link: "/index_demo/",
+      },
+      {
+        text: "Install",
+        link: "/install/",
       },
     ],
     sidebar: {

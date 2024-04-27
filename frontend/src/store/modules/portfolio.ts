@@ -82,7 +82,13 @@ const actions = {
       target_size: data.target_size,
       components: [],
       refreshed_at: Math.floor(Date.now() / 1000),
-      profit_and_loss: 0.0,
+      profit_or_loss: 0.0,
+      profit_or_loss_v2: {
+        dividends: { currency: "$", value: 0.0 },
+        appreciation: { currency: "$", value: 0.0 },
+      },
+      appreciation: { currency: "$", value: 0.0 },
+      dividends: { currency: "$", value: 0.0 },
     });
     commit("addCompositePortfolios", newPortfolio);
     commit("savePortfolio");
@@ -276,6 +282,12 @@ const mutations = {
       holdings: [],
       cash: { currency: "$", value: 1000.0 },
       profit_or_loss: { currency: "$", value: 0.0 },
+      profit_or_loss_v2: {
+        dividends: { currency: "$", value: 0.0 },
+        appreciation: { currency: "$", value: 0.0 },
+      },
+      dividends: { currency: "$", value: 0.0 },
+      appreciation: { currency: "$", value: 0.0 },
     });
     newSub.loading = true;
     current.components.push(newSub);

@@ -11,7 +11,17 @@ export default class TargetPortfolio {
     this.name = name;
   }
 
-  contains({ticker}) {
-    return this.holdings.some(item=> item.ticker == ticker)
+  contains({ ticker }) {
+    return this.holdings.some((item) => item.ticker == ticker);
+  }
+
+  public static fromJSON(input) {
+    return new TargetPortfolio({
+      name: input.name,
+      source_date: input.source_date,
+      holdings: input.holdings.map(
+        (item) => new TargetPortfolioElementModel(item)
+      ),
+    });
   }
 }
