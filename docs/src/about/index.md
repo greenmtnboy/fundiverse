@@ -1,10 +1,8 @@
+# About
+
 ## Why?
 
 Fundiverse attempts to capture the best qualities of index funds - low fees, broad diversification, ease of use - while allowing you to customize your portfolio to your values and beliefs. It's the middle ground between picking stocks and picking the entire market.
-
-::: warning
-Fundiverse does not provide investment advice. It is a tool to help those with investing knowledge build a portfolio that reflects their values and beliefs. Do not invest what you cannot afford to lose. All investment decisions are your own.
-:::
 
 ## What
 
@@ -30,3 +28,8 @@ Modern stock investing emphasizes index funds for retail investers - "you can't 
 <br>
 
 That's why Fundiverse is built on index funds. Start with something you know works and then make it your own. For example, you can exclude oil companies, or weight them more if you think they'll out-perform the market. You could exclude Amazon, Apple, or Meta. 
+
+
+::: warning
+Fundiverse does not provide investment advice. It is a tool to help those with investing knowledge build a portfolio that reflects their values and beliefs. Do not invest what you cannot afford to lose. All investment decisions are your own.
+:::

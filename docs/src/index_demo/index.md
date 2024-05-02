@@ -1,11 +1,8 @@
-## Demo - Custom Index Creation
+# Demos 
+
+## Custom Index Creation
 
 The core feature of fundiverse is tailoring indexes to your goals. Creating your perfect index is simple. Select your base, your goal in dollars - and then make it yours by reweighting, adding, or removing using premade lists of stocks or single stocks.
-
-::: warning
-Provided indexes, stock lists, and weights are not investment advice. They are based on published, commonly available percentages and are not recommendations of any stock.
-:::
-
 
 ::: tip
 This page lets you play around with custom portfolios and needs to load a subset of the Fundiverse backend to get the reference indexes; it may take a few seconds to load. 
@@ -14,6 +11,11 @@ This page lets you play around with custom portfolios and needs to load a subset
 <CustomizeDemo/>
 
 ## What's Next
+
+::: warning
+Provided indexes, stock lists, and weights are not investment advice. They are based on published, commonly available percentages and are not recommendations of any stock.
+:::
+
 
 [Download the app](../install) to make your index a reality. You can connect to your brokerage and place orders to bring the stocks you own in line with the portfolio you defined - or create multiple portfolios spanning different brokerages. 
 

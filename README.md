@@ -61,3 +61,6 @@ Webull both support paper trading to experiment without connecting a real bank a
 
 [Read the docs](https://fundiverse.dev/install/).
 
+## Contributions
+
+![Alt](https://repobeats.axiom.co/api/embed/b8f8392ea8aa8577f4d6943d4d3d9e2e88173b55.svg "Repobeats analytics image")

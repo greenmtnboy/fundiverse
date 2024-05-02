@@ -1,6 +1,6 @@
 <template>
   <v-card class="sharp mt-10">
-    <v-card-title v-if="pythonLoading">Portfolio Laboratory (Loading data...)</v-card-title>
+    <v-card-title v-if="pythonLoading">Portfolio Laboratory (Loading index data, this may take a minute or two...)</v-card-title>
     <v-card-title v-else>Portfolio Laboratory</v-card-title>
     <v-progress-linear
       v-if="pythonLoading"
@@ -15,8 +15,8 @@
       </v-tabs>
     </v-card-subtitle>
     <div>
-      <StockListSetter v-if="activeSelector == 'lists'" />
-      <IndexSetter v-else-if="activeSelector == 'index'" />
+      <StockListSetter  v-if="activeSelector === 'lists'" />
+      <IndexSetter v-else-if="activeSelector === 'index'" />
       <StockSetter :portfolio="demoPortfolio" v-else-if="activeSelector == 'stocks'" />
     </div>
   </v-card>
