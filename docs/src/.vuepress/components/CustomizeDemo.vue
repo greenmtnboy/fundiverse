@@ -15,8 +15,8 @@
       </v-tabs>
     </v-card-subtitle>
     <div>
-      <StockListSetter  v-if="activeSelector === 'lists'" />
-      <IndexSetter v-else-if="activeSelector === 'index'" />
+      <StockListSetter  v-if="activeSelector == 'lists'" />
+      <IndexSetter v-else-if="activeSelector == 'index'" />
       <StockSetter :portfolio="demoPortfolio" v-else-if="activeSelector == 'stocks'" />
     </div>
   </v-card>
