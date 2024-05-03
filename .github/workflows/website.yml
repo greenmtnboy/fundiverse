@@ -20,7 +20,6 @@ jobs:
     - name: 🔨 Build Project
       working-directory: ./docs
       run: |
-        cd docs
         npm install
         npm run build
     

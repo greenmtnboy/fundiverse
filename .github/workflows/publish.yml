@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - docs_updates
     #  - fix-icon
     # tags:
     #   - "v*"
