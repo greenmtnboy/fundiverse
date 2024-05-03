@@ -2,7 +2,7 @@ on:
   push:
     branches:
       - main
-      - doc-v2
+      - docs_updates
 name: 🚀 Deploy website on push
 jobs:
   web-deploy:
