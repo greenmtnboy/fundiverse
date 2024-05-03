@@ -30,4 +30,3 @@ jobs:
         username: fundiverse.dev
         password: ${{ secrets.WEBSITE_SFTP_PASSWORD }}
         local-dir: docs/src/.vuepress/dist/
-        dry-run: true
