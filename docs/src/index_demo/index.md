@@ -4,10 +4,6 @@
 
 The core feature of fundiverse is tailoring indexes to your goals. Creating your perfect index is simple. Select your base, your goal in dollars - and then make it yours by reweighting, adding, or removing using premade lists of stocks or single stocks.
 
-::: tip
-This page lets you play around with custom portfolios and needs to load a subset of the Fundiverse backend to get the reference indexes; it may take a few seconds to load. 
-:::
-
 <CustomizeDemo/>
 
 ## What's Next

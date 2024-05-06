@@ -15,6 +15,7 @@
         density="compact"
         variant="solo"
         label="Stock List"
+        :class="{ 'glowing-border': highlight}"
       ></v-select>
       <v-chip-group active-class="primary">
         <v-chip v-for="tag in listMembers" :key="tag" :value="tag" label>
@@ -75,7 +76,11 @@ export default {
     weight: 100,
     minWeight: 0,
   }),
-  props: {},
+  props: {
+  highlight: {
+    type: Boolean,
+    default: false,}
+  },
   computed: {
     ...mapGetters(["portfolioCustomization", "stockLists"]),
     customizations() {
@@ -142,3 +147,12 @@ export default {
   },
 };
 </script>
+<style local>
+.glowing-border {
+    border: 2px solid #dadada;
+    border-radius: 7px;
+    outline: none;
+    border-color: #9ecaed;
+    box-shadow: 0 0 10px #9ecaed;
+}
+</style>
