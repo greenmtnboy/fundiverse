@@ -12,6 +12,7 @@ Total Market is a common index used by VTI and other familiar 'index funds' and 
         variant="solo"
         label="Base Index"
         :disabled="pythonLoading"
+        :class="{ 'glowing-border': highlight}"
       ></v-select>
       <v-chip-group active-class="primary">
         <v-chip v-for="tag in listMembers" :key="tag" :value="tag" label>
@@ -52,7 +53,11 @@ export default {
     minWeight: 0,
     portfolioTargetLocal: 100_000,
   }),
-  props: { },
+  props: {
+    highlight: {
+    type: Boolean,
+    default: false,}
+   },
   computed: {
     ...mapGetters(["portfolioTarget", "indexes", "portfolioCustomization", "pythonLoading"]),
     listMembers() {
@@ -126,3 +131,30 @@ export default {
   },
 };
 </script>
+<style>
+.glowing-border {
+    /* border: 2px solid #dadada; */
+    /* border-radius: 7px; */
+    outline: none;
+    border-color: #9ecaed;
+    box-shadow: 0 0 0 0 rgba(52, 172, 224, 1);
+    animation: pulse-blue 2s infinite;
+}
+
+@keyframes pulse-blue {
+	0% {
+		transform: scale(0.95);
+		box-shadow: 0 0 0 0 rgba(52, 172, 224, 0.7);
+	}
+	
+	70% {
+		transform: scale(1);
+		box-shadow: 0 0 0 10px rgba(52, 172, 224, 0);
+	}
+	
+	100% {
+		transform: scale(0.95);
+		box-shadow: 0 0 0 0 rgba(52, 172, 224, 0);
+	}
+}
+</style>

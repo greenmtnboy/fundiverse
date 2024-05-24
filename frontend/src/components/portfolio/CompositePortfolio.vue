@@ -94,7 +94,7 @@
       <v-btn :disabled="portfolio.keys.length === 0" @click="navigatePortfolio">
         Configure
       </v-btn>
-      <ProviderLoginPopup :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
+      <ProviderLoginPopup  :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
 
       <v-btn :disabled="portfolio.keys.length === 0 || portfolio.loading" @click="refresh">
         Refresh

@@ -683,6 +683,7 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
         raise HTTPException(403, "Not all providers are logged in")
     # check each of our p
     output: List[OrderItem] = []
+    stale_providers:set[Provider] = set()
     for order in input.plan.to_buy:
         try:
             transformed_order = OrderElement(
@@ -699,10 +700,18 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
             order.status = OrderStatus.FAILED
             order.message = e.message
             output.append(order)
+        except ConfigurationError as e:
+            stale_providers.add(order.provider)
+            order.status = OrderStatus.FAILED
+            order.message = str(e)
+            output.append(order)
         except Exception as e:
             order.status = OrderStatus.FAILED
             order.message = str(e)
             output.append(order)
+    for provider in stale_providers:
+        if provider in IN_APP_CONFIG.provider_cache:
+            del IN_APP_CONFIG.provider_cache[provider]
     return BuyRequestFinalMultiProviderOutput(orders=output)
 
 

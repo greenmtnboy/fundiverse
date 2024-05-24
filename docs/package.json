@@ -15,7 +15,7 @@
   "license": "MIT",
   "devDependencies": {
     "@vuepress/plugin-google-analytics": "^1.9.10",
-    "@vuepress/plugin-register-components": "^2.0.0-rc.0",
+    "@vuepress/plugin-register-components": "^2.0.0-rc.21",
     "material-design-icons-iconfont": "^6.7.0",
     "vuepress": "^2.0.0-rc.9"
   },
@@ -29,7 +29,7 @@
     "pyodide": "^0.25.0",
     "vite-plugin-static-copy": "^1.0.1",
     "vue-gtag": "^2.0.1",
-    "vuepress-theme-hope": "^2.0.0-rc.10",
+    "vuepress-theme-hope": "^2.0.0-rc.38",
     "vuetify": "^3.4.9",
     "vuex": "^4.1.0"
   }
