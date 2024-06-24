@@ -27,7 +27,10 @@ from fastapi.responses import JSONResponse
 from dataclasses import dataclass, field
 from py_portfolio_index.exceptions import OrderError, ExtraAuthenticationStepException
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
-from py_portfolio_index.portfolio_providers.helpers.robinhood import login as rh_login, LoginResponseStatus, LoginResponse
+from py_portfolio_index.portfolio_providers.helpers.robinhood import (
+    login as rh_login,
+    LoginResponse,
+)
 from fastapi.encoders import jsonable_encoder
 from py_portfolio_index.models import (
     CompositePortfolio,
@@ -428,7 +431,6 @@ def login_handler(input: LoginRequest):
             rh_login(
                 challenge_response=input.extra_factor,
                 prior_response=IN_APP_CONFIG.pending_auth_response
-                # prior_response=IN_APP_CONFIG.pending_auth_response if IN_APP_CONFIG.pending_auth_response else LoginResponse(status = LoginResponseStatus.MFA_REQUIRED, data = {})
             )
             provider = RobinhoodProvider(external_auth=True)
             IN_APP_CONFIG.provider_cache[input.provider] = provider
@@ -535,7 +537,7 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
                 if rport.profit_and_loss:
                     profit_and_loss += rport.profit_and_loss
                 raw.append(rport)
-            except Exception as exc:
+            except Exception:
                 raise
     internal = CompositePortfolio(raw)
     return CompositePortfolioOutput(
@@ -634,7 +636,9 @@ def plan_composite_purchase(input: BuyRequest):
     buy_orders = {}
     for provider in input.providers:
         iprovider = get_provider_safe(provider)
-        sub_port = sub_port = IN_APP_CONFIG.holding_cache.get(provider, iprovider.get_holdings()) 
+        sub_port = sub_port = IN_APP_CONFIG.holding_cache.get(
+            provider, iprovider.get_holdings()
+        )
         buy_orders[provider] = input.purchase_strategy
         children.append(sub_port)
     real_port = CompositePortfolio(children)
