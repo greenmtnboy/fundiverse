@@ -39,7 +39,7 @@ else:
     pyinstaller_path = Path(virtual_env_path) / parent / "pyinstaller"
 
 ci_requirements = root / "requirements-ci.txt"
-requirements = root / "requirements.txt"
+requirements = root / "requirements-lock.txt"
 
 if __name__ == "__main__":
     print(f"{python_path}/{parent}/python")
