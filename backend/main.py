@@ -8,7 +8,7 @@ import multiprocessing
 import uvicorn
 import uuid
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timedelta
 from uvicorn.config import LOGGING_CONFIG
 from fastapi import (
     APIRouter,
@@ -27,7 +27,7 @@ from fastapi.responses import JSONResponse
 from dataclasses import dataclass, field
 from py_portfolio_index.exceptions import OrderError, ExtraAuthenticationStepException
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
-from py_portfolio_index.portfolio_providers.helpers.robinhood import login as rh_login
+from py_portfolio_index.portfolio_providers.helpers.robinhood import login as rh_login, LoginResponseStatus, LoginResponse
 from fastapi.encoders import jsonable_encoder
 from py_portfolio_index.models import (
     CompositePortfolio,
@@ -40,7 +40,7 @@ from py_portfolio_index.models import (
     ProfitModel,
 )
 from pytz import UTC
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import get_type_hints
 
 from py_portfolio_index import (
@@ -61,6 +61,7 @@ from py_portfolio_index.exceptions import ConfigurationError
 from py_portfolio_index.enums import Provider
 from pydantic import BaseModel, Field, ConfigDict
 from pydantic.alias_generators import to_camel
+from collections import defaultdict
 
 from copy import deepcopy
 
@@ -235,6 +236,7 @@ class CompositePortfolioOutput(BaseModel):
     refreshed_at: int
     profit_or_loss: Money | None = None
     profit_or_loss_v2: ProfitModel | None
+    refresh_time: Dict[str, timedelta] = Field(default_factory=dict)
 
 
 class OrderStatus(Enum):
@@ -425,7 +427,8 @@ def login_handler(input: LoginRequest):
             # two factor auth
             rh_login(
                 challenge_response=input.extra_factor,
-                prior_response=IN_APP_CONFIG.pending_auth_response,
+                prior_response=IN_APP_CONFIG.pending_auth_response
+                # prior_response=IN_APP_CONFIG.pending_auth_response if IN_APP_CONFIG.pending_auth_response else LoginResponse(status = LoginResponseStatus.MFA_REQUIRED, data = {})
             )
             provider = RobinhoodProvider(external_auth=True)
             IN_APP_CONFIG.provider_cache[input.provider] = provider
@@ -477,6 +480,28 @@ async def get_portfolio(_provider: Provider):
     return provider.get_holdings()
 
 
+def refresh_sub_portfolio(
+    key: Provider, providers_to_refresh: list[Provider]
+) -> tuple[timedelta, RealPortfolio]:
+    item: BaseProvider | None = IN_APP_CONFIG.provider_cache.get(key, None)
+    start = datetime.now()
+    if not item:
+        raise HTTPException(
+            401, f"Must log into {key} to refresh any element in this portfolio."
+        )
+    if key in providers_to_refresh:
+        try:
+            item.clear_cache(skip_clearing=["instrument_to_symbol_map"])
+            rport = item.get_holdings()
+            rport.profit_and_loss = item.get_profit_or_loss()
+        except ConfigurationError:
+            del IN_APP_CONFIG.provider_cache[key]
+        IN_APP_CONFIG.holding_cache[key] = rport
+    else:
+        rport = IN_APP_CONFIG.holding_cache[key]
+    return datetime.now() - start, rport
+
+
 @router.post("/composite_portfolio/refresh")
 def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     active: Dict[str, RealPortfolioOutput] = {}
@@ -484,41 +509,40 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     profit_and_loss = ProfitModel(
         appreciation=Money(value=0.0), dividends=Money(value=0.0)
     )
-    for key in input.providers:
-        item = IN_APP_CONFIG.provider_cache.get(key, None)
-        if not item:
-            raise HTTPException(
-                401, f"Must log into {key} to refresh any element in this portfolio."
-            )
-        # key, item in IN_APP_CONFIG.provider_cache.items():
-        if key in input.providers_to_refresh:
+    durations: Dict[str, timedelta] = {}
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        portfolios = {
+            executor.submit(refresh_sub_portfolio, key, input.providers_to_refresh)
+            for key in input.providers
+        }
+        for future in as_completed(portfolios):
             try:
-                item.clear_cache(skip_clearing=["instrument_to_symbol_map"])
-                rport = item.get_holdings()
-                rport.profit_and_loss = item.get_profit_or_loss()
-            except ConfigurationError:
-                del IN_APP_CONFIG.provider_cache[key]
-            IN_APP_CONFIG.holding_cache[key] = rport
-        else:
-            rport = IN_APP_CONFIG.holding_cache[key]
-        active[key] = RealPortfolioOutput(
-            name=f"{key.name}",
-            holdings=rport.holdings,
-            cash=rport.cash,
-            provider=key,
-            profit_or_loss_v2=rport.profit_and_loss,
-            profit_or_loss=rport.profit_and_loss.total
-            if rport.profit_and_loss
-            else None,
-        )
-        if rport.profit_and_loss:
-            profit_and_loss += rport.profit_and_loss
-        raw.append(rport)
+                duration, rport = future.result()
+                if not rport.provider:
+                    continue
+                key = rport.provider.PROVIDER
+                durations[key] = duration
+                active[key] = RealPortfolioOutput(
+                    name=f"{key.name}",
+                    holdings=rport.holdings,
+                    cash=rport.cash,
+                    provider=key,
+                    profit_or_loss_v2=rport.profit_and_loss,
+                    profit_or_loss=(
+                        rport.profit_and_loss.total if rport.profit_and_loss else None
+                    ),
+                )
+                if rport.profit_and_loss:
+                    profit_and_loss += rport.profit_and_loss
+                raw.append(rport)
+            except Exception as exc:
+                raise
     internal = CompositePortfolio(raw)
     return CompositePortfolioOutput(
         name=input.key,
         holdings=internal.holdings,
         cash=internal.cash,
+        refresh_time=durations,
         components=active,
         refreshed_at=int(datetime.now(tz=UTC).timestamp()),
         profit_or_loss_v2=profit_and_loss,
@@ -610,7 +634,7 @@ def plan_composite_purchase(input: BuyRequest):
     buy_orders = {}
     for provider in input.providers:
         iprovider = get_provider_safe(provider)
-        sub_port = iprovider.get_holdings()
+        sub_port = sub_port = IN_APP_CONFIG.holding_cache.get(provider, iprovider.get_holdings()) 
         buy_orders[provider] = input.purchase_strategy
         children.append(sub_port)
     real_port = CompositePortfolio(children)
@@ -674,17 +698,16 @@ def buy_index_from_plan(input: BuyRequestFinal):
         raise HTTPException(500, e.message)
 
 
-@router.post("/buy_index_from_plan_multi_provider")
-def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
-    providers: Dict[Provider, BaseProvider] = {
-        p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers  # type: ignore
-    }
-    if not all(providers.values()):
-        raise HTTPException(403, "Not all providers are logged in")
-    # check each of our p
-    output: List[OrderItem] = []
-    stale_providers:set[Provider] = set()
-    for order in input.plan.to_buy:
+def place_orders(
+    orders: List[OrderItem], provider: BaseProvider, stale_providers: set[Provider]
+):
+    output = []
+    for order in orders:
+        if order.provider in stale_providers:
+            order.status = OrderStatus.FAILED
+            order.message = "Provider had a login error on an earlier order"
+            output.append(order)
+            continue
         try:
             transformed_order = OrderElement(
                 ticker=order.ticker,
@@ -693,7 +716,7 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
                 qty=order.qty,
             )
             logger.info(f"Placing order for {order.ticker} with {order.provider}")
-            providers[order.provider].handle_order_element(transformed_order)
+            provider.handle_order_element(transformed_order)
             order.status = OrderStatus.PLACED
             output.append(order)
         except OrderError as e:
@@ -709,6 +732,30 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
             order.status = OrderStatus.FAILED
             order.message = str(e)
             output.append(order)
+    return output
+
+
+@router.post("/buy_index_from_plan_multi_provider")
+def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
+    providers: Dict[Provider, BaseProvider] = {
+        p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers  # type: ignore
+    }
+    if not all(providers.values()):
+        raise HTTPException(403, "Not all providers are logged in")
+    # check each of our p
+    output: List[OrderItem] = []
+    stale_providers: set[Provider] = set()
+    grouped = defaultdict(list)
+    for order in input.plan.to_buy:
+        grouped[order.provider].append(order)
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {
+            executor.submit(place_orders, orders, providers[key], stale_providers)
+            for key, orders in grouped.items()
+        }
+        for future in as_completed(futures):
+            output += future.result()
     for provider in stale_providers:
         if provider in IN_APP_CONFIG.provider_cache:
             del IN_APP_CONFIG.provider_cache[provider]
