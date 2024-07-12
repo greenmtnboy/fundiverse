@@ -30,7 +30,19 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        contextOptions: {
+          screen: {
+            width: 1280,
+            height: 720,
+          },
+        },
+        viewport: {
+          width: 1280,
+          height: 720,
+        },
+      },
     },
   ],
   // Run your local dev server before starting the tests.
