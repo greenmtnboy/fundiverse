@@ -38,7 +38,7 @@ jobs:
         working-directory: ./backend
         run: |
           # stop the build if there are Python syntax errors or undefined names
-          ruff .
+          ruff check .
       - name: Test with pytest
         working-directory: ./backend
         run: |
