@@ -8,6 +8,7 @@ test.describe('Add Connection', async() => {
     test.beforeAll(async() => {
         electronApp = await electron.launch({ args: ['.']} );
         firstWindow = await electronApp.firstWindow();
+        firstWindow.setViewportSize({ width: 1200, height: 1200 });
     });
 
     test('Create and Delete Portfolio', async() => {
