@@ -20,6 +20,7 @@ from fastapi import (
     Body,
     Request,
 )
+from contextlib import asynccontextmanager
 from fastapi.routing import APIRoute
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,7 +30,6 @@ from py_portfolio_index.exceptions import OrderError, ExtraAuthenticationStepExc
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
 from py_portfolio_index.portfolio_providers.helpers.robinhood import (
     login as rh_login,
-    LoginResponse,
 )
 from fastapi.encoders import jsonable_encoder
 from py_portfolio_index.models import (
@@ -179,9 +179,14 @@ async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
         )
     return valid
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    # Clean up the ML models and release the resources
+    print("Shutting down...!")
 
 ## app definitions
-app = FastAPI(dependencies=[Depends(validate_auth_token)])
+app = FastAPI(lifespan=lifespan, dependencies=[Depends(validate_auth_token)])
 
 ## associate config for testing
 app.in_app_config = IN_APP_CONFIG  # type: ignore
@@ -778,10 +783,6 @@ def long_sleep(sleep: SleepRequest):
     return {"slept": sleep.sleep}
 
 
-@app.on_event("shutdown")
-def shutdown_event():
-    print("Shutting down...!")
-
 
 def _get_last_exc():
     exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -801,20 +802,6 @@ async def exit_app():
     loop = asyncio.get_running_loop()
     loop.stop()
     raise ValueError("Server is shutting down")
-
-
-# @app.exception_handler(HTTPException)
-# async def http_exception_handler(request, exc: HTTPException):
-#     """Override the default exception handler to allow for graceful shutdowns"""
-#     if exc.status_code == 503:
-#         # here is where we terminate all running processes
-
-#     return JSONResponse(
-#         status_code=exc.status_code,
-#         content=jsonable_encoder(
-#             {"detail": "Issue with provider authentication, you must re-login"}
-#         ),
-#     )
 
 
 ## Build async routes
