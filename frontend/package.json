@@ -47,7 +47,7 @@
     "vite-plugin-electron": "^0.14.1",
     "vite-plugin-electron-renderer": "^0.14.5",
     "vite-plugin-vuetify": "^2.0.3",
-    "vue-tsc": "^2.0.28"
+    "vue-tsc": "^2.0.29"
   },
   "main": "dist-electron/main.js"
 }
