@@ -91,6 +91,10 @@
         </v-container>
 
         <v-divider></v-divider>
+        <v-alert class="mx-auto square-corners" color="info" v-if="externalLoginURL">
+          External login required here: <a target="_blank" :href="externalLoginURL">{{ externalLoginURL }}</a>,
+          then resubmit to complete authentication.
+        </v-alert>
         <v-alert class="mx-auto square-corners" color="warning" v-if="error">{{
           error
         }}</v-alert>
@@ -134,7 +138,7 @@ export default {
       key: "",
       secret: "",
       factor: "",
-      loading: false,
+      externalLoginURL: "",
       saveCredentials: false,
       showPass: false,
       showFactor: false,
@@ -142,6 +146,7 @@ export default {
       extraLogin: false,
       dialog: false,
       providerKeyValues: {} as any,
+      loading: false,
     };
   },
   props: {
@@ -214,6 +219,12 @@ export default {
           { key: "trading_pin", label: "Trading Pin", type: "secret" },
         ];
       }
+      else if (["schwab"].includes(provider)) {
+        return [
+          { key: "key", label: "API Key" },
+          { key: "secret", label: "App Secret", type: "secret" },
+        ];
+      }
       return [
         { key: "key", label: "Login" },
         { key: "secret", label: "Password", type: "secret" },
@@ -267,6 +278,7 @@ export default {
       this.loading = true;
       this.error = "";
       this.extraLogin = false;
+
       let command = {
         ...this.providerKeyValues[this.selectedProvider],
         provider: this.selectedProvider,
@@ -274,6 +286,11 @@ export default {
       if (this.factor) {
         command = { ...command, extra_factor: this.factor };
       }
+      
+      if (this.externalLoginURL) {
+        command = {... command, wait_for_external_auth:true}
+      }
+      this.externalLoginURL = "";
       return instance
         .post("login", command)
         .then(() => {
@@ -311,10 +328,21 @@ export default {
         })
         .catch((exc) => {
           if (exc instanceof exceptions.auth_extra) {
-            this.extraLogin = true;
-            this.error =
-              "Extra authentication info required, provide and re-submit login";
-          } else {
+            if (this.selectedProvider == "robinhood") {
+              this.extraLogin = true;
+              this.error = "Extra authentication info required, provide and re-submit login";
+            }
+            else {
+              this.extraLogin = true;
+              this.error = axiosHelpers.getErrorMessage(exc);
+            }
+
+          } 
+          else if (exc instanceof exceptions.auth_external_login) {
+              this.externalLoginURL = exc.message;
+              this.error = "Sign into ";
+          }
+          else {
             this.error = axiosHelpers.getErrorMessage(exc);
           }
         })

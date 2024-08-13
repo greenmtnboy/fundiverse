@@ -14,6 +14,9 @@
     <template v-else-if="iconType === 'robinhood'">
       <v-img :src="robinhoodSrc" alt="'Robinhood Logo'" />
     </template>
+    <template v-else-if="iconType === 'schwab'">
+      <v-img :src="schwabSrc" alt="'Charles Schwab Logo'" />
+    </template>
   </v-avatar>
 </template>
 <style>
@@ -26,12 +29,14 @@
 import AlpacaIcon from "./AlpacaIcon.vue";
 import robinhoodURL from "/src/assets/robinhood.png";
 import webullPNG from "/src/assets/webull.png";
+import schwabSVG from "/src/assets/schwab.svg";
 export default {
   name: "ProviderIcon",
   data() {
     return {
       robinhoodSrc: robinhoodURL,
       webullSrc: webullPNG,
+      schwabSrc: schwabSVG,
     };
   },
   components: {

@@ -113,7 +113,7 @@ const actions = {
     commit("setPortfolioSize", data);
     commit("savePortfolio");
   },
-  async refreshCompositePortfolio({ commit, getters }, data) {
+  async refreshCompositePortfolio({ commit, getters, actions }, data) {
     const portfolioName = data.portfolioName;
     let keys = data.keys;
     const existingIndex = getters.compositePortfolios.findIndex(
@@ -156,7 +156,7 @@ const actions = {
         error: errorString,
       });
       keys.forEach((element, _) => {
-        commit("probeLogin", { provider: element, loggedIn: false });
+        actions.probeLogin({ provider: element, loggedIn: false });
       });
       throw error;
     }

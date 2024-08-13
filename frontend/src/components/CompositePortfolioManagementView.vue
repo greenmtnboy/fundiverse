@@ -57,7 +57,7 @@
             </v-progress-linear>
           </v-card-title>
           <v-card-actions>
-            <!-- <v-btn :loading="compareLoading" class="d-flex flex-column" @click="compareToIndex()">Compare</v-btn> -->
+
             <v-col
               cols="4"
               class="d-flex justify-center align-center px-2 py-0"
@@ -134,6 +134,7 @@
               :portfolio="targetPortfolio"
               :searchQuery="searchQuery"
               :targetSize="portfolio.target_size"
+              :portfolioName="portfolioName"
             />
           </v-card-text>
         </v-card>
@@ -420,11 +421,14 @@ export default {
         if (targetElement) {
           element.targetWeight = parseFloat(targetElement.weight);
         }
+        else {
+          element.targetWeight = 0;
+        }
         newHoldings.push(element);
       });
       this.portfolio.holdings = newHoldings;
     },
-    getPortfolio() {
+    async getPortfolio() {
       // shim in current getter
       // TODO: clean up later
       if (!this.portfolioTarget) {
@@ -433,8 +437,8 @@ export default {
       if (!this.selectedIndex && this.portfolioCustomization) {
         this.selectedIndex = this.portfolioCustomization.indexPortfolio;
         this.reweightTarget = this.portfolioCustomization.reweightIndex;
-        this.getTargetPortfolio();
       }
+      await this.loadCompositePortfolios();
       return this.compositePortfolios;
     },
     async saveChanges() {
@@ -449,16 +453,6 @@ export default {
         this.showSaveSuccess = false;
       }, 2500);
     },
-    buyIndex() {
-      return instance
-        .post("buy_index", {
-          to_purchase: this.toPurchase,
-          index: this.selectedIndex,
-        })
-        .then(() => {
-          this.getPortfolio();
-        });
-    },
     expandList() {
       let next = Math.min(
         this.maxLength,
@@ -468,15 +462,6 @@ export default {
     },
   },
   async mounted() {
-    await this.loadCustomizations();
-    await this.loadCompositePortfolios();
-    await this.getPortfolio();
-
-    // this.getPortfolio()
-    this.loadIndexes();
-
-    this.getStockLists();
-    // this.loadDefaultModifications()
     this.$store.watch(
       (_state, getters) => [getters.portfolioCustomizations],
       () => {
@@ -485,6 +470,16 @@ export default {
         }
       },
     );
+    await this.loadCustomizations();
+    await this.loadCompositePortfolios();
+    await this.getPortfolio();
+
+    // this.getPortfolio()
+    this.loadIndexes();
+
+    this.getStockLists();
+    this.getTargetPortfolio();
+
   },
 };
 </script>

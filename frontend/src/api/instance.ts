@@ -34,7 +34,12 @@ instance.interceptors.response.use(
           store.dispatch("probeLogin", { provider: provider });
         });
         return Promise.reject(new exceptions.auth("User is not authenticated"));
-      } else if (status === 412) {
+      }else if (status === 303) {
+        return Promise.reject(
+          new exceptions.auth_external_login(error.response.data.detail),
+        );
+      } 
+      else if (status === 412) {
         return Promise.reject(
           new exceptions.auth_extra("Extra authentication factor required"),
         );
