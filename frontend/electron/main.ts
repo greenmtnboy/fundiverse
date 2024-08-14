@@ -283,6 +283,20 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST, "index.html"));
   }
+
+
+  win.webContents.session.setCertificateVerifyProc((request, callback) => {
+    const { hostname } = request
+    if (hostname === 'client.schwab.com') {
+      callback(0)
+    }
+    else if (hostname === '127.0.0.1') {
+      callback(0)
+    } else {
+      // TODO: restric this further
+      callback(0)
+    }
+  })
   console.log(`App ready and available at ${VITE_DEV_SERVER_URL}`);
 }
 

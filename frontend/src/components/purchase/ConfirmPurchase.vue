@@ -133,7 +133,7 @@
                   >{{ element.order_type }}</v-chip
                 >
 
-                <CurrencyItem :value="element.value" /> of
+                <CurrencyItem v-if="element.value" :value="element.value" /><span v-if="element.qty">{{ element.qty }} units </span> of
                 <TickerDisplay :ticker="element.ticker" /> on
                 {{ element.provider }}
                 <template v-slot:append>

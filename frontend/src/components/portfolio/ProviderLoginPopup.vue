@@ -92,8 +92,9 @@
 
         <v-divider></v-divider>
         <v-alert class="mx-auto square-corners" color="info" v-if="externalLoginURL">
-          External login required here: <a target="_blank" :href="externalLoginURL">{{ externalLoginURL }}</a>,
+          External login required, click here to continue: <a target="_blank" :href="externalLoginURL">{{ externalLoginURL }}</a>,
           then resubmit to complete authentication.
+          <v-btn @click="externalLogin"></v-btn>
         </v-alert>
         <v-alert class="mx-auto square-corners" color="warning" v-if="error">{{
           error
@@ -193,6 +194,9 @@ export default {
       "refreshCompositePortfolio",
       "pushEmptyProvider",
     ]),
+    externalLogin() {
+      window.open(this.externalLoginURL, "_blank");
+    },
     required(v) {
       return !!v || "Field is required";
     },
@@ -340,7 +344,6 @@ export default {
           } 
           else if (exc instanceof exceptions.auth_external_login) {
               this.externalLoginURL = exc.message;
-              this.error = "Sign into ";
           }
           else {
             this.error = axiosHelpers.getErrorMessage(exc);

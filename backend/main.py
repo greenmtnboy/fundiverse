@@ -696,8 +696,10 @@ def _plan_composite_purchase(input: BuyRequest):
             )
             buy_orders[provider] = input.purchase_strategy
             children.append(sub_port)
-        except ConfigurationError:
+        except ConfigurationError as e:
             del IN_APP_CONFIG.provider_cache[provider]
+            raise e
+        except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(500, f"Error planning composite purchase: {e} on provider {provider}")
@@ -731,8 +733,14 @@ def _plan_composite_purchase(input: BuyRequest):
 def plan_composite_purchase(input: BuyRequest):
     try:
         return _plan_composite_purchase(input)
+    except ConfigurationError as e:
+        raise e
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        raise HTTPException(500, f"Error planning composite purchase: {e}")
+        import traceback
+
+        raise HTTPException(500, f"Error planning composite purchase: {e} {traceback.print_exc()}")
     
 
 
