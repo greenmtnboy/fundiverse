@@ -47,6 +47,7 @@ from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
 from py_portfolio_index.portfolio_providers.helpers.robinhood import (
     login as rh_login,
 )
+from py_portfolio_index import __version__
 from py_portfolio_index.portfolio_providers.helpers.schwab import SchwabAuthContext, create_login_context, fetch_response
 from py_portfolio_index.models import (
     CompositePortfolio,
@@ -738,9 +739,7 @@ def plan_composite_purchase(input: BuyRequest):
     except HTTPException as e:
         raise e
     except Exception as e:
-        import traceback
-
-        raise HTTPException(500, f"Error planning composite purchase: {e} {traceback.print_exc()}")
+        raise HTTPException(500, f"Error planning composite purchase: {e}")
     
 
 
