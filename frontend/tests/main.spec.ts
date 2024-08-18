@@ -35,6 +35,7 @@ test.describe("Add Connection", async () => {
   });
 
   test.afterAll(async () => {
+    await firstWindow.close();
     await electronApp.close();
   });
 });
