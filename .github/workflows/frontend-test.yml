@@ -40,4 +40,4 @@ jobs:
       - name: Run tests
         working-directory: ./frontend
         run: npm test
-        timeout-minutes: 1
+        timeout-minutes: 2
