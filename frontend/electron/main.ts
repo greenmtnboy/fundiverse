@@ -206,6 +206,7 @@ const startBackgroundService = () => {
           console.log(
             `Background service ${backgroundService.pid} failed to shut down ${err}`,
           );
+          app.quit();
         });
     }
   });
