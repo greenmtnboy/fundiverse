@@ -35,6 +35,7 @@ test.describe("Add Connection", async () => {
   });
 
   test.afterAll(async () => {
+    var process = electronApp.process();
     await Promise.race([
       electronApp.close(),
       new Promise((resolve, reject) => {
@@ -43,8 +44,8 @@ test.describe("Add Connection", async () => {
       }),
     ]).then(() => console.log("Electron app closed"))
     .catch(()=> console.log("Electron app close failed"));
-    if (electronApp) {
-      electronApp.process().kill()
+    if (process.pid) {
+      process.kill()
     }
     
     
