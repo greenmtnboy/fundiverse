@@ -43,7 +43,10 @@ test.describe("Add Connection", async () => {
       }),
     ]).then(() => console.log("Electron app closed"))
     .catch(()=> console.log("Electron app close failed"));
-    electronApp.process().kill()
+    if (electronApp) {
+      electronApp.process().kill()
+    }
+    
     
 
 
