@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from datetime import datetime
 from py_portfolio_index.models import IdealPortfolio
 
+
 def test_read_main(test_client: TestClient):
     # we skip validation outside pyinstaller bundles
     # so set manually here

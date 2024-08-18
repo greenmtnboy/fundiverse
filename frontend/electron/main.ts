@@ -17,16 +17,11 @@ const API_KEY = (
   randomInt(1, 1000000)
 ).toString();
 
-// instance.defaults.headers.common['Authorization'] = `Bearer ${API_KEY}`;
+
 instance.defaults.headers.post["Authorization"] = `Bearer ${API_KEY}`;
 instance.defaults.headers.get["Authorization"] = `Bearer ${API_KEY}`;
 
-/**
- * Determine whether the Node.js process runs on Windows.
- *
- * @returns {Boolean}
- */
-function isWindows() {
+function isWindows(): boolean {
   return Os.platform() === "win32";
 }
 

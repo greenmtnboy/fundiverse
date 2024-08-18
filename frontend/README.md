@@ -23,4 +23,8 @@ npm run dev
 
 ## WSL
 
-start xlaunch or equivalent
+start xlaunch or equivalent 
+may require export DISPLAY=$(hostname).local:0 to run first
+
+node 20.5.1
+`nvm use 20.5.1`

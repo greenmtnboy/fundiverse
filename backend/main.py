@@ -47,8 +47,11 @@ from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
 from py_portfolio_index.portfolio_providers.helpers.robinhood import (
     login as rh_login,
 )
-from py_portfolio_index import __version__
-from py_portfolio_index.portfolio_providers.helpers.schwab import SchwabAuthContext, create_login_context, fetch_response
+from py_portfolio_index.portfolio_providers.helpers.schwab import (
+    SchwabAuthContext,
+    create_login_context,
+    fetch_response,
+)
 from py_portfolio_index.models import (
     CompositePortfolio,
     RealPortfolio,
@@ -92,15 +95,18 @@ Logger.addHandler(StreamHandler())
 class ShutdownException(Exception):
     pass
 
+
 class SchwabExtraAuthenticationStepException(Exception):
     def __init__(self, response: SchwabAuthContext, *args):
         super().__init__(*args)
         self.response = response
 
+
 class SubPortfolioRefreshException(Exception):
-    def __init__(self, provider:Provider,error:Exception):
+    def __init__(self, provider: Provider, error: Exception):
         self.error = error
         self.provider = provider
+
 
 class BackgroundStatus(Enum):
     RUNNING = 1
@@ -138,7 +144,6 @@ class ActiveConfig:
             Provider.SCHWAB,
             Provider.ALPACA_PAPER,
             Provider.WEBULL_PAPER,
-            
         ]
         for provider in priority:
             for key, _ in self.provider_cache.items():
@@ -195,11 +200,13 @@ async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
         )
     return valid
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
     # Clean up the ML models and release the resources
     print("Shutting down...!")
+
 
 ## app definitions
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(validate_auth_token)])
@@ -240,7 +247,7 @@ class LoginRequest(BaseModel):
     device_id: str | None = None
     trading_pin: str | None = None
     force: bool = False
-    wait_for_external_auth:bool = False
+    wait_for_external_auth: bool = False
 
 
 class RealPortfolioOutput(BaseModel):
@@ -459,7 +466,7 @@ def login_handler(input: LoginRequest):
             # two factor auth
             rh_login(
                 challenge_response=input.extra_factor,
-                prior_response=IN_APP_CONFIG.pending_auth_response
+                prior_response=IN_APP_CONFIG.pending_auth_response,
             )
             provider = RobinhoodProvider(external_auth=True)
             IN_APP_CONFIG.provider_cache[input.provider] = provider
@@ -487,19 +494,17 @@ def login_handler(input: LoginRequest):
             environ[SchwabProvider.APP_SECRET_ENV] = input.secret
             if IN_APP_CONFIG.pending_schwab_response and input.wait_for_external_auth:
                 fetch_response(IN_APP_CONFIG.pending_schwab_response)
-            lc = create_login_context(
-                api_key=input.key, app_secret=input.secret
-            )
+            lc = create_login_context(api_key=input.key, app_secret=input.secret)
             if lc:
                 raise SchwabExtraAuthenticationStepException(response=lc)
-            
+
             provider = SchwabProvider(external_auth=True)
             IN_APP_CONFIG.provider_cache[input.provider] = provider
             IN_APP_CONFIG.pending_schwab_response = None
         else:
             raise HTTPException(404, "Selected provider not supported yet")
         IN_APP_CONFIG.logged_in = input.provider.value
-        
+
     except SchwabExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_schwab_response = e.response
         raise HTTPException(303, e.response.authorization_url)
@@ -592,7 +597,9 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
             except HTTPException:
                 raise
             except SubPortfolioRefreshException as e:
-                raise HTTPException(422, f"Error refreshing {e.provider}: {str(e.error)}")
+                raise HTTPException(
+                    422, f"Error refreshing {e.provider}: {str(e.error)}"
+                )
             except Exception as e:
                 raise HTTPException(422, f"Error refreshing: {str(e)}")
     internal = CompositePortfolio(raw)
@@ -631,7 +638,9 @@ async def stock_lists():
 DEFAULT_MIN_WEIGHT = 0.001
 
 
-def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest)->IdealPortfolio:
+def index_to_processed_index(
+    input: TargetPortfolioRequest | BuyRequest,
+) -> IdealPortfolio:
     try:
         ideal_port = deepcopy(INDEXES[input.index])
     except KeyError:
@@ -703,15 +712,17 @@ def _plan_composite_purchase(input: BuyRequest):
         except HTTPException:
             raise
         except Exception as e:
-            raise HTTPException(500, f"Error planning composite purchase: {e} on provider {provider}")
+            raise HTTPException(
+                500, f"Error planning composite purchase: {e} on provider {provider}"
+            )
     real_port = CompositePortfolio(children)
     ideal_port = index_to_processed_index(input)
     plan = generate_composite_order_plan(
         real_port,
         ideal_port,
-        target_size =input.target_size,
+        target_size=input.target_size,
         purchase_order_maps=buy_orders,
-        target_order_size = Money(value =input.to_purchase or 0.0),
+        target_order_size=Money(value=input.to_purchase or 0.0),
     )
     final = []
     for key, order_items in plan.items():
@@ -730,6 +741,7 @@ def _plan_composite_purchase(input: BuyRequest):
     output = PurchaseOrderOutput(to_buy=final)
     return output
 
+
 @router.post("/plan_composite_purchase")
 def plan_composite_purchase(input: BuyRequest):
     try:
@@ -740,7 +752,6 @@ def plan_composite_purchase(input: BuyRequest):
         raise e
     except Exception as e:
         raise HTTPException(500, f"Error planning composite purchase: {e}")
-    
 
 
 @router.get("/force_terminate")
@@ -853,7 +864,6 @@ def long_sleep(sleep: SleepRequest):
     return {"slept": sleep.sleep}
 
 
-
 def _get_last_exc():
     exc_type, exc_value, exc_traceback = sys.exc_info()
     sTB = "\n".join(traceback.format_tb(exc_traceback))
@@ -932,7 +942,7 @@ def run():
 
     if os.environ.get("in-ci"):
         print("Running in a unit test, exiting")
-        exit(0)
+        sys.exit(0)
     elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         print("running in a PyInstaller bundle, sending stdout to devnull")
         f = open(os.devnull, "w")
@@ -961,13 +971,9 @@ def run():
         run()
     except Exception as e:
         print(f"Server is shutting down due to {e}")
-        exit(0)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-    try:
-        run()
-        sys.exit(0)
-    except:  # noqa: E722
-        sys.exit(0)
+    run()

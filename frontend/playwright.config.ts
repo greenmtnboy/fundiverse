@@ -34,22 +34,22 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         contextOptions: {
           screen: {
-            width: 1280,
-            height: 720,
+            width: 1580,
+            height: 1280,
           },
         },
         viewport: {
-          width: 1280,
-          height: 720,
+          width: 1580,
+          height: 1280,
         },
       },
     },
   ],
   // Run your local dev server before starting the tests.
-  webServer: {
-    command: "npm run dev",
-    url: "http://localhost:5173",
-    reuseExistingServer: !process.env.CI,
-    stdout: "pipe",
-  },
+  // webServer: {
+  //   command: "npm run dev",
+  //   url: "http://localhost:5173",
+  //   reuseExistingServer: !process.env.CI,
+  //   stdout: "pipe",
+  // },
 });
