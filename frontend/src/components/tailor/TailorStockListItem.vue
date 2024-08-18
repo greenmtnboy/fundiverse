@@ -18,7 +18,8 @@
             <v-icon color="warning">mdi-cancel</v-icon>
           </v-btn>
         </template>
-        <span>Remove Exclusion</span>
+        <span v-if="mode=='exclusion'">Remove Exclusion</span>
+        <span v-else="mode=='exclusion'">Remove Modification</span>
       </v-tooltip>
     </template>
   </v-list-item>

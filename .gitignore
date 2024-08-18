@@ -4,9 +4,11 @@
 node_modules
 /dist
 /dist_electron
+.mypy_cache
 
 
 __pycache__
+*.py[cod]
 
 # local env files
 .env

@@ -9,7 +9,7 @@
       </p>
     </div>
     <template v-slot:append>
-      <v-tooltip>
+      <v-tooltip v-if="portfolioName">
         <template v-slot:activator="{ props }">
           <v-btn
             :disabled="excluded"
@@ -47,7 +47,7 @@ export default {
     onClickWrapper() {
       this.loading = true;
       this.excluded = true;
-      this.excludeStock(this.element.ticker).finally(() => {
+      this.excludeStock({ticker:this.element.ticker, portfolio:this.portfolioName}).finally(() => {
         this.loading = false;
       });
       // if (this.onClick) {
@@ -67,6 +67,10 @@ export default {
     },
     totalPortfolioSize: {
       type: Number,
+      required: false,
+    },
+    portfolioName: {
+      type: String,
       required: false,
     },
     onClick: {

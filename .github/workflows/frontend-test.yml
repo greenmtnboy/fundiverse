@@ -6,18 +6,10 @@ jobs:
   test:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Configure Node caching
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+          node-version: 21.x
       - name: Set up Python 3.11
         uses: actions/setup-python@v5.1.0
         with:
@@ -33,13 +25,18 @@ jobs:
         working-directory: ./frontend
         run: npm install
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        working-directory: ./frontend
+        run: npx playwright install --with-deps chromium
       - name: Build the electron package and webservice
         working-directory: ./frontend
         run: npm run build
+      # - name: check build
+      #   working-directory: ./frontend
+      #   run: npm run dev
+      #   timeout-minutes: 2
       - name: Run tests
         working-directory: ./frontend
-        run: npm test
+        run: npm run test
+        timeout-minutes: 2
         env:
-          DEBUG: pw:webserver
-        timeout-minutes: 6
+          DEBUG: 'pw:api'

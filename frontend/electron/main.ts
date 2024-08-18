@@ -6,27 +6,22 @@ import http from "http";
 import { exec, execFile } from "child_process";
 import { randomInt } from "crypto";
 import instance from "/src/api/instance.ts";
-import { autoUpdater } from "electron-updater";
+// import { autoUpdater } from "electron-updater";
 
-app.on("ready", function () {
-  autoUpdater.checkForUpdatesAndNotify();
-});
+// app.on("ready", function () {
+//   autoUpdater.checkForUpdatesAndNotify();
+// });
 
 const API_KEY = (
   randomInt(1, 1000000) * 1000000 +
   randomInt(1, 1000000)
 ).toString();
 
-// instance.defaults.headers.common['Authorization'] = `Bearer ${API_KEY}`;
+
 instance.defaults.headers.post["Authorization"] = `Bearer ${API_KEY}`;
 instance.defaults.headers.get["Authorization"] = `Bearer ${API_KEY}`;
 
-/**
- * Determine whether the Node.js process runs on Windows.
- *
- * @returns {Boolean}
- */
-function isWindows() {
+function isWindows(): boolean {
   return Os.platform() === "win32";
 }
 
@@ -211,8 +206,10 @@ const startBackgroundService = () => {
           console.log(
             `Background service ${backgroundService.pid} failed to shut down ${err}`,
           );
+          app.quit();
         });
     }
+    app.quit();
   });
   return backgroundService;
 };
@@ -238,15 +235,7 @@ async function startBackgroundServiceSafe() {
   });
 }
 
-// The built directory structure
-//
-// ├─┬─┬ dist
-// │ │ └── index.html
-// │ │
-// │ ├─┬ dist-electron
-// │ │ ├── main.js
-// │ │ └── preload.js
-// │
+
 
 // enable renders to access store
 Store.initRenderer();
@@ -283,12 +272,32 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST, "index.html"));
   }
+  win.on('closed', function () {
+    // Dereference the window object, usually you would store windows
+    // in an array if your app supports multi windows, this is the time
+    // when you should delete the corresponding element.
+    win = null
+  })
+
+  win.webContents.session.setCertificateVerifyProc((request, callback) => {
+    const { hostname } = request
+    if (hostname === 'client.schwab.com') {
+      callback(0)
+    }
+    else if (hostname === '127.0.0.1') {
+      callback(0)
+    } else {
+      // TODO: restrict this further
+      callback(0)
+    }
+  })
   console.log(`App ready and available at ${VITE_DEV_SERVER_URL}`);
 }
 
 // app.on('window-all-closed', () => {
 //   // win = null
 // })
+
 
 app.on("window-all-closed", () => {
   // On macOS it is common for applications and their menu bar
@@ -298,6 +307,13 @@ app.on("window-all-closed", () => {
   }
 });
 
+app.on('activate', function () {
+  // On OS X it's common to re-create a window in the app when the
+  // dock icon is clicked and there are no other windows open.
+  if (win === null) {
+    createWindow()
+  }
+})
 // app.isPackaged ? app.whenReady().then(startBackgroundServiceSafe).then(createWindow) : app.whenReady().then(createWindow)
 app
   .whenReady()

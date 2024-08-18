@@ -26,12 +26,32 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dataclasses import dataclass, field
+from pytz import UTC
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import get_type_hints
+from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel, Field, ConfigDict
+from pydantic.alias_generators import to_camel
+from collections import defaultdict
+
+from copy import deepcopy
+
+
+from fastapi.responses import PlainTextResponse
+from starlette.background import BackgroundTask
+import asyncio
+import traceback
+from logging import getLogger, StreamHandler
 from py_portfolio_index.exceptions import OrderError, ExtraAuthenticationStepException
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
 from py_portfolio_index.portfolio_providers.helpers.robinhood import (
     login as rh_login,
 )
-from fastapi.encoders import jsonable_encoder
+from py_portfolio_index.portfolio_providers.helpers.schwab import (
+    SchwabAuthContext,
+    create_login_context,
+    fetch_response,
+)
 from py_portfolio_index.models import (
     CompositePortfolio,
     RealPortfolio,
@@ -41,10 +61,8 @@ from py_portfolio_index.models import (
     OrderType,
     OrderElement,
     ProfitModel,
+    IdealPortfolio,
 )
-from pytz import UTC
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import get_type_hints
 
 from py_portfolio_index import (
     INDEXES,
@@ -54,6 +72,7 @@ from py_portfolio_index import (
     RobinhoodProvider,
     WebullProvider,
     WebullPaperProvider,
+    SchwabProvider,
     PurchaseStrategy,
     generate_composite_order_plan,
     AVAILABLE_PROVIDERS,
@@ -62,18 +81,7 @@ from py_portfolio_index import (
 from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
 from py_portfolio_index.enums import Provider
-from pydantic import BaseModel, Field, ConfigDict
-from pydantic.alias_generators import to_camel
-from collections import defaultdict
 
-from copy import deepcopy
-
-# from py_portfolio_index.models import RealPortfolio
-from fastapi.responses import PlainTextResponse
-from starlette.background import BackgroundTask
-import asyncio
-import traceback
-from logging import getLogger, StreamHandler
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
@@ -82,11 +90,22 @@ SERVE_PORT = 3042
 logger = getLogger(__name__)
 # hook into py-portfolio-index-logger
 Logger.addHandler(StreamHandler())
-logger.addHandler(StreamHandler())
 
 
 class ShutdownException(Exception):
     pass
+
+
+class SchwabExtraAuthenticationStepException(Exception):
+    def __init__(self, response: SchwabAuthContext, *args):
+        super().__init__(*args)
+        self.response = response
+
+
+class SubPortfolioRefreshException(Exception):
+    def __init__(self, provider: Provider, error: Exception):
+        self.error = error
+        self.provider = provider
 
 
 class BackgroundStatus(Enum):
@@ -110,6 +129,7 @@ class ActiveConfig:
     provider_cache: Dict[Provider, BaseProvider] = field(default_factory=dict)
     holding_cache: Dict[Provider, RealPortfolio] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
+    pending_schwab_response: SchwabAuthContext | None = None
     auth_token: str | None = None
     validate: bool = False
     background_tasks: Dict[str, AsyncTask] = field(default_factory=dict)
@@ -119,9 +139,10 @@ class ActiveConfig:
         # get the fastest provider
         priority = [
             Provider.ALPACA,
-            Provider.ALPACA_PAPER,
             Provider.ROBINHOOD,
             Provider.WEBULL,
+            Provider.SCHWAB,
+            Provider.ALPACA_PAPER,
             Provider.WEBULL_PAPER,
         ]
         for provider in priority:
@@ -179,11 +200,13 @@ async def validate_auth_token(token: Annotated[str, Depends(oauth2_scheme)]):
         )
     return valid
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
     # Clean up the ML models and release the resources
     print("Shutting down...!")
+
 
 ## app definitions
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(validate_auth_token)])
@@ -224,6 +247,7 @@ class LoginRequest(BaseModel):
     device_id: str | None = None
     trading_pin: str | None = None
     force: bool = False
+    wait_for_external_auth: bool = False
 
 
 class RealPortfolioOutput(BaseModel):
@@ -259,7 +283,7 @@ class OrderItem(BaseModel):
     ticker: str
     order_type: OrderType
     value: Money | None
-    qty: int | None
+    qty: int | float | None
     provider: Provider
     status: OrderStatus | None
     message: str | None
@@ -376,6 +400,13 @@ def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
                 provider = wb_paper_provider
             else:
                 raise HTTPException(401, "No logged in webull provider found")
+        elif _provider == Provider.SCHWAB:
+            schwab_provider = IN_APP_CONFIG.provider_cache.get(Provider.SCHWAB, None)
+            if schwab_provider:
+                IN_APP_CONFIG.provider_cache[Provider.SCHWAB] = schwab_provider
+                provider = schwab_provider
+            else:
+                raise HTTPException(401, "No logged in schwab provider found")
 
         elif _provider is None:
             raise HTTPException(401, "No logged in provider specified")
@@ -435,10 +466,11 @@ def login_handler(input: LoginRequest):
             # two factor auth
             rh_login(
                 challenge_response=input.extra_factor,
-                prior_response=IN_APP_CONFIG.pending_auth_response
+                prior_response=IN_APP_CONFIG.pending_auth_response,
             )
             provider = RobinhoodProvider(external_auth=True)
             IN_APP_CONFIG.provider_cache[input.provider] = provider
+            IN_APP_CONFIG.pending_auth_response = None
         elif input.provider == Provider.WEBULL:
             assert input.trading_pin is not None
             assert input.device_id is not None
@@ -457,10 +489,25 @@ def login_handler(input: LoginRequest):
             environ[WebullPaperProvider.DEVICE_ID_ENV] = input.device_id
             provider = WebullPaperProvider()
             IN_APP_CONFIG.provider_cache[input.provider] = provider
+        elif input.provider == Provider.SCHWAB:
+            environ[SchwabProvider.API_KEY_ENV] = input.key
+            environ[SchwabProvider.APP_SECRET_ENV] = input.secret
+            if IN_APP_CONFIG.pending_schwab_response and input.wait_for_external_auth:
+                fetch_response(IN_APP_CONFIG.pending_schwab_response)
+            lc = create_login_context(api_key=input.key, app_secret=input.secret)
+            if lc:
+                raise SchwabExtraAuthenticationStepException(response=lc)
+
+            provider = SchwabProvider(external_auth=True)
+            IN_APP_CONFIG.provider_cache[input.provider] = provider
+            IN_APP_CONFIG.pending_schwab_response = None
         else:
             raise HTTPException(404, "Selected provider not supported yet")
         IN_APP_CONFIG.logged_in = input.provider.value
-        IN_APP_CONFIG.pending_auth_response = None
+
+    except SchwabExtraAuthenticationStepException as e:
+        IN_APP_CONFIG.pending_schwab_response = e.response
+        raise HTTPException(303, e.response.authorization_url)
     except ExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_auth_response = e.response
         raise HTTPException(412, f"Additional authentication required: {e}")
@@ -503,6 +550,9 @@ def refresh_sub_portfolio(
             rport.profit_and_loss = item.get_profit_or_loss()
         except ConfigurationError:
             del IN_APP_CONFIG.provider_cache[key]
+            raise
+        except Exception as e:
+            raise SubPortfolioRefreshException(error=e, provider=key)
         IN_APP_CONFIG.holding_cache[key] = rport
     else:
         rport = IN_APP_CONFIG.holding_cache[key]
@@ -542,8 +592,16 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
                 if rport.profit_and_loss:
                     profit_and_loss += rport.profit_and_loss
                 raw.append(rport)
-            except Exception:
+            except ConfigurationError:
                 raise
+            except HTTPException:
+                raise
+            except SubPortfolioRefreshException as e:
+                raise HTTPException(
+                    422, f"Error refreshing {e.provider}: {str(e.error)}"
+                )
+            except Exception as e:
+                raise HTTPException(422, f"Error refreshing: {str(e)}")
     internal = CompositePortfolio(raw)
     return CompositePortfolioOutput(
         name=input.key,
@@ -580,7 +638,9 @@ async def stock_lists():
 DEFAULT_MIN_WEIGHT = 0.001
 
 
-def index_to_processed_index(input: TargetPortfolioRequest | BuyRequest):
+def index_to_processed_index(
+    input: TargetPortfolioRequest | BuyRequest,
+) -> IdealPortfolio:
     try:
         ideal_port = deepcopy(INDEXES[input.index])
     except KeyError:
@@ -635,25 +695,34 @@ async def get_background_task(guid):
     return response.result
 
 
-@router.post("/plan_composite_purchase")
-def plan_composite_purchase(input: BuyRequest):
+def _plan_composite_purchase(input: BuyRequest):
     children = []
     buy_orders = {}
     for provider in input.providers:
-        iprovider = get_provider_safe(provider)
-        sub_port = sub_port = IN_APP_CONFIG.holding_cache.get(
-            provider, iprovider.get_holdings()
-        )
-        buy_orders[provider] = input.purchase_strategy
-        children.append(sub_port)
+        try:
+            iprovider = get_provider_safe(provider)
+            sub_port = sub_port = IN_APP_CONFIG.holding_cache.get(
+                provider, iprovider.get_holdings()
+            )
+            buy_orders[provider] = input.purchase_strategy
+            children.append(sub_port)
+        except ConfigurationError as e:
+            del IN_APP_CONFIG.provider_cache[provider]
+            raise e
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                500, f"Error planning composite purchase: {e} on provider {provider}"
+            )
     real_port = CompositePortfolio(children)
     ideal_port = index_to_processed_index(input)
     plan = generate_composite_order_plan(
         real_port,
         ideal_port,
-        purchase_power=input.to_purchase,
         target_size=input.target_size,
         purchase_order_maps=buy_orders,
+        target_order_size=Money(value=input.to_purchase or 0.0),
     )
     final = []
     for key, order_items in plan.items():
@@ -671,6 +740,18 @@ def plan_composite_purchase(input: BuyRequest):
             )
     output = PurchaseOrderOutput(to_buy=final)
     return output
+
+
+@router.post("/plan_composite_purchase")
+def plan_composite_purchase(input: BuyRequest):
+    try:
+        return _plan_composite_purchase(input)
+    except ConfigurationError as e:
+        raise e
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(500, f"Error planning composite purchase: {e}")
 
 
 @router.get("/force_terminate")
@@ -750,7 +831,7 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
         p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers  # type: ignore
     }
     if not all(providers.values()):
-        raise HTTPException(403, "Not all providers are logged in")
+        raise HTTPException(401, "Not all providers are logged in")
     # check each of our p
     output: List[OrderItem] = []
     stale_providers: set[Provider] = set()
@@ -783,7 +864,6 @@ def long_sleep(sleep: SleepRequest):
     return {"slept": sleep.sleep}
 
 
-
 def _get_last_exc():
     exc_type, exc_value, exc_traceback = sys.exc_info()
     sTB = "\n".join(traceback.format_tb(exc_traceback))
@@ -801,7 +881,7 @@ async def exit_app():
     asyncio.gather(*asyncio.all_tasks())
     loop = asyncio.get_running_loop()
     loop.stop()
-    raise ValueError("Server is shutting down")
+    raise ShutdownException("Server is shutting down")
 
 
 ## Build async routes
@@ -862,7 +942,7 @@ def run():
 
     if os.environ.get("in-ci"):
         print("Running in a unit test, exiting")
-        exit(0)
+        sys.exit(0)
     elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         print("running in a PyInstaller bundle, sending stdout to devnull")
         f = open(os.devnull, "w")
@@ -889,15 +969,14 @@ def run():
 
     try:
         run()
+    except ShutdownException:
+        print("Server is shutting down due to excepted shutdown call")
+        sys.exit(0)
     except Exception as e:
         print(f"Server is shutting down due to {e}")
-        exit(0)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-    try:
-        run()
-        sys.exit(0)
-    except:  # noqa: E722
-        sys.exit(0)
+    run()

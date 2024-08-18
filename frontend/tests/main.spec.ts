@@ -6,9 +6,12 @@ test.describe("Add Connection", async () => {
   let firstWindow: Page;
 
   test.beforeAll(async () => {
-    electronApp = await electron.launch({ args: ["."] });
+    electronApp = await electron.launch({ args: ['dist-electron/main.js'] })
+    // electronApp.process().stdout.on('data', (data) => console.log(`stdout: ${data}`));
+    // electronApp.process().stderr.on('data', (error) => console.log`stderr: ${error}`);
     firstWindow = await electronApp.firstWindow();
-    firstWindow.setViewportSize({ width: 1280, height: 720 });
+    await firstWindow.setViewportSize({ width: 1580, height: 1280 });
+
   });
 
   test("Create and Delete Portfolio", async () => {
@@ -32,6 +35,21 @@ test.describe("Add Connection", async () => {
   });
 
   test.afterAll(async () => {
-    await electronApp.close();
+    var process = electronApp.process();
+    await Promise.race([
+      electronApp.close(),
+      new Promise((resolve, reject) => {
+        // Reject after 5 seconds
+        setTimeout(() => reject(new Error("Request timed out")), 5000);
+      }),
+    ]).then(() => console.log("Electron app closed"))
+    .catch(()=> console.log("Electron app close failed"));
+    if (process.pid) {
+      process.kill()
+    }
+    
+    
+
+
   });
 });
