@@ -970,7 +970,7 @@ def run():
     try:
         run()
     except ShutdownException:
-        print(f"Server is shutting down due to excepted shutdown call {e}")
+        print("Server is shutting down due to excepted shutdown call")
         sys.exit(0)
     except Exception as e:
         print(f"Server is shutting down due to {e}")
