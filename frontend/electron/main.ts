@@ -301,6 +301,8 @@ function createWindow() {
 //   // win = null
 // })
 
+app.on('quit', () => { console.log('quit'); app.exit(0); })
+
 app.on("window-all-closed", () => {
   // On macOS it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
