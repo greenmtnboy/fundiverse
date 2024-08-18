@@ -4,7 +4,7 @@ on: push
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,18 +23,17 @@ jobs:
           pip install -r requirements-test.txt
       - name: Install Node dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: npm install
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
       - name: Build the electron package and webservice
         working-directory: ./frontend
         run: npm run build
-      # - name: check build
-      #   working-directory: ./frontend
-      #   run: npm run dev
-        # timeout-minutes: 2
+      - name: check build
+        working-directory: ./frontend
+        run: npm run dev
+        timeout-minutes: 2
       - name: Run tests
-        uses: coactions/setup-xvfb@v1
-        with:
-          working-directory: ./frontend
-          run: npm run test
+        working-directory: ./frontend
+        run: npm run test
+        timeout-minutes: 2
