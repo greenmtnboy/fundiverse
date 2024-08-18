@@ -209,6 +209,7 @@ const startBackgroundService = () => {
           app.quit();
         });
     }
+    app.quit();
   });
   return backgroundService;
 };
