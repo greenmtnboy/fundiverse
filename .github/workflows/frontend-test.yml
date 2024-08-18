@@ -23,7 +23,7 @@ jobs:
           pip install -r requirements-test.txt
       - name: Install Node dependencies
         working-directory: ./frontend
-        run: npm install
+        run: npm ci
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
       - name: Build the electron package and webservice

@@ -9,7 +9,7 @@
     "url": "https://github.com/greenmtnboy/fundiverse.git"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "DISPLAY=$(hostname).local:0 vite",
     "build_debug": "vue-tsc && vite build",
     "build": "node build-backend.js && vue-tsc && vite build",
     "build_backend": "node build-backend.js",
