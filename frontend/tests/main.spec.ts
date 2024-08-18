@@ -35,19 +35,14 @@ test.describe("Add Connection", async () => {
   });
 
   test.afterAll(async () => {
-    let kill = false;
     await Promise.race([
       electronApp.close(),
-      new Promise(function (resolve) {
-        setTimeout(function () {
-          console.log('Timed out');
-          kill = true
-        }, 10000);
+      new Promise((resolve, reject) => {
+        // Reject after 5 seconds
+        setTimeout(() => reject(new Error("Request timed out")), 5000);
       }),
-    ]);
-    if (kill) {
-      await electronApp.process().kill();
-    }
+    ]).then(() => console.log("Electron app closed"))
+    .catch((err) => electronApp.process().kill());
 
 
   });
