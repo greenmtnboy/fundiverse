@@ -35,7 +35,7 @@
     "@mdi/font": "^7.2.96",
     "@playwright/test": "^1.46.1",
     "@vitejs/plugin-vue": "^4.1.0",
-    "electron": "^31.2.0",
+    "electron": "^31.4.0",
     "electron-builder": "^24.6.4",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "3.2.5",
