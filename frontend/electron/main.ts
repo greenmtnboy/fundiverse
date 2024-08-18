@@ -6,11 +6,11 @@ import http from "http";
 import { exec, execFile } from "child_process";
 import { randomInt } from "crypto";
 import instance from "/src/api/instance.ts";
-import { autoUpdater } from "electron-updater";
+// import { autoUpdater } from "electron-updater";
 
-app.on("ready", function () {
-  autoUpdater.checkForUpdatesAndNotify();
-});
+// app.on("ready", function () {
+//   autoUpdater.checkForUpdatesAndNotify();
+// });
 
 const API_KEY = (
   randomInt(1, 1000000) * 1000000 +
@@ -235,15 +235,7 @@ async function startBackgroundServiceSafe() {
   });
 }
 
-// The built directory structure
-//
-// ├─┬─┬ dist
-// │ │ └── index.html
-// │ │
-// │ ├─┬ dist-electron
-// │ │ ├── main.js
-// │ │ └── preload.js
-// │
+
 
 // enable renders to access store
 Store.initRenderer();
@@ -280,7 +272,12 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST, "index.html"));
   }
-
+  win.on('closed', function () {
+    // Dereference the window object, usually you would store windows
+    // in an array if your app supports multi windows, this is the time
+    // when you should delete the corresponding element.
+    win = null
+  })
 
   win.webContents.session.setCertificateVerifyProc((request, callback) => {
     const { hostname } = request
@@ -290,7 +287,7 @@ function createWindow() {
     else if (hostname === '127.0.0.1') {
       callback(0)
     } else {
-      // TODO: restric this further
+      // TODO: restrict this further
       callback(0)
     }
   })
@@ -311,6 +308,13 @@ app.on("window-all-closed", () => {
   }
 });
 
+app.on('activate', function () {
+  // On OS X it's common to re-create a window in the app when the
+  // dock icon is clicked and there are no other windows open.
+  if (win === null) {
+    createWindow()
+  }
+})
 // app.isPackaged ? app.whenReady().then(startBackgroundServiceSafe).then(createWindow) : app.whenReady().then(createWindow)
 app
   .whenReady()
