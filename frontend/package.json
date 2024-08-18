@@ -17,7 +17,7 @@
     "debug_bg": "node test-bg.js",
     "dist_linux": "vue-tsc && vite build && node build-backend.js && electron-builder --linux snap",
     "dist_windows": "vue-tsc && vite build && node build-backend.js && electron-builder --win",
-    "test": "DEBUG=*  npx playwright test"
+    "test": "DISPLAY=$(hostname).local:0 DEBUG=*  npx playwright test"
   },
   "dependencies": {
     "axios": "^1.7.4",
