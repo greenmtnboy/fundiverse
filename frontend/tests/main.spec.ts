@@ -6,7 +6,7 @@ test.describe("Add Connection", async () => {
   let firstWindow: Page;
 
   test.beforeAll(async () => {
-    electronApp = await electron.launch({ args: ["."] });
+    electronApp = await electron.launch({ args: ['main.js'] });
     firstWindow = await electronApp.firstWindow();
     await firstWindow.setViewportSize({ width: 1580, height: 1280 });
     
