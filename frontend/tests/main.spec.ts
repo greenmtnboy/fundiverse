@@ -42,7 +42,9 @@ test.describe("Add Connection", async () => {
         setTimeout(() => reject(new Error("Request timed out")), 5000);
       }),
     ]).then(() => console.log("Electron app closed"))
-    .catch((err) => electronApp.process().kill());
+    .catch(()=> console.log("Electron app close failed"));
+    electronApp.process().kill()
+    
 
 
   });
