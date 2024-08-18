@@ -25,6 +25,7 @@ jobs:
         working-directory: ./frontend
         run: npm install
       - name: Install Playwright Browsers
+        working-directory: ./frontend
         run: npx playwright install --with-deps chromium
       - name: Build the electron package and webservice
         working-directory: ./frontend
