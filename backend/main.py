@@ -881,7 +881,7 @@ async def exit_app():
     asyncio.gather(*asyncio.all_tasks())
     loop = asyncio.get_running_loop()
     loop.stop()
-    raise ValueError("Server is shutting down")
+    raise ShutdownException("Server is shutting down")
 
 
 ## Build async routes
@@ -969,6 +969,9 @@ def run():
 
     try:
         run()
+    except ShutdownException:
+        print(f"Server is shutting down due to excepted shutdown call {e}")
+        sys.exit(0)
     except Exception as e:
         print(f"Server is shutting down due to {e}")
         sys.exit(1)
