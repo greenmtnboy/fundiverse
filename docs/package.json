@@ -24,7 +24,7 @@
     "@mdi/font": "^7.4.47",
     "@vue/component-compiler-utils": "^3.3.0",
     "@vuepress/bundler-vite": "^2.0.0-rc.7",
-    "axios": "^1.6.7",
+    "axios": "^1.7.4",
     "lodash": "^4.17.21",
     "pyodide": "^0.25.0",
     "vite-plugin-static-copy": "^1.0.1",
