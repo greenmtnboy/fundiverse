@@ -102,4 +102,4 @@ Click submit to place the orders. You'll be returned a list of which were placed
 
 <br>
 
-That's it! You now own your stocks!
+That's it! You now own your (maybe paper) stocks!

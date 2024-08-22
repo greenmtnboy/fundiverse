@@ -2,14 +2,17 @@
 
 ## Why?
 
-Fundiverse attempts to capture the best qualities of index funds - low fees, broad diversification, ease of use - while allowing you to customize your portfolio to your values and beliefs. It's the middle ground between picking stocks and picking the entire market.
+Fundiverse aims to empower you to match the best qualities of index funds - low fees, broad diversification, ease of use - with your personal investing values and beliefs. It's the middle ground between picking stocks and picking the entire market.
 
 ## What
 
-Your personalized index starts with an existing index as a base, which you can then customized by reweighting lists of stocks or individual stocks. Fundiverse then integrates with your brokerage to execute the orders to build your portfolio.
+Your personalized index starts with an existing slice of the market as abase which you can then customized by reweighting lists of stocks or individual stocks. Fundiverse then integrates with your brokerage to execute the orders to build your portfolio.
 
-<br>
-Use a streamlined UI to connect to your brokerages, track your holdings against the index and purchase what you need to achieve your goals. 
+::: tip
+For the tech-saavy: Fundiverse is an streamlined UI on top of an [equally open-source python library](https://github.com/greenmtnboy/py-portfolio-index); you can use the underlying package directly if a UI isn't your thing. 
+:::
+
+
 
 <PortfolioDemo/>
 

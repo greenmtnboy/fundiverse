@@ -1,7 +1,7 @@
 ## Robinhood Setup
 
 ::: warning
-Robinhood access uses a open-source library that is not officially supported by Robinhood. It is possible that this library will break in the future. If you are concerned about this, please use Alpaca.
+Robinhood access uses a open-source library that is not officially supported by Robinhood, [robin-stocks](https://github.com/jmfernandes/robin_stocks). Ensure you are comfortable with this library as well. 
 :::
 
 ### Prod

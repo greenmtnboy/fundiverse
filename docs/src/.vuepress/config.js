@@ -3,7 +3,7 @@ import { getDirname, path } from "@vuepress/utils";
 import { hopeTheme } from "vuepress-theme-hope";
 import registerComponentsPlugin from "@vuepress/plugin-register-components";
 import { viteBundler } from "@vuepress/bundler-vite";
-import { viteStaticCopy } from "vite-plugin-static-copy";
+
 
 
 const __dirname = getDirname(import.meta.url);
@@ -30,8 +30,8 @@ export default {
     ],
     ["meta", { name: "theme-color", content: "#3eaf7c" }],
     ["meta", { name: "apple-mobile-web-app-capable", content: "yes" }],
-    ['link', { rel: 'stylesheet', href:"https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" }],
-    ['link', { rel: 'stylesheet', href:"https://fonts.googleapis.com/icon?family=Material+Icons" }],
+    ['link', { rel: 'stylesheet', href: "https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" }],
+    ['link', { rel: 'stylesheet', href: "https://fonts.googleapis.com/icon?family=Material+Icons" }],
     [
       "meta",
       { name: "apple-mobile-web-app-status-bar-style", content: "black" },
@@ -94,63 +94,59 @@ gtag('config', 'G-53FSTW9NTV');
         link: "/install/",
       },
     ],
-    sidebar: {
-      "/about/": [],
-      "/demo/": [],
-      "/install/": [
-        {
-          text: "Overview",
-          path: "/install/",
-          collapsable: false,
-        },
-        {
-          text: "Windows",
-          path: "windows",
-          collapsable: false,
-        },
-        {
-          text: "Mac",
-          path: "mac",
-          collapsable: false,
-        },
-        {
-          text: "Linux",
-          path: "linux",
-          collapsable: false,
-        },
-        {
-          text: "First Portfolio",
-          path: "first-portfolio",
-          collapsable: false,
-        },
-        {
-          text: "Alpaca",
-          path: "install-alpaca",
-          collapsable: false,
-        },
-        {
-          text: "Robinhood",
-          path: "install-robinhood",
-          collapsable: false,
-        },
-        {
-          text: "Webull",
-          path: "install-webull",
-          collapsable: false,
-        },
-      ],
-    },
-  }),
+    // sidebar: ["/README.md", "/guide/README.md", "/config/README.md"],
+    sidebar: [
+      {
+        text: "Install",
+        link: "/install/",
+        "children": [
+          {
+            text: "Overview",
+            link: "/install/",
+          },
+          {
+            text: "Windows",
+            link: "/install/windows",
+
+          },
+          {
+            text: "Mac",
+            link: "/install/mac",
+          },
+          {
+            text: "Linux",
+            link: "/install/linux",
+
+          },
+          {
+            text: "First Portfolio",
+            link: "/install/first-portfolio",
+          },
+          {
+            text: "Alpaca",
+            link: "/install/alpaca",
+          },
+          {
+            text: "Robinhood",
+            link: "/install/robinhood",
+          },
+          {
+            text: "Webull",
+            link: "/install/webull",
+          },
+          {
+            text: "Schwab",
+            link: "/install/schwab",
+          },
+        ],
+      }]
+  },
+  ),
 
   /**
    * Apply plugins，ref：https://v1.vuepress.vuejs.org/zh/plugin/
    */
   plugins: [
-    registerComponentsPlugin({
-      componentsDir: path.resolve(__dirname, "./components"),
-    }),
-    "@vuepress/plugin-back-to-top",
-    "@vuepress/plugin-medium-zoom",
   ],
   bundler: viteBundler({
     viteOptions: {
