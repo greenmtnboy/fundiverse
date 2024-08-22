@@ -79,7 +79,7 @@ gtag('config', 'G-53FSTW9NTV');
       contributors: false,
     },
     footer:
-      'Not Stock Advice | GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a> | <a href="/tos">Terms of Service</a> | <a href="/privacy">Privacy Policy</a>',
+      'Not Stock Advice | GPL Licensed | Contributions Welcome | <a href="https://github.com/greenmtnboy/fundiverse">Source</a> | <a href="/tos/">Terms of Service</a> | <a href="/privacy/">Privacy Policy</a>',
     navbar: [
       {
         text: "About",
@@ -94,12 +94,9 @@ gtag('config', 'G-53FSTW9NTV');
         link: "/install/",
       },
     ],
-    // sidebar: ["/README.md", "/guide/README.md", "/config/README.md"],
-    sidebar: [
-      {
-        text: "Install",
-        link: "/install/",
-        "children": [
+    sidebar: {
+      "/install/":
+        [
           {
             text: "Overview",
             link: "/install/",
@@ -139,7 +136,8 @@ gtag('config', 'G-53FSTW9NTV');
             link: "/install/schwab",
           },
         ],
-      }]
+
+    }
   },
   ),
 
