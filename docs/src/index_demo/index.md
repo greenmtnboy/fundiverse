@@ -17,7 +17,7 @@ Provided indexes, stock lists, and weights are not investment advice. They are b
 
 
 ::: tip
-Uncomfortable starting with real money? Many brokerages support 'paper trading' using fake money; you can connect Fundiverse to these paper accounts to experiment and get a feel for what you want to do.
+Want to try things out before starting with real money? Many brokerages support 'paper trading' using fake money; you can connect Fundiverse to these paper accounts to experiment and get a feel for what you want to do.
 :::
 
 

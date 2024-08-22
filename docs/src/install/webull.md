@@ -1,8 +1,9 @@
 ## Webull Setup
 
 ::: warning
-Webull setup is for advanced users while waiting on Webull to have an official API. If you are not comfortable with this, please use Alpaca.
+Webull access uses a open-source library that is not officially supported by Schwab, [webull](https://github.com/tedchou12/webull). Ensure you are comfortable with this library as well.
 :::
+
 
 ### Prod
 
