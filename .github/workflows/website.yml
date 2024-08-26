@@ -2,7 +2,7 @@ on:
   push:
     branches:
       - main
-      - docs_updates
+      - version-bump-august
 name: 🚀 Deploy website on push
 jobs:
   web-deploy:
