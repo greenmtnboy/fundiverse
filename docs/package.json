@@ -1,5 +1,5 @@
 {
-  "name": "fundiverse",
+  "name": "fundiverse-docs",
   "version": "0.0.1",
   "description": "Personalized index funds in your brokerage of choice.",
   "main": "index.js",
