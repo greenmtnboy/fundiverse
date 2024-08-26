@@ -21,7 +21,7 @@
     "lodash": "^4.17.21",
     "pyodide": "^0.26.2",
     "vue-gtag": "^2.0.1",
-    "vuepress": "^2.0.0-rc.15",
+    "vuepress": "^2.0.0-rc.14",
     "vuepress-theme-hope": "^2.0.0-rc.52",
     "vuetify": "^3.7.0",
     "vuex": "^4.1.0"
