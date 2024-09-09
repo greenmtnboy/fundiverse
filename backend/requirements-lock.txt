@@ -21,7 +21,7 @@ markdown-it-py==3.0.0
 MarkupSafe==2.1.5
 mdurl==0.1.2
 msgpack==1.0.8
-numpy==2.0.0
+numpy==2.1.1
 orjson==3.10.6
 paho-mqtt==2.1.0
 pandas==2.2.2
