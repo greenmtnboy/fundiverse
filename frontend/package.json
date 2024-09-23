@@ -40,7 +40,7 @@
     "eslint-config-prettier": "^9.1.0",
     "prettier": "3.2.5",
     "sass": "^1.66.1",
-    "sass-loader": "^13.3.2",
+    "sass-loader": "^16.0.2",
     "typescript": "^5.2.2",
     "vite": "^5.4.1",
     "vite-plugin-commonjs-externals": "^0.1.3",
