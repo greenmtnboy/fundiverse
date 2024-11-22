@@ -80,7 +80,7 @@ from py_portfolio_index import (
 )
 from py_portfolio_index.models import OrderPlan
 from py_portfolio_index.exceptions import ConfigurationError
-from py_portfolio_index.enums import Provider
+from py_portfolio_index.enums import ProviderType
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
@@ -103,7 +103,7 @@ class SchwabExtraAuthenticationStepException(Exception):
 
 
 class SubPortfolioRefreshException(Exception):
-    def __init__(self, provider: Provider, error: Exception):
+    def __init__(self, provider: ProviderType, error: Exception):
         self.error = error
         self.provider = provider
 
@@ -126,8 +126,8 @@ class AsyncTask:
 @dataclass
 class ActiveConfig:
     logged_in: str | None = None
-    provider_cache: Dict[Provider, BaseProvider] = field(default_factory=dict)
-    holding_cache: Dict[Provider, RealPortfolio] = field(default_factory=dict)
+    provider_cache: Dict[ProviderType, BaseProvider] = field(default_factory=dict)
+    holding_cache: Dict[ProviderType, RealPortfolio] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
     pending_schwab_response: SchwabAuthContext | None = None
     auth_token: str | None = None
@@ -138,12 +138,12 @@ class ActiveConfig:
     def default_provider(self):
         # get the fastest provider
         priority = [
-            Provider.ALPACA,
-            Provider.ROBINHOOD,
-            Provider.WEBULL,
-            Provider.SCHWAB,
-            Provider.ALPACA_PAPER,
-            Provider.WEBULL_PAPER,
+            ProviderType.ALPACA,
+            ProviderType.ROBINHOOD,
+            ProviderType.WEBULL,
+            ProviderType.SCHWAB,
+            ProviderType.ALPACA_PAPER,
+            ProviderType.WEBULL_PAPER,
         ]
         for provider in priority:
             for key, _ in self.provider_cache.items():
@@ -242,7 +242,7 @@ app.add_middleware(
 class LoginRequest(BaseModel):
     key: str
     secret: str
-    provider: Provider
+    provider: ProviderType
     extra_factor: str | int | None = None
     device_id: str | None = None
     trading_pin: str | None = None
@@ -254,7 +254,7 @@ class RealPortfolioOutput(BaseModel):
     name: str
     holdings: List[RealPortfolioElement]
     cash: Money | None
-    provider: Provider | None
+    provider: ProviderType | None
     profit_or_loss: Money | None = None
     profit_or_loss_v2: ProfitModel | None
 
@@ -284,7 +284,7 @@ class OrderItem(BaseModel):
     order_type: OrderType
     value: Money | None
     qty: int | float | None
-    provider: Provider
+    provider: ProviderType
     status: OrderStatus | None
     message: str | None
 
@@ -311,11 +311,11 @@ class StockMutation(BaseModel):
 
 
 class ProviderResponse(BaseModel):
-    available: List[Provider]
+    available: List[ProviderType]
 
 
 class PortfolioRequest(BaseModel):
-    provider: Provider
+    provider: ProviderType
 
 
 class TargetPortfolioRequest(BaseModel):
@@ -326,8 +326,8 @@ class TargetPortfolioRequest(BaseModel):
     stock_modifications: List[StockMutation] = Field(default_factory=list)
     list_modifications: List[ListMutation] = Field(default_factory=list)
     purchase_strategy: PurchaseStrategy = PurchaseStrategy.LARGEST_DIFF_FIRST
-    provider: Provider | None = None
-    providers: List[Provider] = Field(default_factory=list)
+    provider: ProviderType | None = None
+    providers: List[ProviderType] = Field(default_factory=list)
 
 
 class BuyRequest(TargetPortfolioRequest):
@@ -337,12 +337,12 @@ class BuyRequest(TargetPortfolioRequest):
 
 class BuyRequestFinal(BaseModel):
     plan: OrderPlan
-    provider: Provider | None = None
+    provider: ProviderType | None = None
 
 
 class BuyRequestFinalMultiProvider(BaseModel):
     plan: PurchaseOrderOutput
-    providers: list[Provider]
+    providers: list[ProviderType]
 
 
 class BuyRequestFinalMultiProviderOutput(BaseModel):
@@ -351,59 +351,59 @@ class BuyRequestFinalMultiProviderOutput(BaseModel):
 
 class CompositePortfolioRefreshRequest(BaseModel):
     key: str
-    providers: List[Provider]
-    providers_to_refresh: List[Provider]
+    providers: List[ProviderType]
+    providers_to_refresh: List[ProviderType]
 
 
 ## Shared Functions
 
 
-def get_provider_safe(iprovider: Provider | None = None) -> BaseProvider:
+def get_provider_safe(iprovider: ProviderType | None = None) -> BaseProvider:
     _provider = iprovider or IN_APP_CONFIG.default_provider
     try:
-        if _provider == Provider.ALPACA:
+        if _provider == ProviderType.ALPACA:
             provider = IN_APP_CONFIG.provider_cache.get(
-                Provider.ALPACA, AlpacaProvider()
+                ProviderType.ALPACA, AlpacaProvider()
             )
-            IN_APP_CONFIG.provider_cache[Provider.ALPACA] = provider
-        elif _provider == Provider.ALPACA_PAPER:
+            IN_APP_CONFIG.provider_cache[ProviderType.ALPACA] = provider
+        elif _provider == ProviderType.ALPACA_PAPER:
             provider = IN_APP_CONFIG.provider_cache.get(
-                Provider.ALPACA_PAPER, PaperAlpacaProvider()
+                ProviderType.ALPACA_PAPER, PaperAlpacaProvider()
             )
-            IN_APP_CONFIG.provider_cache[Provider.ALPACA_PAPER] = provider
-        elif _provider == Provider.ROBINHOOD:
+            IN_APP_CONFIG.provider_cache[ProviderType.ALPACA_PAPER] = provider
+        elif _provider == ProviderType.ROBINHOOD:
             # Robinhood requires potential two factor auth
             # cannot safely instantiate default handler
             # even in dev
 
-            rh_provider = IN_APP_CONFIG.provider_cache.get(Provider.ROBINHOOD, None)
+            rh_provider = IN_APP_CONFIG.provider_cache.get(ProviderType.ROBINHOOD, None)
             if rh_provider:
-                IN_APP_CONFIG.provider_cache[Provider.ROBINHOOD] = rh_provider
+                IN_APP_CONFIG.provider_cache[ProviderType.ROBINHOOD] = rh_provider
                 provider = rh_provider
             else:
                 raise HTTPException(401, "No logged in robinhood provider found")
 
-        elif _provider == Provider.WEBULL:
-            wb_provider = IN_APP_CONFIG.provider_cache.get(Provider.WEBULL, None)
+        elif _provider == ProviderType.WEBULL:
+            wb_provider = IN_APP_CONFIG.provider_cache.get(ProviderType.WEBULL, None)
             if wb_provider:
-                IN_APP_CONFIG.provider_cache[Provider.WEBULL] = wb_provider
+                IN_APP_CONFIG.provider_cache[ProviderType.WEBULL] = wb_provider
                 provider = wb_provider
             else:
                 raise HTTPException(401, "No logged in webull provider found")
 
-        elif _provider == Provider.WEBULL_PAPER:
+        elif _provider == ProviderType.WEBULL_PAPER:
             wb_paper_provider = IN_APP_CONFIG.provider_cache.get(
-                Provider.WEBULL_PAPER, None
+                ProviderType.WEBULL_PAPER, None
             )
             if wb_paper_provider:
-                IN_APP_CONFIG.provider_cache[Provider.WEBULL_PAPER] = wb_paper_provider
+                IN_APP_CONFIG.provider_cache[ProviderType.WEBULL_PAPER] = wb_paper_provider
                 provider = wb_paper_provider
             else:
                 raise HTTPException(401, "No logged in webull provider found")
-        elif _provider == Provider.SCHWAB:
-            schwab_provider = IN_APP_CONFIG.provider_cache.get(Provider.SCHWAB, None)
+        elif _provider == ProviderType.SCHWAB:
+            schwab_provider = IN_APP_CONFIG.provider_cache.get(ProviderType.SCHWAB, None)
             if schwab_provider:
-                IN_APP_CONFIG.provider_cache[Provider.SCHWAB] = schwab_provider
+                IN_APP_CONFIG.provider_cache[ProviderType.SCHWAB] = schwab_provider
                 provider = schwab_provider
             else:
                 raise HTTPException(401, "No logged in schwab provider found")
@@ -435,7 +435,7 @@ async def providers_handler():
 
 @router.get("/logged_in/{provider}")
 async def logged_in_handler(provider):
-    provider_enum = Provider(provider)
+    provider_enum = ProviderType(provider)
     return provider_enum in IN_APP_CONFIG.provider_cache
 
 
@@ -447,19 +447,19 @@ def login_handler(input: LoginRequest):
     if not input.force and input.provider in IN_APP_CONFIG.provider_cache:
         return True
     try:
-        if input.provider == Provider.ALPACA:
+        if input.provider == ProviderType.ALPACA:
             environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
             environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
             # ensure we can login
             provider: BaseProvider = AlpacaProvider()
             IN_APP_CONFIG.provider_cache[input.provider] = provider
-        elif input.provider == Provider.ALPACA_PAPER:
+        elif input.provider == ProviderType.ALPACA_PAPER:
             environ[PaperAlpacaProvider.API_KEY_VARIABLE] = input.key
             environ[PaperAlpacaProvider.API_SECRET_VARIABLE] = input.secret
             # ensure we can login
             provider = PaperAlpacaProvider()
             IN_APP_CONFIG.provider_cache[input.provider] = provider
-        elif input.provider == Provider.ROBINHOOD:
+        elif input.provider == ProviderType.ROBINHOOD:
             environ["ROBINHOOD_USERNAME"] = input.key
             environ["ROBINHOOD_PASSWORD"] = input.secret
             # login using RH helper to handle
@@ -471,7 +471,7 @@ def login_handler(input: LoginRequest):
             provider = RobinhoodProvider(external_auth=True)
             IN_APP_CONFIG.provider_cache[input.provider] = provider
             IN_APP_CONFIG.pending_auth_response = None
-        elif input.provider == Provider.WEBULL:
+        elif input.provider == ProviderType.WEBULL:
             assert input.trading_pin is not None
             assert input.device_id is not None
             environ[WebullProvider.PASSWORD_ENV] = input.secret
@@ -480,7 +480,7 @@ def login_handler(input: LoginRequest):
             environ[WebullProvider.DEVICE_ID_ENV] = input.device_id
             provider = WebullProvider()
             IN_APP_CONFIG.provider_cache[input.provider] = provider
-        elif input.provider == Provider.WEBULL_PAPER:
+        elif input.provider == ProviderType.WEBULL_PAPER:
             assert input.trading_pin is not None
             assert input.device_id is not None
             environ[WebullPaperProvider.PASSWORD_ENV] = input.secret
@@ -489,7 +489,7 @@ def login_handler(input: LoginRequest):
             environ[WebullPaperProvider.DEVICE_ID_ENV] = input.device_id
             provider = WebullPaperProvider()
             IN_APP_CONFIG.provider_cache[input.provider] = provider
-        elif input.provider == Provider.SCHWAB:
+        elif input.provider == ProviderType.SCHWAB:
             environ[SchwabProvider.API_KEY_ENV] = input.key
             environ[SchwabProvider.APP_SECRET_ENV] = input.secret
             if IN_APP_CONFIG.pending_schwab_response and input.wait_for_external_auth:
@@ -527,7 +527,7 @@ async def get_portfolio_bare():
 
 
 @router.get("/portfolio/{_provider}")
-async def get_portfolio(_provider: Provider):
+async def get_portfolio(_provider: ProviderType):
     provider = get_provider_safe(_provider)
     holdings = provider.get_holdings()
     IN_APP_CONFIG.holding_cache[_provider] = holdings
@@ -535,7 +535,7 @@ async def get_portfolio(_provider: Provider):
 
 
 def refresh_sub_portfolio(
-    key: Provider, providers_to_refresh: list[Provider]
+    key: ProviderType, providers_to_refresh: list[ProviderType]
 ) -> tuple[timedelta, RealPortfolio]:
     item: BaseProvider | None = IN_APP_CONFIG.provider_cache.get(key, None)
     start = datetime.now()
@@ -789,7 +789,7 @@ def buy_index_from_plan(input: BuyRequestFinal):
 
 
 def place_orders(
-    orders: List[OrderItem], provider: BaseProvider, stale_providers: set[Provider]
+    orders: List[OrderItem], provider: BaseProvider, stale_providers: set[ProviderType]
 ):
     output = []
     for order in orders:
@@ -827,14 +827,14 @@ def place_orders(
 
 @router.post("/buy_index_from_plan_multi_provider")
 def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
-    providers: Dict[Provider, BaseProvider] = {
+    providers: Dict[ProviderType, BaseProvider] = {
         p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers  # type: ignore
     }
     if not all(providers.values()):
         raise HTTPException(401, "Not all providers are logged in")
     # check each of our p
     output: List[OrderItem] = []
-    stale_providers: set[Provider] = set()
+    stale_providers: set[ProviderType] = set()
     grouped = defaultdict(list)
     for order in input.plan.to_buy:
         grouped[order.provider].append(order)
