@@ -192,7 +192,7 @@ const startBackgroundService = () => {
 
   let backgroundClosed = false;
   app.on("before-quit", async (e) => {
-    if (!backgroundClosed) {
+    if (!backgroundClosed && backgroundService.pid) {
       e.preventDefault();
       await stopBackground()
         .then(() => {
