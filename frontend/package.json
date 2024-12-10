@@ -1,9 +1,9 @@
 {
   "name": "fundiverse",
-  "version": "0.1.43",
+  "version": "0.1.44",
   "private": false,
   "description": "Buy all those stocks",
-  "author": "Ethan Dickinson <ethan.dickinson@gmail.com>",
+  "author": "efromvt <ethan[dot]dickinson[at]gmail.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/greenmtnboy/fundiverse.git"
