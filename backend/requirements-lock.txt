@@ -26,7 +26,7 @@ orjson==3.10.6
 paho-mqtt==2.1.0
 pandas==2.2.3
 platformdirs==4.2.2
-py-portfolio-index==0.1.14
+py-portfolio-index==0.1.17
 pycparser==2.22
 pydantic==2.10.3
 pydantic_core==2.27.1
