@@ -3,7 +3,7 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = []
 binaries = []
-hiddenimports = ['py-portfolio-index', 'alpaca-py']
+hiddenimports = ['py-portfolio-index', 'alpaca-py', 'moomoo-api']
 tmp_ret = collect_all('py_portfolio_index')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('uvicorn')

@@ -1,48 +1,73 @@
-from typing import List, Dict, Annotated, Callable, Any, Optional
+from typing import Annotated, Any, Callable, Dict, List, Optional
 import dotenv
 
 dotenv.load_dotenv()
-import os
-import sys
+import asyncio
 import multiprocessing
-import uvicorn
+import os
+from os import environ
+import sys
+import traceback
 import uuid
-from enum import Enum
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import asynccontextmanager
+from copy import deepcopy
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from uvicorn.config import LOGGING_CONFIG
+from enum import Enum
+from logging import StreamHandler, getLogger
+from typing import get_type_hints
+
+import uvicorn
 from fastapi import (
     APIRouter,
-    FastAPI,
-    HTTPException,
-    Depends,
-    status,
     BackgroundTasks,
     Body,
+    Depends,
+    FastAPI,
+    HTTPException,
     Request,
+    status,
 )
-from contextlib import asynccontextmanager
+from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
 from fastapi.security import OAuth2PasswordBearer
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from dataclasses import dataclass, field
-from pytz import UTC
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import get_type_hints
-from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel, Field, ConfigDict
-from pydantic.alias_generators import to_camel
-from collections import defaultdict
-
-from copy import deepcopy
-
-
-from fastapi.responses import PlainTextResponse
-from starlette.background import BackgroundTask
-import asyncio
-import traceback
-from logging import getLogger, StreamHandler
-from py_portfolio_index.exceptions import OrderError, ExtraAuthenticationStepException
+from py_portfolio_index import (
+    AVAILABLE_PROVIDERS,
+    INDEXES,
+    STOCK_LISTS,
+    AlpacaProvider,
+    Logger,
+    PaperAlpacaProvider,
+    PurchaseStrategy,
+    RobinhoodProvider,
+    SchwabProvider,
+    WebullPaperProvider,
+    WebullProvider,
+    MooMooProvider,
+    generate_composite_order_plan,
+)
+from py_portfolio_index.enums import ProviderType
+from py_portfolio_index.exceptions import (
+    ConfigurationError,
+    ExtraAuthenticationStepException,
+    OrderError,
+)
+from py_portfolio_index.models import (
+    CompositePortfolio,
+    IdealPortfolio,
+    LoginResponse,
+    Money,
+    OrderElement,
+    OrderPlan,
+    OrderType,
+    ProfitModel,
+    RealPortfolio,
+    RealPortfolioElement,
+)
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
 from py_portfolio_index.portfolio_providers.helpers.robinhood import (
     login as rh_login,
@@ -52,36 +77,11 @@ from py_portfolio_index.portfolio_providers.helpers.schwab import (
     create_login_context,
     fetch_response,
 )
-from py_portfolio_index.models import (
-    CompositePortfolio,
-    RealPortfolio,
-    LoginResponse,
-    RealPortfolioElement,
-    Money,
-    OrderType,
-    OrderElement,
-    ProfitModel,
-    IdealPortfolio,
-)
-
-from py_portfolio_index import (
-    INDEXES,
-    STOCK_LISTS,
-    AlpacaProvider,
-    PaperAlpacaProvider,
-    RobinhoodProvider,
-    WebullProvider,
-    WebullPaperProvider,
-    SchwabProvider,
-    PurchaseStrategy,
-    generate_composite_order_plan,
-    AVAILABLE_PROVIDERS,
-    Logger,
-)
-from py_portfolio_index.models import OrderPlan
-from py_portfolio_index.exceptions import ConfigurationError
-from py_portfolio_index.enums import ProviderType
-
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
+from pytz import UTC
+from starlette.background import BackgroundTask
+from uvicorn.config import LOGGING_CONFIG
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
@@ -130,6 +130,7 @@ class ActiveConfig:
     holding_cache: Dict[ProviderType, RealPortfolio] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
     pending_schwab_response: SchwabAuthContext | None = None
+    pending_momoo_response: str | None = None
     auth_token: str | None = None
     validate: bool = False
     background_tasks: Dict[str, AsyncTask] = field(default_factory=dict)
@@ -142,8 +143,10 @@ class ActiveConfig:
             ProviderType.ROBINHOOD,
             ProviderType.WEBULL,
             ProviderType.SCHWAB,
+            ProviderType.MOOMOO,
             ProviderType.ALPACA_PAPER,
             ProviderType.WEBULL_PAPER,
+
         ]
         for provider in priority:
             for key, _ in self.provider_cache.items():
@@ -246,6 +249,7 @@ class LoginRequest(BaseModel):
     extra_factor: str | int | None = None
     device_id: str | None = None
     trading_pin: str | None = None
+    proxy_path: str | None = None
     force: bool = False
     wait_for_external_auth: bool = False
 
@@ -255,6 +259,7 @@ class RealPortfolioOutput(BaseModel):
     holdings: List[RealPortfolioElement]
     cash: Money | None
     provider: ProviderType | None
+    holding_size: Money | None = None
     profit_or_loss: Money | None = None
     profit_or_loss_v2: ProfitModel | None
 
@@ -396,18 +401,30 @@ def get_provider_safe(iprovider: ProviderType | None = None) -> BaseProvider:
                 ProviderType.WEBULL_PAPER, None
             )
             if wb_paper_provider:
-                IN_APP_CONFIG.provider_cache[ProviderType.WEBULL_PAPER] = wb_paper_provider
+                IN_APP_CONFIG.provider_cache[ProviderType.WEBULL_PAPER] = (
+                    wb_paper_provider
+                )
                 provider = wb_paper_provider
             else:
                 raise HTTPException(401, "No logged in webull provider found")
         elif _provider == ProviderType.SCHWAB:
-            schwab_provider = IN_APP_CONFIG.provider_cache.get(ProviderType.SCHWAB, None)
+            schwab_provider = IN_APP_CONFIG.provider_cache.get(
+                ProviderType.SCHWAB, None
+            )
             if schwab_provider:
                 IN_APP_CONFIG.provider_cache[ProviderType.SCHWAB] = schwab_provider
                 provider = schwab_provider
             else:
                 raise HTTPException(401, "No logged in schwab provider found")
-
+        elif _provider == ProviderType.MOOMOO:
+            momoo_provider = IN_APP_CONFIG.provider_cache.get(
+                ProviderType.MOOMOO, None
+            )
+            if momoo_provider:
+                IN_APP_CONFIG.provider_cache[ProviderType.MOOMOO] = momoo_provider
+                provider = momoo_provider
+            else:
+                raise HTTPException(401, "No logged in moomoo provider found")
         elif _provider is None:
             raise HTTPException(401, "No logged in provider specified")
         else:
@@ -438,73 +455,84 @@ async def logged_in_handler(provider):
     provider_enum = ProviderType(provider)
     return provider_enum in IN_APP_CONFIG.provider_cache
 
+def login(input:LoginRequest)->bool:
+    if input.provider == ProviderType.ALPACA:
+        environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
+        environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
+        # ensure we can login
+        provider: BaseProvider = AlpacaProvider()
+        IN_APP_CONFIG.provider_cache[input.provider] = provider
+    elif input.provider == ProviderType.ALPACA_PAPER:
+        environ[PaperAlpacaProvider.API_KEY_VARIABLE] = input.key
+        environ[PaperAlpacaProvider.API_SECRET_VARIABLE] = input.secret
+        # ensure we can login
+        provider = PaperAlpacaProvider()
+        IN_APP_CONFIG.provider_cache[input.provider] = provider
+    elif input.provider == ProviderType.ROBINHOOD:
+        environ["ROBINHOOD_USERNAME"] = input.key
+        environ["ROBINHOOD_PASSWORD"] = input.secret
+        # login using RH helper to handle
+        # two factor auth
+        rh_login(
+            challenge_response=input.extra_factor,
+            prior_response=IN_APP_CONFIG.pending_auth_response,
+        )
+        provider = RobinhoodProvider(external_auth=True)
+        IN_APP_CONFIG.provider_cache[input.provider] = provider
+        IN_APP_CONFIG.pending_auth_response = None
+    elif input.provider == ProviderType.WEBULL:
+        assert input.trading_pin is not None
+        assert input.device_id is not None
+        environ[WebullProvider.PASSWORD_ENV] = input.secret
+        environ[WebullProvider.USERNAME_ENV] = input.key
+        environ[WebullProvider.TRADE_TOKEN_ENV] = input.trading_pin
+        environ[WebullProvider.DEVICE_ID_ENV] = input.device_id
+        provider = WebullProvider()
+        IN_APP_CONFIG.provider_cache[input.provider] = provider
+    elif input.provider == ProviderType.WEBULL_PAPER:
+        assert input.trading_pin is not None
+        assert input.device_id is not None
+        environ[WebullPaperProvider.PASSWORD_ENV] = input.secret
+        environ[WebullPaperProvider.USERNAME_ENV] = input.key
+        environ[WebullPaperProvider.TRADE_TOKEN_ENV] = input.trading_pin
+        environ[WebullPaperProvider.DEVICE_ID_ENV] = input.device_id
+        provider = WebullPaperProvider()
+        IN_APP_CONFIG.provider_cache[input.provider] = provider
+    elif input.provider == ProviderType.SCHWAB:
+        environ[SchwabProvider.API_KEY_ENV] = input.key
+        environ[SchwabProvider.APP_SECRET_ENV] = input.secret
+        if IN_APP_CONFIG.pending_schwab_response and input.wait_for_external_auth:
+            fetch_response(IN_APP_CONFIG.pending_schwab_response)
+        lc = create_login_context(api_key=input.key, app_secret=input.secret)
+        if lc:
+            raise SchwabExtraAuthenticationStepException(response=lc)
+
+        provider = SchwabProvider(external_auth=True)
+        IN_APP_CONFIG.provider_cache[input.provider] = provider
+        IN_APP_CONFIG.pending_schwab_response = None
+    elif input.provider == ProviderType.MOOMOO:
+        
+        environ[MooMooProvider.ACCOUNT_ENV] = input.key
+        environ[MooMooProvider.PASSWORD_ENV] = input.secret
+        # environ[MooMooProvider.TRADE_TOKEN_ENV] = input.trading_pin
+        if input.proxy_path:
+            environ[MooMooProvider.OPEND_ENV] = input.proxy_path
+
+        provider = MooMooProvider(proxy = MooMooProvider.Proxy(opend_path = input.proxy_path))
+        IN_APP_CONFIG.provider_cache[input.provider] = provider
+        IN_APP_CONFIG.pending_momoo_response = None
+    else:
+        raise HTTPException(404, "Selected provider not supported yet")
+    IN_APP_CONFIG.logged_in = input.provider.value
+    return True
 
 @router.post("/login")
 def login_handler(input: LoginRequest):
-    from os import environ
-
     # early exit if we have already logged in
     if not input.force and input.provider in IN_APP_CONFIG.provider_cache:
         return True
     try:
-        if input.provider == ProviderType.ALPACA:
-            environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
-            environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
-            # ensure we can login
-            provider: BaseProvider = AlpacaProvider()
-            IN_APP_CONFIG.provider_cache[input.provider] = provider
-        elif input.provider == ProviderType.ALPACA_PAPER:
-            environ[PaperAlpacaProvider.API_KEY_VARIABLE] = input.key
-            environ[PaperAlpacaProvider.API_SECRET_VARIABLE] = input.secret
-            # ensure we can login
-            provider = PaperAlpacaProvider()
-            IN_APP_CONFIG.provider_cache[input.provider] = provider
-        elif input.provider == ProviderType.ROBINHOOD:
-            environ["ROBINHOOD_USERNAME"] = input.key
-            environ["ROBINHOOD_PASSWORD"] = input.secret
-            # login using RH helper to handle
-            # two factor auth
-            rh_login(
-                challenge_response=input.extra_factor,
-                prior_response=IN_APP_CONFIG.pending_auth_response,
-            )
-            provider = RobinhoodProvider(external_auth=True)
-            IN_APP_CONFIG.provider_cache[input.provider] = provider
-            IN_APP_CONFIG.pending_auth_response = None
-        elif input.provider == ProviderType.WEBULL:
-            assert input.trading_pin is not None
-            assert input.device_id is not None
-            environ[WebullProvider.PASSWORD_ENV] = input.secret
-            environ[WebullProvider.USERNAME_ENV] = input.key
-            environ[WebullProvider.TRADE_TOKEN_ENV] = input.trading_pin
-            environ[WebullProvider.DEVICE_ID_ENV] = input.device_id
-            provider = WebullProvider()
-            IN_APP_CONFIG.provider_cache[input.provider] = provider
-        elif input.provider == ProviderType.WEBULL_PAPER:
-            assert input.trading_pin is not None
-            assert input.device_id is not None
-            environ[WebullPaperProvider.PASSWORD_ENV] = input.secret
-            environ[WebullPaperProvider.USERNAME_ENV] = input.key
-            environ[WebullPaperProvider.TRADE_TOKEN_ENV] = input.trading_pin
-            environ[WebullPaperProvider.DEVICE_ID_ENV] = input.device_id
-            provider = WebullPaperProvider()
-            IN_APP_CONFIG.provider_cache[input.provider] = provider
-        elif input.provider == ProviderType.SCHWAB:
-            environ[SchwabProvider.API_KEY_ENV] = input.key
-            environ[SchwabProvider.APP_SECRET_ENV] = input.secret
-            if IN_APP_CONFIG.pending_schwab_response and input.wait_for_external_auth:
-                fetch_response(IN_APP_CONFIG.pending_schwab_response)
-            lc = create_login_context(api_key=input.key, app_secret=input.secret)
-            if lc:
-                raise SchwabExtraAuthenticationStepException(response=lc)
-
-            provider = SchwabProvider(external_auth=True)
-            IN_APP_CONFIG.provider_cache[input.provider] = provider
-            IN_APP_CONFIG.pending_schwab_response = None
-        else:
-            raise HTTPException(404, "Selected provider not supported yet")
-        IN_APP_CONFIG.logged_in = input.provider.value
-
+        return login(input)
     except SchwabExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_schwab_response = e.response
         raise HTTPException(303, e.response.authorization_url)
@@ -558,6 +586,8 @@ def refresh_sub_portfolio(
         rport = IN_APP_CONFIG.holding_cache[key]
     return datetime.now() - start, rport
 
+def sum_holdings(holdings: List[RealPortfolioElement]) -> Money:
+    return Money(value=sum([x.value for x in holdings]))
 
 @router.post("/composite_portfolio/refresh")
 def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
@@ -582,6 +612,7 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
                 active[key] = RealPortfolioOutput(
                     name=f"{key.name}",
                     holdings=rport.holdings,
+                    holding_size=sum_holdings(rport.holdings),
                     cash=rport.cash,
                     provider=key,
                     profit_or_loss_v2=rport.profit_and_loss,
@@ -602,7 +633,9 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
                 )
             except Exception as e:
                 raise HTTPException(422, f"Error refreshing: {str(e)}")
+    active = {k:active[k] for k in sorted(active.keys(), key=lambda x: active[x].holding_size.value, reverse=True)}
     internal = CompositePortfolio(raw)
+
     return CompositePortfolioOutput(
         name=input.key,
         holdings=internal.holdings,
@@ -941,6 +974,18 @@ def run():
     import sys
 
     if os.environ.get("in-ci"):
+        assert all(
+            x in AVAILABLE_PROVIDERS
+            for x in [
+                ProviderType.MOOMOO,
+                ProviderType.ROBINHOOD,
+                ProviderType.WEBULL,
+                ProviderType.SCHWAB,
+                ProviderType.ALPACA,
+                ProviderType.ALPACA_PAPER,
+                ProviderType.WEBULL_PAPER,
+            ]
+        )
         print("Running in a unit test, exiting")
         sys.exit(0)
     elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):

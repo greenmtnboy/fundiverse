@@ -2,6 +2,8 @@
 line-length = 100
 
 lint.ignore = ["E402", "F403"]
+lint.extend-select = ["I"]
 
 [tool.mypy]
 ignore_missing_imports = true
+

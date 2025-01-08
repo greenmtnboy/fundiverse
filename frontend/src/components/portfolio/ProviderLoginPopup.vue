@@ -64,7 +64,7 @@
             <v-text-field
               v-else
               :readonly="loading"
-              :rules="[required]"
+              :rules="!key.optional ? [required]  : []"
               v-model="providerKeyValues[selectedProvider][key.key]"
               color="primary"
               :label="key.label"
@@ -198,6 +198,7 @@ export default {
       window.open(this.externalLoginURL, "_blank");
     },
     required(v) {
+      console.log(v)
       return !!v || "Field is required";
     },
     forceOpenModal() {
@@ -227,6 +228,13 @@ export default {
         return [
           { key: "key", label: "API Key" },
           { key: "secret", label: "App Secret", type: "secret" },
+        ];
+      }
+      else if (["moomoo"].includes(provider)) {
+        return [
+          { key: "key", label: "Account ID" },
+          { key: "secret", label: "Password", type: "secret" },
+          { key: "proxy_path", label: "OpenD Proxy Path (Optional)", optional: true },
         ];
       }
       return [
