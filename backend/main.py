@@ -252,6 +252,7 @@ class LoginRequest(BaseModel):
     proxy_path: str | None = None
     force: bool = False
     wait_for_external_auth: bool = False
+    quote_provider: ProviderType | None = None
 
 
 class RealPortfolioOutput(BaseModel):
@@ -514,11 +515,16 @@ def login(input:LoginRequest)->bool:
         
         environ[MooMooProvider.ACCOUNT_ENV] = input.key
         environ[MooMooProvider.PASSWORD_ENV] = input.secret
-        # environ[MooMooProvider.TRADE_TOKEN_ENV] = input.trading_pin
+        environ[MooMooProvider.TRADE_TOKEN_ENV] = input.trading_pin
         if input.proxy_path:
             environ[MooMooProvider.OPEND_ENV] = input.proxy_path
 
-        provider = MooMooProvider(proxy = MooMooProvider.Proxy(opend_path = input.proxy_path))
+        extra_kwargs = {}
+        if input.quote_provider:
+            extra_kwargs["quote_provider"] = IN_APP_CONFIG.provider_cache[input.quote_provider]
+        else:
+            raise HTTPException(400, "No quote provider specified")
+        provider = MooMooProvider(proxy = MooMooProvider.Proxy(opend_path = input.proxy_path), **extra_kwargs)
         IN_APP_CONFIG.provider_cache[input.provider] = provider
         IN_APP_CONFIG.pending_momoo_response = None
     else:

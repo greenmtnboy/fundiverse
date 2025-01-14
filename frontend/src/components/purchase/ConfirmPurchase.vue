@@ -124,7 +124,7 @@
         </v-row>
         <v-row v-else>
           <v-col v-if="displayBatch" cols="12">
-            <template v-for="element in displayBatch" :key="element.ticker">
+            <template v-for="element in displayBatch" :key="element.ticker + element.provider">
               <v-list-item>
                 <v-chip
                   :color="element.order_type === 'BUY' ? 'green' : 'red'"

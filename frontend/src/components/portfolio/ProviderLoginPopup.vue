@@ -10,11 +10,12 @@
             color="green"
             size="compact"
             icon
+            @click="forceOpenModal"
           >
             <v-icon>mdi-check</v-icon>
           </v-btn>
         </template>
-        <span>You are authenticated to this provider</span>
+        <span >You are authenticated to this provider - click to edit</span>
       </v-tooltip>
       <v-tooltip v-else-if="error">
         <template v-slot:activator="{ props }">
@@ -83,10 +84,23 @@
             @click:append="showFactor = !showFactor"
             variant="underlined"
           ></v-text-field>
+          <v-select
+            v-if="showQuoteProvider"
+            v-model="quoteProvider"
+            color="primary"
+            :items="availableQuoteProviders"
+            label="Quote Provider"
+            variant="underlined"
+          ></v-select>
           <v-checkbox
             v-model="saveCredentials"
             color="secondary"
             label="Save Login Credentials"
+          ></v-checkbox>
+          <v-checkbox
+            v-model="showQuoteProvider"
+            color="secondary"
+            label="Use Different (Already Added) Provider For Quotes (Useful if quotes cost extra, such as MooMoo)"
           ></v-checkbox>
         </v-container>
 
@@ -140,11 +154,13 @@ export default {
       secret: "",
       factor: "",
       externalLoginURL: "",
+      quoteProvider: "",
       saveCredentials: false,
       showPass: false,
       showFactor: false,
       error: "" as string,
       extraLogin: false,
+      showQuoteProvider: false,
       dialog: false,
       providerKeyValues: {} as any,
       loading: false,
@@ -182,6 +198,9 @@ export default {
     availableProviders() {
       return this.providers.filter((item) => !this.providerKeys.includes(item));
     },
+    availableQuoteProviders() {
+      return this.activeProviders.filter((item)=> item != this.selectedProvider)
+    },
     providerLoginKeys() {
       return this.getProviderLoginKeys(this.selectedProvider);
     },
@@ -198,7 +217,6 @@ export default {
       window.open(this.externalLoginURL, "_blank");
     },
     required(v) {
-      console.log(v)
       return !!v || "Field is required";
     },
     forceOpenModal() {
@@ -234,7 +252,9 @@ export default {
         return [
           { key: "key", label: "Account ID" },
           { key: "secret", label: "Password", type: "secret" },
+          { key: "trading_pin", label: "Trading Pin", type: "secret" },
           { key: "proxy_path", label: "OpenD Proxy Path (Optional)", optional: true },
+          
         ];
       }
       return [
@@ -244,7 +264,8 @@ export default {
     },
     getDefaults(provider) {
       // loop through providerKeys
-      let keys = this.getProviderLoginKeys(provider);
+      let baseKeys = this.getProviderLoginKeys(provider);
+      let keys = baseKeys.concat({ key: "quote_provider", label: "Quote Provider" });
       let values = {};
       this.providerKeyValues[provider] = {};
       let foundAll = true;
@@ -301,6 +322,9 @@ export default {
       
       if (this.externalLoginURL) {
         command = {... command, wait_for_external_auth:true}
+      }
+      if (this.quoteProvider) {
+        command = {... command, quote_provider: this.quoteProvider}
       }
       this.externalLoginURL = "";
       return instance
