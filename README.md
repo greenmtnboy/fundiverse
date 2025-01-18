@@ -1,7 +1,4 @@
-<h1 align="center">Fundiverse</h1>
-<p align="center">
-Customize your index funds
-</p>
+[![Discord](https://img.shields.io/badge/DISCORD-CHAT-red?logo=discord)](https://discord.gg/bNsx3cF7V4)
 
 ![Logo](https://github.com/greenmtnboy/fundiverse/blob/main/media/logo-png.png)
 
@@ -17,7 +14,7 @@ Indexing has been a gospel of long-term investing for years. The central tenet o
 
 However, the emergence of low and no-fee trading platforms has made a previously prohibitive option easy - building your own index. 
 
-Fundiverse is a platform to enable you to have fun diversifying your index. Take the gold standard as a model, and add your personal touch to it. Exclude coal stocks? Sure. All in on solar? Why not weight those 400%. Hate fruit? Mark Apple down 50%.
+Fundiverse is a desktop app to enable you to have fun diversifying your index. Take the gold standard as a model, and add your personal touch to it. Exclude coal stocks? Sure. All in on solar? Why not weight those 400%. Hate fruit? Mark Apple down 50%.
 
 ![UI Preview](https://github.com/greenmtnboy/fundiverse/blob/main/media/fundiverse_new.png)
 
