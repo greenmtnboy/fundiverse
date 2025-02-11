@@ -6,7 +6,7 @@ cffi==1.17.1
 chardet==5.2.0
 charset-normalizer==3.4.0
 click==8.1.7
-cryptography==44.0.0
+cryptography==44.0.1
 dnspython==2.6.1
 email_validator==2.2.0
 fastapi==0.115.6
