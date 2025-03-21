@@ -7,9 +7,9 @@
     <span>
       <CurrencyItem
         :loading="portfolio.loading"
-        :value="{ currency: '$', value: portfolioSum }"
-      />
-      in {{ portfolioLength }} stocks
+        :value="{ currency: '$', value: portfolioSum }" 
+      /> 
+      ({{ Math.round((portfolioSum / portfolioTotal) * 100) }}% of total) in {{ portfolioLength }} stocks
     </span>
     <v-spacer></v-spacer>
     <span class="text-medium-emphasis">
@@ -123,6 +123,11 @@ export default {
       required: false,
       default: () => {},
     },
+    portfolioTotal: {
+      type: Number,
+      required: false,
+      default: 0,
+    }
   },
   computed: {
     loading() {

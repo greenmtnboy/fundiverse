@@ -69,7 +69,7 @@
       <v-divider class="pb-4 pt-0"></v-divider>
 
       <template v-for="sportfolio in portfolio.components" :key="sportfolio.name">
-        <SubPortfolio :id="sportfolio.name" :portfolio="sportfolio" :parentName="portfolio.name"
+        <SubPortfolio :id="sportfolio.name" :portfolio="sportfolio" :parentName="portfolio.name" :portfolioTotal="portfolioSum"
           :refresh="() => refreshChild(sportfolio)" />
       </template>
       <!-- <div v-for="sportfolio in portfolio.components" :key="sportfolio.name"> 
