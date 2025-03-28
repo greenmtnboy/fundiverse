@@ -1,11 +1,11 @@
 from typing import Annotated, Any, Callable, Dict, List, Optional
+
 import dotenv
 
 dotenv.load_dotenv()
 import asyncio
 import multiprocessing
 import os
-from os import environ
 import sys
 import traceback
 import uuid
@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from logging import StreamHandler, getLogger
+from os import environ
 from typing import get_type_hints
 
 import uvicorn
@@ -41,13 +42,13 @@ from py_portfolio_index import (
     STOCK_LISTS,
     AlpacaProvider,
     Logger,
+    MooMooProvider,
     PaperAlpacaProvider,
     PurchaseStrategy,
     RobinhoodProvider,
     SchwabProvider,
     WebullPaperProvider,
     WebullProvider,
-    MooMooProvider,
     generate_composite_order_plan,
 )
 from py_portfolio_index.enums import ProviderType
@@ -146,7 +147,6 @@ class ActiveConfig:
             ProviderType.MOOMOO,
             ProviderType.ALPACA_PAPER,
             ProviderType.WEBULL_PAPER,
-
         ]
         for provider in priority:
             for key, _ in self.provider_cache.items():
@@ -418,9 +418,7 @@ def get_provider_safe(iprovider: ProviderType | None = None) -> BaseProvider:
             else:
                 raise HTTPException(401, "No logged in schwab provider found")
         elif _provider == ProviderType.MOOMOO:
-            momoo_provider = IN_APP_CONFIG.provider_cache.get(
-                ProviderType.MOOMOO, None
-            )
+            momoo_provider = IN_APP_CONFIG.provider_cache.get(ProviderType.MOOMOO, None)
             if momoo_provider:
                 IN_APP_CONFIG.provider_cache[ProviderType.MOOMOO] = momoo_provider
                 provider = momoo_provider
@@ -456,7 +454,8 @@ async def logged_in_handler(provider):
     provider_enum = ProviderType(provider)
     return provider_enum in IN_APP_CONFIG.provider_cache
 
-def login(input:LoginRequest)->bool:
+
+def login(input: LoginRequest) -> bool:
     if input.provider == ProviderType.ALPACA:
         environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
         environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
@@ -512,25 +511,29 @@ def login(input:LoginRequest)->bool:
         IN_APP_CONFIG.provider_cache[input.provider] = provider
         IN_APP_CONFIG.pending_schwab_response = None
     elif input.provider == ProviderType.MOOMOO:
-        
+
         environ[MooMooProvider.ACCOUNT_ENV] = input.key
         environ[MooMooProvider.PASSWORD_ENV] = input.secret
-        environ[MooMooProvider.TRADE_TOKEN_ENV] = input.trading_pin
+        if input.trading_pin:
+            environ[MooMooProvider.TRADE_TOKEN_ENV] = input.trading_pin
         if input.proxy_path:
             environ[MooMooProvider.OPEND_ENV] = input.proxy_path
 
         extra_kwargs = {}
         if input.quote_provider:
-            extra_kwargs["quote_provider"] = IN_APP_CONFIG.provider_cache[input.quote_provider]
+            extra_kwargs["quote_provider"] = IN_APP_CONFIG.provider_cache[
+                input.quote_provider
+            ]
         else:
             raise HTTPException(400, "No quote provider specified")
-        provider = MooMooProvider(proxy = MooMooProvider.Proxy(opend_path = input.proxy_path), **extra_kwargs)
+        provider = MooMooProvider(proxy=MooMooProvider.Proxy(opend_path=input.proxy_path), **extra_kwargs)  # type: ignore
         IN_APP_CONFIG.provider_cache[input.provider] = provider
         IN_APP_CONFIG.pending_momoo_response = None
     else:
         raise HTTPException(404, "Selected provider not supported yet")
     IN_APP_CONFIG.logged_in = input.provider.value
     return True
+
 
 @router.post("/login")
 def login_handler(input: LoginRequest):
@@ -592,8 +595,10 @@ def refresh_sub_portfolio(
         rport = IN_APP_CONFIG.holding_cache[key]
     return datetime.now() - start, rport
 
+
 def sum_holdings(holdings: List[RealPortfolioElement]) -> Money:
     return Money(value=sum([x.value for x in holdings]))
+
 
 @router.post("/composite_portfolio/refresh")
 def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
@@ -639,7 +644,8 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
                 )
             except Exception as e:
                 raise HTTPException(422, f"Error refreshing: {str(e)}")
-    active = {k:active[k] for k in sorted(active.keys(), key=lambda x: active[x].holding_size.value, reverse=True)}
+
+    active = {k: active[k] for k in sorted(active.keys(), key=lambda x: active[x].holding_size.value if active[x].holding_size is not None else 0.0, reverse=True)}  # type: ignore
     internal = CompositePortfolio(raw)
 
     return CompositePortfolioOutput(
