@@ -1,12 +1,23 @@
 import { _electron as electron } from "playwright";
 import { test, expect, ElectronApplication, Page } from "@playwright/test";
+const path = require('path');
+// Check if the current path ends with "frontend"
+let cwdPath = __dirname;
 
-test.describe("Add Connection", async () => {
+if (!cwdPath.endsWith(path.sep + 'frontend')) {
+  cwdPath = path.resolve(__dirname, '..');
+  console.log(` New path: ${cwdPath}`);
+} else {
+  console.log(`Path already ends with 'frontend': ${cwdPath}`);
+}
+
+
+test.describe("Test App", async () => {
   let electronApp: ElectronApplication;
   let firstWindow: Page;
 
   test.beforeAll(async () => {
-    electronApp = await electron.launch({ args: ['dist-electron/main.js'] })
+    electronApp = await electron.launch({ args: [path.join(cwdPath,'dist-electron/main.js')] })
     // electronApp.process().stdout.on('data', (data) => console.log(`stdout: ${data}`));
     // electronApp.process().stderr.on('data', (error) => console.log`stderr: ${error}`);
     firstWindow = await electronApp.firstWindow();
