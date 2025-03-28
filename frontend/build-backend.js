@@ -1,13 +1,17 @@
 // build-pyinstaller.js
 const { exec } = require("child_process");
 const path = require("path");
-
+const os = require('os');
 const parentDir = path.resolve(__dirname, "..");
 // Replace 'your_script.py' with your actual Python script or entry point
 const pythonScript = path.join(parentDir, "backend/build.py");
 // const pythonScript = '../backend/src/build.py';
 
-const venvPath = path.join(parentDir, ".venv/bin/python");
+let venvPath = path.join(parentDir, ".venv/Scripts/python");
+if (os.platform() === 'linux') {
+  venvPath = path.join(parentDir, ".venv/bin/python");
+}
+
 require("dotenv").config();
 // this is set in CI
 // but if you have a pyenv set will override
