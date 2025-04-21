@@ -17,6 +17,9 @@
     <template v-else-if="iconType === 'schwab'">
       <v-img :src="schwabSrc" alt="'Charles Schwab Logo'" />
     </template>
+    <template v-else-if="iconType === 'moomoo'">
+      <v-img :src="moomooSrc" alt="'MooMoo Logo'" />
+    </template>
   </v-avatar>
 </template>
 <style>
@@ -30,6 +33,7 @@ import AlpacaIcon from "./AlpacaIcon.vue";
 import robinhoodURL from "/src/assets/robinhood.png";
 import webullPNG from "/src/assets/webull.png";
 import schwabSVG from "/src/assets/schwab.svg";
+import moomooSVG from '/src/assets/moomoo.svg';
 export default {
   name: "ProviderIcon",
   data() {
@@ -37,6 +41,7 @@ export default {
       robinhoodSrc: robinhoodURL,
       webullSrc: webullPNG,
       schwabSrc: schwabSVG,
+      moomooSrc: moomooSVG,
     };
   },
   components: {

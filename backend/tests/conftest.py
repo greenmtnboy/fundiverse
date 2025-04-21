@@ -6,6 +6,7 @@ sys.path.insert(0, dirname(dirname(__file__)))
 
 import pytest
 from fastapi.testclient import TestClient
+
 from main import app
 
 

@@ -2,8 +2,8 @@ import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 from os import environ
+from pathlib import Path
 from platform import system
 
 # Get the root directory of the project

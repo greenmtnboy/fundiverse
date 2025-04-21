@@ -1,36 +1,66 @@
-// build-pyinstaller.js
-const { exec } = require("child_process");
+const { spawn } = require("child_process");
 const path = require("path");
-
+const os = require('os');
 const parentDir = path.resolve(__dirname, "..");
-// Replace 'your_script.py' with your actual Python script or entry point
 const pythonScript = path.join(parentDir, "backend/build.py");
-// const pythonScript = '../backend/src/build.py';
 
-const venvPath = path.join(parentDir, ".venv/bin/python");
+// Determine Python path
+let venvPath = path.join(parentDir, ".venv/Scripts/python");
+if (os.platform() === 'linux') {
+  venvPath = path.join(parentDir, ".venv/bin/python");
+}
+
 require("dotenv").config();
-// this is set in CI
-// but if you have a pyenv set will override
 const pythonPath = process.env.pythonLocation;
-const pyInstallerCommand = pythonPath
-  ? `${pythonPath}/python ${pythonScript}`
-  : `${venvPath} ${pythonScript}`;
+const pythonExecutable = pythonPath ? `${pythonPath}/python` : venvPath;
 
-exec(
-  pyInstallerCommand,
+console.log(`Using Python executable: ${pythonExecutable}`);
+console.log(`Building script: ${pythonScript}`);
+
+// Use spawn instead of exec to get real-time output
+const pyInstallerProcess = spawn(
+  pythonExecutable,
+  [pythonScript],
   {
     env: {
+      ...process.env, // Include all current env variables
       pyenv: process.env.pyenv,
       pythonLocation: process.env.pythonLocation,
     },
-  },
-  (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error: ${error}`);
-      console.error(`PyInstaller Errors:\n${stderr}`);
-      throw error;
-    }
-    console.error(`PyInstaller Errors:\n${stderr}`);
-    console.log(`PyInstaller Output:\n${stdout}`);
-  },
+  }
 );
+
+// Set a timeout (e.g., 30 minutes = 1800000 ms)
+const TIMEOUT_MS = 900000;
+const timeout = setTimeout(() => {
+  console.error("PyInstaller build timed out after 30 minutes");
+  pyInstallerProcess.kill();
+  process.exit(1);
+}, TIMEOUT_MS);
+
+// Log output in real-time
+pyInstallerProcess.stdout.on('data', (data) => {
+  console.log(`PyInstaller: ${data.toString().trim()}`);
+});
+
+pyInstallerProcess.stderr.on('data', (data) => {
+  console.error(`PyInstaller Error: ${data.toString().trim()}`);
+});
+
+// Handle process completion
+pyInstallerProcess.on('close', (code) => {
+  clearTimeout(timeout);
+  if (code !== 0) {
+    console.error(`PyInstaller process exited with code ${code}`);
+    process.exit(code);
+  } else {
+    console.log("PyInstaller build completed successfully");
+  }
+});
+
+// Handle unexpected errors
+pyInstallerProcess.on('error', (err) => {
+  clearTimeout(timeout);
+  console.error(`Failed to start PyInstaller process: ${err}`);
+  process.exit(1);
+});

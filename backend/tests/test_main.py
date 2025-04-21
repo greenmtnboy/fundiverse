@@ -1,5 +1,6 @@
-from fastapi.testclient import TestClient
 from datetime import datetime
+
+from fastapi.testclient import TestClient
 from py_portfolio_index.models import IdealPortfolio
 
 
