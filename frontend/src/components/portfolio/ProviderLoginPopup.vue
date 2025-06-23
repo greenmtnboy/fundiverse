@@ -3,19 +3,12 @@
     <template v-slot:activator="{ props }">
       <v-tooltip v-if="loginSuccess">
         <template v-slot:activator="{ props }">
-          <v-btn
-            v-bind="props"
-            transition="fade-transition"
-            class="text-none"
-            color="green"
-            size="compact"
-            icon
-            @click="forceOpenModal"
-          >
+          <v-btn v-bind="props" transition="fade-transition" class="text-none" color="green" size="compact" icon
+            @click="forceOpenModal">
             <v-icon>mdi-check</v-icon>
           </v-btn>
         </template>
-        <span >You are authenticated to this provider - click to edit</span>
+        <span>You are authenticated to this provider - click to edit</span>
       </v-tooltip>
       <v-tooltip v-else-if="error">
         <template v-slot:activator="{ props }">
@@ -29,85 +22,38 @@
         {{ label }}
       </v-btn>
     </template>
-    <v-card
-      class="mx-auto"
-      min-width="344"
-      :title="selectedProvider ? `Login to ${selectedProvider}` : 'Provider'"
-    >
+    <v-card class="mx-auto" min-width="344" :title="selectedProvider ? `Login to ${selectedProvider}` : 'Provider'">
       <v-form v-model="form" @submit.prevent="login">
         <v-container>
-          <v-select
-            :readonly="loading || !providerSelectable"
-            :rules="[required]"
-            v-model="selectedProvider"
-            color="primary"
-            :items="availableProviders"
-            @update:modelValue="providerSelected"
-            label="Provider Type"
-            variant="underlined"
-          ></v-select>
-          <template
-            v-if="providerKeyValues[this.selectedProvider]"
-            v-for="key in providerLoginKeys"
-          >
-            <v-text-field
-              v-if="key.type == 'secret'"
-              :readonly="loading"
-              :rules="[required]"
-              v-model="providerKeyValues[selectedProvider][key.key]"
-              color="primary"
-              :label="key.label"
-              variant="underlined"
-              :append-icon="showPass ? 'mdi-eye' : 'mdi-eye-off'"
-              :type="showPass ? 'text' : 'password'"
-              @click:append="showPass = !showPass"
-            ></v-text-field>
-            <v-text-field
-              v-else
-              :readonly="loading"
-              :rules="!key.optional ? [required]  : []"
-              v-model="providerKeyValues[selectedProvider][key.key]"
-              color="primary"
-              :label="key.label"
-              variant="underlined"
-            ></v-text-field>
+          <v-select :readonly="loading || !providerSelectable" :rules="[required]" v-model="selectedProvider"
+            color="primary" :items="availableProviders" @update:modelValue="providerSelected" label="Provider Type"
+            variant="underlined"></v-select>
+          <template v-if="providerKeyValues[selectedProvider]" v-for="key in providerLoginKeys">
+            <v-text-field v-if="key.type == 'secret'" :readonly="loading" :rules="[required]"
+              v-model="providerKeyValues[selectedProvider][key.key]" color="primary" :label="key.label"
+              variant="underlined" :append-icon="showPass ? 'mdi-eye' : 'mdi-eye-off'"
+              :type="showPass ? 'text' : 'password'" @click:append="showPass = !showPass"></v-text-field>
+            <v-text-field v-else :readonly="loading" :rules="!key.optional ? [required] : []"
+              v-model="providerKeyValues[selectedProvider][key.key]" color="primary" :label="key.label"
+              variant="underlined"></v-text-field>
           </template>
-          <v-text-field
-            v-if="extraLogin"
-            :readonly="loading"
-            :rules="[required]"
-            v-model="factor"
-            color="primary"
-            label="Extra Factor"
-            :append-icon="showFactor ? 'mdi-eye' : 'mdi-eye-off'"
-            :type="showFactor ? 'text' : 'password'"
-            @click:append="showFactor = !showFactor"
-            variant="underlined"
-          ></v-text-field>
-          <v-select
-            v-if="showQuoteProvider"
-            v-model="quoteProvider"
-            color="primary"
-            :items="availableQuoteProviders"
-            label="Quote Provider"
-            variant="underlined"
-          ></v-select>
-          <v-checkbox
-            v-model="saveCredentials"
-            color="secondary"
-            label="Save Login Credentials"
-          ></v-checkbox>
-          <v-checkbox
-            v-model="showQuoteProvider"
-            color="secondary"
-            label="Use Different (Already Added) Provider For Quotes (Useful if quotes cost extra, such as MooMoo)"
-          ></v-checkbox>
+          <v-text-field v-if="extraLogin" :readonly="loading" :rules="[required]" v-model="factor" color="primary"
+            label="Extra Factor" :append-icon="showFactor ? 'mdi-eye' : 'mdi-eye-off'"
+            :type="showFactor ? 'text' : 'password'" @click:append="showFactor = !showFactor"
+            variant="underlined"></v-text-field>
+          <v-select v-if="showQuoteProvider" v-model="providerKeyValues[selectedProvider]['quote_provider']" color="primary" :items="availableQuoteProviders"
+            label="Quote Provider" variant="underlined"></v-select>
+          <v-checkbox v-model="saveCredentials" color="secondary" label="Save Login Credentials"></v-checkbox>
+          <v-checkbox v-model="showQuoteProvider" color="secondary"
+            label="Use Different (Already Added) Provider For Quotes (Useful if quotes cost extra, such as MooMoo)"></v-checkbox>
         </v-container>
 
         <v-divider></v-divider>
         <v-alert class="mx-auto square-corners" color="info" v-if="externalLoginURL">
-          External login required, click here to continue: <a target="_blank" :href="externalLoginURL">{{ externalLoginURL }}</a>,
-          then resubmit to complete authentication.
+          External login required, click <a target="_blank" :href="externalLoginURL">here</a> to complete login flow in
+          a
+          popup.
+          After you have completed it, you can click the login buton again to resubmit and complete authentication.
           <v-btn @click="externalLogin"></v-btn>
         </v-alert>
         <v-alert class="mx-auto square-corners" color="warning" v-if="error">{{
@@ -115,12 +61,7 @@
         }}</v-alert>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn
-            :disabled="!form"
-            :loading="loading"
-            color="success"
-            type="submit"
-          >
+          <v-btn :disabled="!form" :loading="loading" color="success" type="submit">
             Authenticate
             <v-icon icon="mdi-chevron-right" end></v-icon>
           </v-btn>
@@ -199,7 +140,7 @@ export default {
       return this.providers.filter((item) => !this.providerKeys.includes(item));
     },
     availableQuoteProviders() {
-      return this.activeProviders.filter((item)=> item != this.selectedProvider)
+      return this.activeProviders.filter((item) => item != this.selectedProvider)
     },
     providerLoginKeys() {
       return this.getProviderLoginKeys(this.selectedProvider);
@@ -220,7 +161,9 @@ export default {
       return !!v || "Field is required";
     },
     forceOpenModal() {
-      // this.getDefaults()
+      if (this.provider && !this.providerLoginKeys[this.provider]) {
+        this.getDefaults(this.provider)
+      }
       this.dialog = true;
     },
     getProviderLoginKeys(provider) {
@@ -254,7 +197,7 @@ export default {
           { key: "secret", label: "Password", type: "secret" },
           { key: "trading_pin", label: "Trading Pin", type: "secret" },
           { key: "proxy_path", label: "OpenD Proxy Path (Optional)", optional: true },
-          
+
         ];
       }
       return [
@@ -269,18 +212,22 @@ export default {
       let values = {};
       this.providerKeyValues[provider] = {};
       let foundAll = true;
+
       for (let i = 0; i < keys.length; i++) {
-        let key = keys[i].key.concat("-").concat(provider);
-        let saved_key_value = this.keys.find((obj) => obj.key === key);
+        let save_key = keys[i].key.concat("-").concat(provider);
+        let saved_key_value = this.keys.find((obj) => obj.key === save_key);
         if (saved_key_value) {
           values[keys[i].key] = saved_key_value.value;
+          if (keys[i].key == 'quote_provider' && saved_key_value.value !== null) {
+            this.showQuoteProvider = true;
+            this.quoteProvider = saved_key_value.value;
+          }
         } else {
           values[keys[i].key] = null;
           foundAll = false;
         }
       }
       this.providerKeyValues[provider] = values;
-      return foundAll;
     },
     providerSelected() {
       this.getDefaults(this.selectedProvider);
@@ -319,12 +266,12 @@ export default {
       if (this.factor) {
         command = { ...command, extra_factor: this.factor };
       }
-      
+
       if (this.externalLoginURL) {
-        command = {... command, wait_for_external_auth:true}
+        command = { ...command, wait_for_external_auth: true }
       }
       if (this.quoteProvider) {
-        command = {... command, quote_provider: this.quoteProvider}
+        command = { ...command, quote_provider: this.quoteProvider }
       }
       this.externalLoginURL = "";
       return instance
@@ -333,15 +280,19 @@ export default {
           this.setLoggedIn({ provider: this.selectedProvider });
 
           if (this.saveCredentials) {
-            for (let i = 0; i < this.providerLoginKeys.length; i++) {
-              let key = this.providerLoginKeys[i].key
+            let keys = this.providerLoginKeys;
+            if (this.quoteProvider) {
+              keys = keys.concat({ key: "quote_provider", label: "Quote Provider" });
+            }
+            for (let i = 0; i < keys.length; i++) {
+              let save_key = keys[i].key
                 .concat("-")
                 .concat(this.selectedProvider);
               this.storeSavedValue({
-                key: key,
+                key: save_key,
                 value:
                   this.providerKeyValues[this.selectedProvider][
-                    this.providerLoginKeys[i].key
+                  keys[i].key
                   ],
               });
             }
@@ -373,9 +324,9 @@ export default {
               this.error = axiosHelpers.getErrorMessage(exc);
             }
 
-          } 
+          }
           else if (exc instanceof exceptions.auth_external_login) {
-              this.externalLoginURL = exc.message;
+            this.externalLoginURL = exc.message;
           }
           else {
             this.error = axiosHelpers.getErrorMessage(exc);
