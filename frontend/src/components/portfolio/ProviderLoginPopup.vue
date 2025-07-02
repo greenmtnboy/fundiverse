@@ -51,10 +51,8 @@
         <v-divider></v-divider>
         <v-alert class="mx-auto square-corners" color="info" v-if="externalLoginURL">
           External login required, click <a target="_blank" :href="externalLoginURL">here</a> to complete login flow in
-          a
-          popup.
-          After you have completed it, you can click the login buton again to resubmit and complete authentication.
-          <v-btn @click="externalLogin"></v-btn>
+          a popup window.
+          After you have completed it, click the authenticate button again to complete authentication.
         </v-alert>
         <v-alert class="mx-auto square-corners" color="warning" v-if="error">{{
           error
