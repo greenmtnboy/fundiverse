@@ -211,9 +211,9 @@
           class="text-white flex-grow-1 text-none"
           color="primary"
           variant="flat"
-          @click="submit()"
+          @click="hasChangedBlock? planPurchase() : submit()"
         >
-          Submit Orders
+          {{ hasChangedBlock? 'Replan Orders' : 'Submit Orders' }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -261,6 +261,7 @@ export default {
     selectedMode: 2,
     batchSize: 10,
     localExclusions: [],
+    hasChangedBlock: false,
     modes: [
       { name: "Smallest Diff First", id: 1 },
       { name: "Largest Diff First", id: 2 },
@@ -368,7 +369,9 @@ export default {
       this.plan["to_buy"] = this.plan["to_buy"].filter(
         (element) => element.ticker !== ticker,
       );
-      this.planPurchase();
+      this.hasChangedBlock = true;
+      
+      // this.planPurchase();
     },
     planPurchase() {
       this.alertVisible = false;
@@ -393,13 +396,19 @@ export default {
         .then((response) => {
           this.plan = response.data;
         })
-        .catch((error) => {
+        .catch((error) => { 
           this.alertVisible = true;
-          this.exception = error;
+          if (error.response?.data?.detail) {
+            this.exception = error.response.data.detail
+          }
+          else {
+          this.exception = error.message || error;
+          }
           this.plan.to_buy = [];
         })
         .finally(() => {
           this.initialLoading = false;
+          this.hasChangedBlock = false;
         });
     },
     submit() {
