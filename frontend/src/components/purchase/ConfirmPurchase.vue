@@ -1,16 +1,9 @@
 <template>
   <!-- rounded="0" -->
-  <v-dialog v-model="dialog" max-width="500">
+  <v-dialog v-model="dialog" max-width="500" persistent>
     <template v-slot:activator="{ props }">
-      <v-btn
-        :disabled="!selectedIndex || cash.value < 0.0 || disabled"
-        @click="clickPurchaseButton()"
-        min-width="200px"
-        class="d-flex flex-column"
-        color="primary"
-        variant="outlined"
-        v-bind="props"
-      >
+      <v-btn :disabled="!selectedIndex || cash.value < 0.0 || disabled" @click="clickPurchaseButton()" min-width="200px"
+        class="d-flex flex-column" color="primary" variant="outlined" v-bind="props">
         Buy ({{ cash.currency }}{{ Math.round(cash.value) }} Available)
       </v-btn>
       <!-- <v-btn :disabled="!selectedIndex" class="d-flex flex-column" > -->
@@ -19,12 +12,7 @@
 
     <v-card :title="`Submit Purchase`">
       <v-card-text v-if="priceTipVisible">
-        <v-alert
-          v-model="priceTipVisible"
-          type="info"
-          closable
-          @input="priceTipVisible = false"
-        >
+        <v-alert v-model="priceTipVisible" type="info" closable @input="priceTipVisible = false">
           Exact price your orders are fulfilled at may vary after being placed
           as a result of market conditions. Actual dollars spent may be variable
           to regard to goal within a few percent, especially for large number of
@@ -50,21 +38,10 @@
 
         <v-row>
           <v-col width="12" justify="center">
-            <v-chip-group
-              :disabled="loading || initialLoading"
-              v-model="selectedMode"
-              mandatory
-              selected-class="text-primary"
-              @update:modelValue="(_) => planPurchase()"
-            >
-              <v-chip
-                :disabled="loading || initialLoading"
-                v-for="mode in modes"
-                :key="mode.id"
-                :value="mode.id"
-                :label="true"
-                :item-text="mode.name"
-              >
+            <v-chip-group :disabled="loading || initialLoading" v-model="selectedMode" mandatory
+              selected-class="text-primary" @update:modelValue="(_) => planPurchase()">
+              <v-chip :disabled="loading || initialLoading" v-for="mode in modes" :key="mode.id" :value="mode.id"
+                :label="true" :item-text="mode.name">
                 {{ mode.name }}
               </v-chip>
             </v-chip-group>
@@ -74,14 +51,8 @@
           <v-col width="12" justify="center">
             Excluded Tickers
             <v-chip-group :disabled="true">
-              <v-chip
-                :disabled="loading || initialLoading"
-                v-for="ticker in localExclusions"
-                :key="ticker"
-                :value="ticker"
-                :label="true"
-                :item-text="ticker"
-              >
+              <v-chip :disabled="loading || initialLoading" v-for="ticker in localExclusions" :key="ticker"
+                :value="ticker" :label="true" :item-text="ticker">
                 <TickerDisplay :ticker="ticker" />
               </v-chip>
             </v-chip-group>
@@ -89,36 +60,22 @@
         </v-row>
         <v-row>
           <v-col cols="12">
-            <v-text-field
-              :disabled="loading || initialLoading"
-              class="input-field"
-              variant="solo"
-              label="Purchase Amount"
-              v-model="toPurchaseInternal"
-              :rules="numberValidationRules"
-              @update:modelValue="(_) => handleOrderSizeInput()"
-            >
+            <v-text-field :disabled="loading || initialLoading" class="input-field" variant="solo"
+              label="Purchase Amount" v-model="toPurchaseInternal" :rules="numberValidationRules"
+              @update:modelValue="(_) => handleOrderSizeInput()">
             </v-text-field>
           </v-col>
         </v-row>
         <v-row class="py-5" height="15" v-if="initialLoading">
-          <v-progress-linear height="20" indeterminate color="primary"
-            >Planning Orders - This May Take Time</v-progress-linear
-          >
+          <v-progress-linear height="20" indeterminate color="primary">Planning Orders - This May Take
+            Time</v-progress-linear>
         </v-row>
         <v-row v-else-if="placedOrders.length > 0">
           <v-col v-if="displayPlacedBatch" cols="12">
-            <template
-              v-for="element in displayPlacedBatch"
-              :key="element.ticker"
-            >
+            <template v-for="element in displayPlacedBatch" :key="element.ticker">
               <OrderResult :element="element" />
             </template>
-            <v-pagination
-              v-model="placedPage"
-              class="my-4"
-              :length="placedLength"
-            ></v-pagination>
+            <v-pagination v-model="placedPage" class="my-4" :length="placedLength"></v-pagination>
           </v-col>
           <v-col v-else> </v-col>
         </v-row>
@@ -126,94 +83,60 @@
           <v-col v-if="displayBatch" cols="12">
             <template v-for="element in displayBatch" :key="element.ticker + element.provider">
               <v-list-item>
-                <v-chip
-                  :color="element.order_type === 'BUY' ? 'green' : 'red'"
-                  small
-                  outlined
-                  >{{ element.order_type }}</v-chip
-                >
+                <v-chip :color="element.order_type === 'BUY' ? 'green' : 'red'" small outlined>{{ element.order_type
+                }}</v-chip>
 
-                <CurrencyItem v-if="element.value" :value="element.value" /><span v-if="element.qty">{{ element.qty }} units </span> of
+                <CurrencyItem v-if="element.value" :value="element.value" /><span v-if="element.qty">{{ element.qty }}
+                  units </span> of
                 <TickerDisplay :ticker="element.ticker" /> on
                 {{ element.provider }}
                 <template v-slot:append>
                   <v-tooltip>
                     <template v-slot:activator="{ props }">
-                      <v-btn
-                        v-bind="props"
-                        @click="removeOrder(element.ticker)"
-                        icon
-                        density="compact"
-                      >
+                      <v-btn v-bind="props" @click="removeOrder(element.ticker)" icon density="compact">
                         <v-icon color="warning">mdi-cancel</v-icon>
                       </v-btn>
                     </template>
                     <span>Remove Order</span>
                   </v-tooltip>
+                  <v-tooltip>
+                    <template v-slot:activator="{ props }">
+                      <v-btn v-bind="props" @click="removeStockFromPortfolio(element.ticker)" icon density="compact">
+                        <v-icon color="error">mdi-cancel</v-icon>
+                      </v-btn>
+                    </template>
+                    <span>Remove Stock From Portfolio</span>
+                  </v-tooltip>
                 </template>
               </v-list-item>
             </template>
-            <v-pagination
-              v-model="page"
-              class="my-4"
-              :length="orderLength"
-            ></v-pagination>
+            <v-pagination v-model="page" class="my-4" :length="orderLength"></v-pagination>
           </v-col>
           <v-col v-else>
             <v-alert type="info" class="my-4" outlined>
               No orders to place.
-              <v-btn
-                color="primary"
-                variant="flat"
-                density="compact"
-                @click="planPurchase"
-                >Replan</v-btn
-              >
+              <v-btn color="primary" variant="flat" density="compact" @click="planPurchase">Replan</v-btn>
             </v-alert>
           </v-col>
         </v-row>
       </v-card-text>
 
       <v-divider></v-divider>
-      <v-alert
-        :min-height="200"
-        v-model="alertVisible"
-        type="error"
-        closable
-        @input="alertVisible = false"
-      >
+      <v-alert :min-height="200" v-model="alertVisible" type="error" closable @input="alertVisible = false">
         {{ exception }}
       </v-alert>
       <v-card-actions class="justify-center px-6 py-3">
-        <v-btn
-          class="flex-grow-1 text-none"
-          variant="plain"
-          @click="dialog = false"
-        >
+        <v-btn class="flex-grow-1 text-none" variant="plain" @click="dialog = false">
           Exit
         </v-btn>
-        <v-btn
-          v-if="placedOrders.length > 0"
-          :loading="loading"
-          key="return"
-          class="text-white flex-grow-1 text-none"
-          color="primary"
-          variant="flat"
-          @click="completeOrders()"
-        >
+        <v-btn v-if="placedOrders.length > 0" :loading="loading" key="return" class="text-white flex-grow-1 text-none"
+          color="primary" variant="flat" @click="completeOrders()">
           Done Reviewing Results
         </v-btn>
-        <v-btn
-          v-else
-          :disabled="initialLoading || alertVisible"
-          :loading="loading"
-          key="submit"
-          class="text-white flex-grow-1 text-none"
-          color="primary"
-          variant="flat"
-          @click="hasChangedBlock? planPurchase() : submit()"
-        >
-          {{ hasChangedBlock? 'Replan Orders' : 'Submit Orders' }}
+        <v-btn v-else :disabled="initialLoading || alertVisible" :loading="loading" key="submit"
+          class="text-white flex-grow-1 text-none" color="primary" variant="flat"
+          @click="hasChangedBlock ? planPurchase() : submit()">
+          {{ hasChangedBlock ? 'Replan Orders' : 'Submit Orders' }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -341,11 +264,11 @@ export default {
     this.setDefaultPurchaseSize();
   },
   methods: {
-    ...mapActions(["excludeList", "modifyList", "refreshCompositePortfolio"]),
+    ...mapActions(["excludeList", "modifyList", "refreshCompositePortfolio", "excludeStock"]),
     completeOrders() {
       this.placedOrders = [];
       this.error = null;
-      this.localExclusions = [];
+      // this.localExclusions = [];
     },
     clickPurchaseButton() {
       this.setDefaultPurchaseSize();
@@ -370,8 +293,14 @@ export default {
         (element) => element.ticker !== ticker,
       );
       this.hasChangedBlock = true;
-      
-      // this.planPurchase();
+    },
+    removeStockFromPortfolio(ticker) {
+      this.excludeStock({
+        portfolioName: this.portfolioName,
+        ticker: ticker,
+      });
+      this.removeOrder(ticker);
+      this.hasChangedBlock = true;
     },
     planPurchase() {
       this.alertVisible = false;
@@ -396,13 +325,13 @@ export default {
         .then((response) => {
           this.plan = response.data;
         })
-        .catch((error) => { 
+        .catch((error) => {
           this.alertVisible = true;
           if (error.response?.data?.detail) {
             this.exception = error.response.data.detail
           }
           else {
-          this.exception = error.message || error;
+            this.exception = error.message || error;
           }
           this.plan.to_buy = [];
         })

@@ -93,7 +93,7 @@
       </v-col>
       <v-col cols="6" min-width="300px">
         <v-card>
-          <v-card-title style="min-height: 115px" class="text-center">
+          <v-card-title style="min-height: 108px" class="text-center">
             <v-autocomplete
               @update:modelValue="(newValue) => getTargetPortfolio(newValue)"
               v-model="selectedIndex"
@@ -105,16 +105,20 @@
             ></v-autocomplete>
           </v-card-title>
           <v-card-actions>
+            <span>
             <TailorComponent :portfolioName="portfolioName" />
             <IconTooltip
               text="Further customize the selected index by excluding or reweighting individual stocks or lists of stocks"
             />
+            </span>
+            <span>
             <v-checkbox-btn
               :disabled="!selectedIndex"
               v-model="reweightTarget"
               @update:modelValue="(_) => getTargetPortfolio(selectedIndex)"
               label="Reweight"
             />
+            </span>
             <IconTooltip
               text="Scale the weights of stocks in the index by the changes in their prices from the date of the index. For example, if a index is a snapshot from Q3 2023 and it is Q4, reweight %s based on the changes in component prices between the index date and current date."
             />
