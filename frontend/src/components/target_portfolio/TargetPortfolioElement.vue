@@ -47,7 +47,7 @@ export default {
     onClickWrapper() {
       this.loading = true;
       this.excluded = true;
-      this.excludeStock({ticker:this.element.ticker, portfolio:this.portfolioName}).finally(() => {
+      this.excludeStock({ticker:this.element.ticker, portfolioName:this.portfolioName}).finally(() => {
         this.loading = false;
       });
       // if (this.onClick) {
