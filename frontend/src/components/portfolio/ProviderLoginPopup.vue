@@ -209,7 +209,6 @@ export default {
       let keys = baseKeys.concat({ key: "quote_provider", label: "Quote Provider" });
       let values = {};
       this.providerKeyValues[provider] = {};
-      let foundAll = true;
 
       for (let i = 0; i < keys.length; i++) {
         let save_key = keys[i].key.concat("-").concat(provider);
@@ -222,7 +221,6 @@ export default {
           }
         } else {
           values[keys[i].key] = null;
-          foundAll = false;
         }
       }
       this.providerKeyValues[provider] = values;
