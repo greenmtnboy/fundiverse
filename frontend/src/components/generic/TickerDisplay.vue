@@ -36,7 +36,7 @@ export default {
       instance
         .get(`stock_info/${this.ticker}`)
         .then((resp) => {
-          this.text = `${resp.data.name} (${resp.data.exchange})`;
+          this.text = `${resp.data.name} (${resp.data.exchange} - ${resp.data.sector}): ${resp.data.description ? resp.data.description.substring(0, 100) : "No description available"}...`;
           this.loading = false;
           this.loaded = true;
         })
