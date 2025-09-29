@@ -13,6 +13,9 @@
                   <span class="pr-2">Portfolio Return: </span>
                   <CurrencyItem
                     :value="portfolio.profit_or_loss.value ? portfolio.profit_or_loss : { currency: 'USD', value: portfolio.profit_or_loss }" />
+  
+
+                    <span class="pl-2">({{ portfolioReturnPercentage }}%)</span>
                 </v-chip>
               </template>
               <span>Dividends:
@@ -141,6 +144,10 @@ export default {
     //         }
     //     }
     // },
+    portfolioReturnPercentage() {
+      const percentage = (this.portfolio.profit_or_loss.value / (this.portfolioSum - this.portfolio.profit_or_loss.value)) * 100;
+      return percentage.toFixed(2);
+    },
     timeDisplay() {
       const options: Intl.DateTimeFormatOptions = {
         weekday: "long",

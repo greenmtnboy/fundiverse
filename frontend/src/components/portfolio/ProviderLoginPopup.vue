@@ -181,6 +181,7 @@ export default {
           { key: "secret", label: "Password", type: "secret" },
           { key: "device_id", label: "Device ID", type: "secret" },
           { key: "trading_pin", label: "Trading Pin", type: "secret" },
+          { key: "response_json", label: "Response JSON (Optional)", optional: true },
         ];
       }
       else if (["schwab"].includes(provider)) {
@@ -269,6 +270,7 @@ export default {
       if (this.quoteProvider) {
         command = { ...command, quote_provider: this.quoteProvider }
       }
+
       this.externalLoginURL = "";
       return instance
         .post("login", command)

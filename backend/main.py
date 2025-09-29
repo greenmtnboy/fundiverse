@@ -253,6 +253,7 @@ class LoginRequest(BaseModel):
     force: bool = False
     wait_for_external_auth: bool = False
     quote_provider: ProviderType | None = None
+    response_json: str | None = None
 
 
 class RealPortfolioOutput(BaseModel):
@@ -487,7 +488,10 @@ def login(input: LoginRequest) -> bool:
         environ[WebullProvider.USERNAME_ENV] = input.key
         environ[WebullProvider.TRADE_TOKEN_ENV] = input.trading_pin
         environ[WebullProvider.DEVICE_ID_ENV] = input.device_id
-        provider = WebullProvider()
+        if input.response_json:
+            provider = WebullProvider(response_json=input.response_json)
+        else:
+            provider = WebullProvider()
         IN_APP_CONFIG.provider_cache[input.provider] = provider
     elif input.provider == ProviderType.WEBULL_PAPER:
         assert input.trading_pin is not None
