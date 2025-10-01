@@ -36,9 +36,7 @@
         </p>
         <p v-if="selectedIndex">
           Based on index
-          <span class="font-weight-black" :style="{ color: 'purple' }">{{
-      this.selectedIndex
-    }}</span>
+          <span class="font-weight-black" :style="{ color: 'purple' }">{{ selectedIndex }}</span>
           with {{ customizationCount }} customizations.
         </p>
         <p v-else :style="{ color: 'orange' }">
@@ -96,6 +94,9 @@
         :providers="portfolio.keys" :portfolioName="portfolio.name" :disabled="portfolio.loading" />
       <v-btn :disabled="portfolio.keys.length === 0" @click="navigatePortfolio">
         Configure
+      </v-btn>
+            <v-btn :disabled="portfolio.keys.length === 0" @click="navigateAnalytics">
+       Analytics
       </v-btn>
       <ProviderLoginPopup  :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
 
@@ -251,6 +252,9 @@ export default {
     ]),
     navigatePortfolio() {
       this.$router.push({ path: `composite_portfolio/${this.portfolio.name}` });
+    },
+    navigateAnalytics() {
+      this.$router.push({ path: `portfolio_analytics/${this.portfolio.name}` });
     },
     async refreshChild(sportfolio) {
       await this.refreshCompositePortfolio({

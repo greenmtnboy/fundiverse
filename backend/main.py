@@ -19,7 +19,9 @@ from enum import Enum
 from logging import StreamHandler, getLogger
 from os import environ
 from typing import get_type_hints
-
+from pathlib import Path
+from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
+from py_portfolio_index.enums import ObjectKey
 import uvicorn
 from fastapi import (
     APIRouter,
@@ -83,6 +85,12 @@ from pydantic.alias_generators import to_camel
 from pytz import UTC
 from starlette.background import BackgroundTask
 from uvicorn.config import LOGGING_CONFIG
+from exports import (
+    DatabaseExportRequest,
+    DatabaseExportResponse,
+    export_portfolio_to_database,
+)
+from config import ActiveConfig, run_task
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
@@ -109,76 +117,21 @@ class SubPortfolioRefreshException(Exception):
         self.provider = provider
 
 
-class BackgroundStatus(Enum):
-    RUNNING = 1
-    SUCCESS = 2
-    FAILED = -1
+# Add to the request models section
 
 
-@dataclass
-class AsyncTask:
-    guid: str
-    status: BackgroundStatus
-    started: datetime
-    result: Any
-    error: Exception | None = None
-
-
-@dataclass
-class ActiveConfig:
-    logged_in: str | None = None
-    provider_cache: Dict[ProviderType, BaseProvider] = field(default_factory=dict)
-    holding_cache: Dict[ProviderType, RealPortfolio] = field(default_factory=dict)
-    pending_auth_response: LoginResponse | None = None
-    pending_schwab_response: SchwabAuthContext | None = None
-    pending_momoo_response: str | None = None
-    auth_token: str | None = None
-    validate: bool = False
-    background_tasks: Dict[str, AsyncTask] = field(default_factory=dict)
-
-    @property
-    def default_provider(self):
-        # get the fastest provider
-        priority = [
-            ProviderType.ALPACA,
-            ProviderType.ROBINHOOD,
-            ProviderType.WEBULL,
-            ProviderType.SCHWAB,
-            ProviderType.MOOMOO,
-            ProviderType.ALPACA_PAPER,
-            ProviderType.WEBULL_PAPER,
-        ]
-        for provider in priority:
-            for key, _ in self.provider_cache.items():
-                if key == provider:
-                    return key
-        if self.provider_cache:
-            return list(self.provider_cache.keys())[0]
-        raise HTTPException(401, "No logged in provider specified")
+# Add helper function to get database path
+def get_database_path(portfolio_name: str) -> Path:
+    """Get canonical storage location for portfolio database"""
+    db_dir = Path.home() / ".fundiverse" / "databases"
+    db_dir.mkdir(parents=True, exist_ok=True)
+    return db_dir / f"{portfolio_name}.db"
 
 
 IN_APP_CONFIG = ActiveConfig()
 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     IN_APP_CONFIG.validate = True
 IN_APP_CONFIG.auth_token = os.environ.get("FUNDIVERSE_API_SECRET_KEY")
-
-
-def run_task(config: ActiveConfig, guid: str, func: Callable, *args, **kwargs):
-    task = AsyncTask(
-        guid=guid,
-        status=BackgroundStatus.RUNNING,
-        started=datetime.now(tz=UTC),
-        result=None,
-    )
-    config.background_tasks[guid] = task
-
-    try:
-        task.result = func(*args, **kwargs)
-        task.status = BackgroundStatus.SUCCESS
-    except Exception as e:
-        task.error = e
-        task.status = BackgroundStatus.FAILED
-    config.background_tasks[guid] = task
 
 
 def canonicalize_key(key: str | None) -> str:
@@ -899,6 +852,98 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
         if provider in IN_APP_CONFIG.provider_cache:
             del IN_APP_CONFIG.provider_cache[provider]
     return BuyRequestFinalMultiProviderOutput(orders=output)
+
+
+# Add the endpoint to the router
+@router.post("/export_portfolio_database")
+def export_portfolio_database(input: DatabaseExportRequest):
+    """
+    Export portfolio data to a DuckDB database.
+    Database will be stored at ~/.fundiverse/databases/{portfolio_name}.db
+    """
+    try:
+        return export_portfolio_to_database(input, IN_APP_CONFIG)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(500, f"Error exporting portfolio database: {e}")
+
+
+# Add endpoint to get database info
+@router.get("/database_info/{portfolio_name}")
+def get_database_info(portfolio_name: str):
+    """Get information about an existing portfolio database"""
+    db_path = get_database_path(portfolio_name)
+
+    if not db_path.exists():
+        raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
+
+    try:
+        db = DuckDBDatastore(str(db_path))
+
+        # Query for basic stats
+        holdings_count = db.query("SELECT holdings.symbol.id.count;").fetchone()[
+            0
+        ]
+        dividends_count = db.query(
+            "SELECT dividend.id.count;"
+        ).fetchone()[0]
+        providers = db.query("SELECT provider.name;").fetchall()
+
+        db.close()
+
+        return {
+            "database_path": str(db_path),
+            "portfolio_name": portfolio_name,
+            "exists": True,
+            "total_holdings": holdings_count,
+            "total_dividends": dividends_count,
+            "providers": [p[0] for p in providers],
+            "file_size_mb": db_path.stat().st_size / (1024 * 1024),
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Error reading database info: {e}")
+
+
+# Add endpoint to download the database file
+@router.get("/database/download/{portfolio_name}")
+def download_database(portfolio_name: str):
+    """Download the portfolio database file for use in DuckDB WASM"""
+    db_path = get_database_path(portfolio_name)
+
+    if not db_path.exists():
+        raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
+
+    try:
+        from fastapi.responses import FileResponse
+
+        return FileResponse(
+            path=str(db_path),
+            media_type="application/octet-stream",
+            filename=f"{portfolio_name}.db",
+            headers={
+                "Content-Disposition": f'attachment; filename="{portfolio_name}.db"',
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Error downloading database: {e}")
+
+
+# Add endpoint to delete a database
+@router.delete("/database/{portfolio_name}")
+def delete_database(portfolio_name: str):
+    """Delete a portfolio database"""
+    db_path = get_database_path(portfolio_name)
+
+    if not db_path.exists():
+        raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
+
+    try:
+        db_path.unlink()
+        return {"deleted": True, "portfolio_name": portfolio_name}
+    except Exception as e:
+        raise HTTPException(500, f"Error deleting database: {e}")
 
 
 class SleepRequest(BaseModel):
