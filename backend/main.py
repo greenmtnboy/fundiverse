@@ -945,6 +945,12 @@ def delete_database(portfolio_name: str):
     except Exception as e:
         raise HTTPException(500, f"Error deleting database: {e}")
 
+@router.get("/trilogy_model")
+def trilogy_model():
+    from py_portfolio_index.datastores.base_datastore import BaseDatastore
+
+    files:dict[str, str] = BaseDatastore.get_files_and_contents()
+    return files
 
 class SleepRequest(BaseModel):
     sleep: int

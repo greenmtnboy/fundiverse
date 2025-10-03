@@ -11,8 +11,6 @@ const instance = axios.create({
 // Listen for the shared-variable event
 if (ipcRenderer) {
   ipcRenderer.on("api-key", (_, API_KEY) => {
-    // Now you can use the sharedVariable in your renderer process
-    console.log(API_KEY);
     instance.defaults.headers.post["Authorization"] = `Bearer ${API_KEY}`;
     instance.defaults.headers.get["Authorization"] = `Bearer ${API_KEY}`;
   });

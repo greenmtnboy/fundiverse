@@ -31,6 +31,7 @@ const routes = [
     {
     path: "/portfolio_analytics/:portfolioName",
     name: "portfolio_analytics",
+    props:true, // Pass route.params as props to the component
     component: PortfolioAnalytics ,
     // route level code-splitting
     // this generates a separate chunk (about.[hash].js) for this route
