@@ -1,6 +1,7 @@
-import httpx
 import time
 from typing import Optional
+
+import httpx
 
 # Configuration
 BASE_URL = "http://localhost:3042"
@@ -165,7 +166,7 @@ def download_database(portfolio_name: str, output_path: Optional[str] = None) ->
         with open(output_path, "wb") as f:
             f.write(response.content)
     
-    print(f"Database downloaded successfully!")
+    print("Database downloaded successfully!")
     return output_path
 
 
@@ -211,7 +212,7 @@ def main(portfolio: str):
     
     # Get database information
     db_info = get_database_info(portfolio_name)
-    print(f"\nDatabase Information:")
+    print("\nDatabase Information:")
     print(f"  Total holdings: {db_info['total_holdings']}")
     print(f"  Total dividends: {db_info['total_dividends']}")
     print(f"  Providers: {', '.join(db_info['providers'])}")

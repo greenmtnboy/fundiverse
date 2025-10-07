@@ -1,90 +1,25 @@
-from typing import Annotated, Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict
 
 import dotenv
 
 dotenv.load_dotenv()
-import asyncio
-import multiprocessing
-import os
-import sys
-import traceback
-import uuid
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from contextlib import asynccontextmanager
-from copy import deepcopy
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from logging import StreamHandler, getLogger
-from os import environ
-from typing import get_type_hints
-from pathlib import Path
-from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
-from py_portfolio_index.enums import ObjectKey
-import uvicorn
+
 from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Body,
-    Depends,
-    FastAPI,
     HTTPException,
-    Request,
-    status,
-)
-from fastapi.encoders import jsonable_encoder
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
-from fastapi.routing import APIRoute
-from fastapi.security import OAuth2PasswordBearer
-from py_portfolio_index import (
-    AVAILABLE_PROVIDERS,
-    INDEXES,
-    STOCK_LISTS,
-    AlpacaProvider,
-    Logger,
-    MooMooProvider,
-    PaperAlpacaProvider,
-    PurchaseStrategy,
-    RobinhoodProvider,
-    SchwabProvider,
-    WebullPaperProvider,
-    WebullProvider,
-    generate_composite_order_plan,
 )
 from py_portfolio_index.enums import ProviderType
-from py_portfolio_index.exceptions import (
-    ConfigurationError,
-    ExtraAuthenticationStepException,
-    OrderError,
-)
 from py_portfolio_index.models import (
-    CompositePortfolio,
-    IdealPortfolio,
     LoginResponse,
-    Money,
-    OrderElement,
-    OrderPlan,
-    OrderType,
-    ProfitModel,
     RealPortfolio,
-    RealPortfolioElement,
 )
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
-from py_portfolio_index.portfolio_providers.helpers.robinhood import (
-    login as rh_login,
-)
 from py_portfolio_index.portfolio_providers.helpers.schwab import (
     SchwabAuthContext,
-    create_login_context,
-    fetch_response,
 )
-from pydantic import BaseModel, ConfigDict, Field
-from pydantic.alias_generators import to_camel
 from pytz import UTC
-from starlette.background import BackgroundTask
-from uvicorn.config import LOGGING_CONFIG
 
 
 class BackgroundStatus(Enum):

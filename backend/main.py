@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Callable, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 
 import dotenv
 
@@ -13,15 +13,13 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import asynccontextmanager
 from copy import deepcopy
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from logging import StreamHandler, getLogger
 from os import environ
-from typing import get_type_hints
 from pathlib import Path
-from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
-from py_portfolio_index.enums import ObjectKey
+from typing import get_type_hints
+
 import uvicorn
 from fastapi import (
     APIRouter,
@@ -53,6 +51,7 @@ from py_portfolio_index import (
     WebullProvider,
     generate_composite_order_plan,
 )
+from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
 from py_portfolio_index.enums import ProviderType
 from py_portfolio_index.exceptions import (
     ConfigurationError,
@@ -62,7 +61,6 @@ from py_portfolio_index.exceptions import (
 from py_portfolio_index.models import (
     CompositePortfolio,
     IdealPortfolio,
-    LoginResponse,
     Money,
     OrderElement,
     OrderPlan,
@@ -85,12 +83,12 @@ from pydantic.alias_generators import to_camel
 from pytz import UTC
 from starlette.background import BackgroundTask
 from uvicorn.config import LOGGING_CONFIG
+
+from config import ActiveConfig, BackgroundStatus, run_task
 from exports import (
     DatabaseExportRequest,
-    DatabaseExportResponse,
     export_portfolio_to_database,
 )
-from config import ActiveConfig, run_task
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
@@ -189,7 +187,7 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization"],
+    allow_headers=["Authorization", "Cache-Control", "Pragma", "Expires"],
     allow_origin_regex=allow_origin_regex,
 )
 
@@ -877,20 +875,14 @@ def get_database_info(portfolio_name: str):
 
     if not db_path.exists():
         raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
-
+    db = None
     try:
         db = DuckDBDatastore(str(db_path))
 
         # Query for basic stats
-        holdings_count = db.query("SELECT holdings.symbol.id.count;").fetchone()[
-            0
-        ]
-        dividends_count = db.query(
-            "SELECT dividend.id.count;"
-        ).fetchone()[0]
+        holdings_count = db.query("SELECT holdings.symbol.id.count;").fetchone()[0]
+        dividends_count = db.query("SELECT dividend.id.count;").fetchone()[0]
         providers = db.query("SELECT provider.name;").fetchall()
-
-        db.close()
 
         return {
             "database_path": str(db_path),
@@ -903,6 +895,9 @@ def get_database_info(portfolio_name: str):
         }
     except Exception as e:
         raise HTTPException(500, f"Error reading database info: {e}")
+    finally:
+        if db:
+            db.close()
 
 
 # Add endpoint to download the database file
@@ -913,14 +908,25 @@ def download_database(portfolio_name: str):
 
     if not db_path.exists():
         raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
-
+    db = None
     try:
-        from fastapi.responses import FileResponse
+        # Open connection, checkpoint, and close
+        db = DuckDBDatastore(str(db_path))
+        db.executor.execute_raw_sql(
+            "CHECKPOINT;"
+        )  # This writes all WAL data to the main file
+        db.close()
+        db = None
 
-        return FileResponse(
-            path=str(db_path),
+        # Small delay to ensure file system sync
+        # Read entire file into memory
+        file_content = db_path.read_bytes()
+
+        from fastapi.responses import Response
+
+        return Response(
+            content=file_content,
             media_type="application/octet-stream",
-            filename=f"{portfolio_name}.db",
             headers={
                 "Content-Disposition": f'attachment; filename="{portfolio_name}.db"',
                 "Access-Control-Expose-Headers": "Content-Disposition",
@@ -928,6 +934,9 @@ def download_database(portfolio_name: str):
         )
     except Exception as e:
         raise HTTPException(500, f"Error downloading database: {e}")
+    finally:
+        if db:
+            db.close()
 
 
 # Add endpoint to delete a database
@@ -945,12 +954,14 @@ def delete_database(portfolio_name: str):
     except Exception as e:
         raise HTTPException(500, f"Error deleting database: {e}")
 
+
 @router.get("/trilogy_model")
 def trilogy_model():
     from py_portfolio_index.datastores.base_datastore import BaseDatastore
 
-    files:dict[str, str] = BaseDatastore.get_files_and_contents()
+    files: dict[str, str] = BaseDatastore.get_files_and_contents()
     return files
+
 
 class SleepRequest(BaseModel):
     sleep: int

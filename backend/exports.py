@@ -1,19 +1,15 @@
-from typing import List, Any
-
-
 from pathlib import Path
-from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
-from py_portfolio_index.enums import ObjectKey
+from typing import List
 
 from fastapi import (
     HTTPException,
 )
-
-from py_portfolio_index.enums import ProviderType
-
-
+from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
+from py_portfolio_index.enums import ObjectKey, ProviderType
 from pydantic import BaseModel
+
 from config import ActiveConfig
+
 
 class DatabaseExportRequest(BaseModel):
     portfolio_name: str
