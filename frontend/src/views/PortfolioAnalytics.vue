@@ -18,7 +18,7 @@
 
     <div v-else-if="loaded && dashboardBase" class="data-display">
       <div class="dashboard-mobile-container">
-        <div v-for="item in dashboardItems" :key="item.id" class="chart-section">
+        <div v-for="item in dashboardItems" :key="item.id" class="chart-section" :style="{ height: item.height + 'px' }">
           <DashboardChart :dashboardId="dashboardId" :itemId="item.id" :setItemData="dashboardBase.setItemData"
             :getItemData="dashboardBase.getItemData" :editMode="false"
             :getDashboardQueryExecutor="dashboardBase.getDashboardQueryExecutor"
@@ -151,37 +151,54 @@ export default {
 
         dashboardId.value = dashboard.id
 
-        const reportQueries = {
-          'Portfolio Summary': `SELECT sum(holdings.value) as total_holding_value, sum(dividend.amount) as total_dividend, holdings.symbol.id.count as total_holdings;`,
-          'Sector Breakdown': `SELECT symbol.sector, symbol.industry, sum(holdings.value) as sector_holding_value, sum(dividend.amount) as sector_dividend;`,
-          'Industry Percent of Portfolio': `import std.display; SELECT symbol.industry, (sum(holdings.value)/ sum(holdings.value) by *)::float::percent as percent_of_total, coalesce((sum(dividend.amount)/ sum(dividend.amount) by *),0)::float::percent as percent_of_all_dividends;`,
-          'Top Tickers': `SELECT symbol.ticker, sum(holdings.value) as ticker_holding_value, coalesce(sum(dividend.amount),0) as ticker_dividend order by ticker_holding_value desc limit 50;`
-        }
+        const reportQueries = [
+          {
+            name: 'Portfolio Summary',
+            query: `SELECT sum(holdings.value) as total_holding_value, sum(dividend.amount) as total_dividend, sum(holdings.appreciation) as total_appreciation, holdings.symbol.id.count as total_holdings;`,
+            height: 150
+          },
+          {
+            name: 'Sector Breakdown',
+            query: `SELECT symbol.sector, symbol.industry, sum(holdings.value) as sector_holding_value, sum(dividend.amount) as sector_dividend;`,
+            height: 500
+          },
+          {
+            name: 'Industry Percent of Portfolio',
+            query: `import std.display; SELECT symbol.industry, (sum(holdings.value)/ sum(holdings.value) by *)::float::percent as percent_of_total, coalesce((sum(dividend.amount)/ sum(dividend.amount) by *),0)::float::percent as percent_of_all_dividends;`,
+            height: 500
+          },
+          {
+            name: 'Top Tickers',
+            query: `SELECT symbol.ticker, sum(holdings.value) as ticker_holding_value, coalesce(sum(dividend.amount),0) as ticker_dividend order by ticker_holding_value desc limit 50;`,
+            height: 500
+          }
+        ]
 
         // Execute each query and collect results
         dashboardStore.clearDashboardItems(dashboard!.id)
-        for (const [queryName, queryText] of Object.entries(reportQueries)) {
-          loadingMessage.value = `Executing ${queryName} query...`
+        for (const queryConfig of reportQueries) {
+          loadingMessage.value = `Executing ${queryConfig.name} query...`
 
           const resultEditorId = await executePortfolioQuery(
             editorStore,
             queryExecutionService,
             connectionId,
-            queryName,
-            queryText
+            queryConfig.name,
+            queryConfig.query
           )
 
           queryResults.value.push({
             id: resultEditorId,
-            name: queryName
+            name: queryConfig.name
 
           })
 
           let itemId = dashboardStore.addItemToDashboard(dashboard!.id, CELL_TYPES.CHART,
-            undefined, undefined, undefined, undefined, queryText, queryName
+            undefined, undefined, undefined, undefined, queryConfig.query, queryConfig.name
           )
           dashboardItems.value.push({
             id: itemId,
+            height: queryConfig.height
           })
 
           console.log(dashboardStore.dashboards[dashboard!.id])
@@ -353,7 +370,6 @@ export default {
   background-color: #f8f9fa;
   border-radius: 8px;
   border: 1px solid #e0e0e0;
-  height: 500px;
 }
 
 .chart-section:last-child {
