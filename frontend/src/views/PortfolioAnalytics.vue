@@ -1,7 +1,17 @@
 <template>
-  <div class="query-container">
-    <DashboardBase ref="dashboardBase" :key="name" :name="name" :connection-id="connectionId" :is-mobile="true" />
-    <div v-if="loadingDatabase" class="loading-state">
+  <div class="portfolio-analytics-container">
+    <div class="header-section">
+      <button 
+        @click="refreshDatabase" 
+        :disabled="loadingDatabase || refreshingDatabase" 
+        class="dashboard-refresh-button"
+      >
+        <span class="refresh-icon" :class="{ spinning: refreshingDatabase }">↻</span>
+        {{ refreshingDatabase ? 'Refreshing...' : 'Refresh Database' }}
+      </button>
+    </div>
+
+    <div v-if="loadingDatabase || refreshingDatabase" class="loading-state">
       <div class="loading-spinner"></div>
       <div class="loading-text">{{ loadingMessage }}</div>
     </div>
@@ -16,43 +26,109 @@
       </button>
     </div>
 
-    <div v-else-if="loaded && dashboardBase" class="data-display">
-      <div class="dashboard-mobile-container">
-        <div v-for="item in dashboardItems" :key="item.id" class="chart-section" :style="{ height: item.height + 'px' }">
-          <DashboardChart :dashboardId="dashboardId" :itemId="item.id" :setItemData="dashboardBase.setItemData"
-            :getItemData="dashboardBase.getItemData" :editMode="false"
-            :getDashboardQueryExecutor="dashboardBase.getDashboardQueryExecutor"
-            @dimension-click="dashboardBase.setCrossFilter" @background-click="dashboardBase.unSelect" />
-        </div>
-      </div>
-    </div>
-
-    <div v-else class="initializing-state">
+    <div v-else-if="!loaded" class="initializing-state">
       Initializing...
     </div>
+
+    <!-- Only render the dashboard component when everything is ready -->
+    <PortfolioDashboard
+      v-else
+      :portfolio-name="portfolioName"
+      :dashboard-id="dashboardId"
+      :dashboard-items="dashboardItems"
+      :connection-id="connectionId"
+    />
   </div>
 </template>
 
 <script lang="ts">
 import { ref, onMounted, provide } from 'vue'
 import useEditorStore from 'trilogy-studio-components/stores/editorStore'
-import { useConnectionStore, useModelConfigStore, useDashboardStore, useUserSettingsStore } from 'trilogy-studio-components/stores'
-import ResultComponent from 'trilogy-studio-components/components/editor/ResultComponent.vue'
-import VegaLiteChart from 'trilogy-studio-components/components/VegaLiteChart.vue'
+import { 
+  useConnectionStore, 
+  useModelConfigStore, 
+  useDashboardStore, 
+  useUserSettingsStore 
+} from 'trilogy-studio-components/stores'
 import { DuckDBConnection } from 'trilogy-studio-components/connections'
-import { QueryExecutionService } from 'trilogy-studio-components/stores'
-import { TrilogyResolver } from 'trilogy-studio-components/stores'
-import { loadTrilogyModels, loadPortfolioDatabase, executePortfolioQuery } from '../helpers/portfolioAnalytics'
-import DashboardBase from 'trilogy-studio-components/components/dashboard/DashboardBase.vue'
-import DashboardChart from 'trilogy-studio-components/components/dashboard/DashboardChart.vue'
+import { QueryExecutionService, TrilogyResolver } from 'trilogy-studio-components/stores'
+import { 
+  loadTrilogyModels, 
+  loadPortfolioDatabase, 
+  executePortfolioQuery, 
+  exportPortfolioDatabase 
+} from '../helpers/portfolioAnalytics'
+import PortfolioDashboard from './PortfolioDashboard.vue'
 import { CELL_TYPES } from 'trilogy-studio-components/dashboards/base'
+
+interface DashboardItem {
+  id: string
+  height: number
+}
+
+interface QueryConfig {
+  name: string
+  query: string
+  height: number
+  chartConfig?: any
+}
+
+const REPORT_QUERIES: QueryConfig[] = [
+  {
+    name: 'Portfolio Summary',
+    query: `import std.display; SELECT sum(holdings.value) as total_holding_value, sum(dividend.amount) as total_dividend, sum(holdings.appreciation) as total_appreciation, (total_appreciation/(total_holding_value-total_appreciation))::float::percent as holding_return, holdings.symbol.id.count as total_holdings;`,
+    height: 150
+  },
+    {
+    name: 'Provider Breakdown',
+    query: `import std.display; SELECT holdings.provider.name, sum(holdings.value) as total_holding_value, sum(dividend.amount) as total_dividend, sum(holdings.appreciation) as total_appreciation, (total_appreciation/(total_holding_value-total_appreciation))::float::percent as holding_return, holdings.symbol.id.count as total_holdings;`,
+    height: 150
+  },
+  {
+    name: 'Cost Basis',
+    query: `SELECT symbol.holding_size,
+    -- case when symbol.holding_size = 'Micro' then 1
+          when symbol.holding_size = 'Small' then 2
+          when symbol.holding_size = 'Medium' then 3
+          when symbol.holding_size = 'Large' then 4
+          else 5 end as holding_size_order,
+     order by holding_size_order asc;`,
+    height: 150
+  },
+  {
+    name: 'Sector Breakdown',
+    query: `SELECT symbol.sector, symbol.industry, sum(holdings.value) as sector_holding_value, sum(dividend.amount) as sector_dividend;`,
+    height: 500
+  },
+  {
+    name: 'Industry Percent of Portfolio',
+    query: `import std.display; SELECT symbol.industry, (sum(holdings.value)/ sum(holdings.value) by *)::float::percent as percent_of_total, coalesce((sum(dividend.amount)/ sum(dividend.amount) by *),0)::float::percent as percent_of_all_dividends;`,
+    height: 500
+  },
+  {
+    name: 'Top Tickers',
+    query: `SELECT symbol.ticker, sum(holdings.value) as ticker_holding_value, coalesce(sum(dividend.amount),0) as ticker_dividend order by ticker_holding_value desc limit 50;`,
+    height: 500
+  },
+  {
+    name: 'Top Tickers Performance',
+    query: `import std.display; SELECT symbol.ticker, sum(holdings.value) as ticker_holding_value, sum(holdings.appreciation) as ticker_appreciation, coalesce(sum(dividend.amount),0) as ticker_dividend, (ticker_dividend/ticker_holding_value)::float::percent as dividend_yield, ticker_dividend+ticker_appreciation as total_profit, case when total_profit > 0 then log(total_profit) when total_profit = 0 then 0.0 else -1 * log(abs(total_profit)) END as log_profit order by ticker_appreciation desc;`,
+    height: 500,
+    chartConfig: { 
+      chartType: 'point', 
+      xField: 'log_profit', 
+      yField: 'ticker_holding_value', 
+      annotationField: 'symbol_ticker', 
+      colorField: 'dividend_yield', 
+      scaleY: 'log' 
+    }
+  }
+]
+
 export default {
   name: 'PortfolioAnalytics',
   components: {
-    ResultComponent,
-    VegaLiteChart,
-    DashboardBase,
-    DashboardChart,
+    PortfolioDashboard,
   },
   props: {
     portfolioName: {
@@ -61,46 +137,47 @@ export default {
     }
   },
   setup(props) {
+    // Store initialization
     const editorStore = useEditorStore()
     const connectionStore = useConnectionStore()
     const userSettingsStore = useUserSettingsStore()
     const dashboardStore = useDashboardStore()
-    userSettingsStore.updateSettings(
-      { 'trilogyResolver': 'http://localhost:5678' ,
-        'theme': 'light'
-      }
-    )
     const modelStore = useModelConfigStore()
 
-    const resolver = new TrilogyResolver(userSettingsStore)
-    const queryExecutionService = new QueryExecutionService(
-      resolver,
-      connectionStore,
-      modelStore,
-      editorStore
-    )
+    // Initialize user settings
+    userSettingsStore.updateSettings({
+      'trilogyResolver': 'http://localhost:5678',
+      'theme': 'light'
+    })
 
+    // Services setup
+    const resolver = new TrilogyResolver(userSettingsStore)
+    const queryExecutionService = new QueryExecutionService(resolver, connectionStore)
+
+    // Provide dependencies for child components
     provide('editorStore', editorStore)
     provide('connectionStore', connectionStore)
     provide('userSettingsStore', userSettingsStore)
     provide('queryExecutionService', queryExecutionService)
     provide('dashboardStore', useDashboardStore)
 
+    // Component state
     const loaded = ref(false)
     const loadingDatabase = ref(false)
+    const refreshingDatabase = ref(false)
     const loadingMessage = ref('')
     const loadError = ref('')
     const dashboardId = ref('')
-    const queryResults = ref<Array<{ id: string, name: string }>>([])
-    const dashboardItems = ref<Array<any>>([])
+    const dashboardItems = ref<DashboardItem[]>([])
 
-    const dashboardBase = ref<InstanceType<typeof DashboardBase>>()
     const connectionId = 'portfolio-query'
 
+    // Validate required dependencies
     if (!editorStore) {
       throw new Error('Editor store not provided')
     }
 
+    // Initialize or get connection
     let connection: DuckDBConnection
     if (!connectionStore.connections[connectionId]) {
       connection = connectionStore.newConnection(connectionId, 'duckdb', {}) as DuckDBConnection
@@ -108,19 +185,15 @@ export default {
       connection = connectionStore.connections[connectionId] as DuckDBConnection
     }
 
-
-    const formatChartTitle = (name: string) => {
-      return name.charAt(0).toUpperCase() + name.slice(1) + ' Analysis'
-    }
-
+    // Database loading logic
     const loadDatabase = async () => {
       loadingDatabase.value = true
       loadError.value = ''
       loaded.value = false
-      queryResults.value = []
       loadingMessage.value = 'Initializing...'
 
       try {
+        // Load trilogy models
         const model = await loadTrilogyModels(
           modelStore,
           editorStore,
@@ -130,20 +203,30 @@ export default {
 
         connection.setModel(model)
 
+        // Load portfolio database
         await loadPortfolioDatabase(
           props.portfolioName,
           connection,
           (message) => { loadingMessage.value = message }
         )
 
+        // Get or create dashboard
         let dashboard = dashboardStore.getDashboardByName(props.portfolioName)
         if (!dashboard) {
           dashboard = dashboardStore.newDashboard(props.portfolioName, connectionId)
         }
 
+        // Setup entrypoint content
+        const entrypoint = editorStore.getEditorByName('entrypoint')
+        if (entrypoint) {
+          const additionalContent = `\n auto ticker_value <- sum(holdings.cost_basis) by symbol.ticker; property symbol.ticker.holding_size <- CASE WHEN ticker_value > 10000 THEN 'Large' WHEN ticker_value > 5000 THEN 'Medium' WHEN ticker_value > 100 THEN 'Small' ELSE 'Micro' END;`
+          entrypoint.setContent(entrypoint.contents + additionalContent)
+        }
+
+        // Update dashboard imports
         dashboardStore.updateDashboardImports(dashboard.id, [
           {
-            id: editorStore.getEditorByName('entrypoint')?.id || '-1',
+            id: entrypoint?.id || '-1',
             name: 'entrypoint',
             alias: '',
           }
@@ -151,35 +234,15 @@ export default {
 
         dashboardId.value = dashboard.id
 
-        const reportQueries = [
-          {
-            name: 'Portfolio Summary',
-            query: `SELECT sum(holdings.value) as total_holding_value, sum(dividend.amount) as total_dividend, sum(holdings.appreciation) as total_appreciation, holdings.symbol.id.count as total_holdings;`,
-            height: 150
-          },
-          {
-            name: 'Sector Breakdown',
-            query: `SELECT symbol.sector, symbol.industry, sum(holdings.value) as sector_holding_value, sum(dividend.amount) as sector_dividend;`,
-            height: 500
-          },
-          {
-            name: 'Industry Percent of Portfolio',
-            query: `import std.display; SELECT symbol.industry, (sum(holdings.value)/ sum(holdings.value) by *)::float::percent as percent_of_total, coalesce((sum(dividend.amount)/ sum(dividend.amount) by *),0)::float::percent as percent_of_all_dividends;`,
-            height: 500
-          },
-          {
-            name: 'Top Tickers',
-            query: `SELECT symbol.ticker, sum(holdings.value) as ticker_holding_value, coalesce(sum(dividend.amount),0) as ticker_dividend order by ticker_holding_value desc limit 50;`,
-            height: 500
-          }
-        ]
+        // Clear existing dashboard items and execute queries
+        dashboardStore.clearDashboardItems(dashboard.id)
+        dashboardItems.value = []
 
-        // Execute each query and collect results
-        dashboardStore.clearDashboardItems(dashboard!.id)
-        for (const queryConfig of reportQueries) {
+        for (const queryConfig of REPORT_QUERIES) {
           loadingMessage.value = `Executing ${queryConfig.name} query...`
 
-          const resultEditorId = await executePortfolioQuery(
+          // Execute query
+          await executePortfolioQuery(
             editorStore,
             queryExecutionService,
             connectionId,
@@ -187,30 +250,62 @@ export default {
             queryConfig.query
           )
 
-          queryResults.value.push({
-            id: resultEditorId,
-            name: queryConfig.name
-
-          })
-
-          let itemId = dashboardStore.addItemToDashboard(dashboard!.id, CELL_TYPES.CHART,
-            undefined, undefined, undefined, undefined, queryConfig.query, queryConfig.name
+          // Add item to dashboard
+          const itemId = dashboardStore.addItemToDashboard(
+            dashboard.id, 
+            CELL_TYPES.CHART,
+            undefined, 
+            undefined, 
+            undefined, 
+            undefined, 
+            queryConfig.query, 
+            queryConfig.name
           )
+
+          // Apply chart config if provided
+          if (queryConfig.chartConfig) {
+            dashboardStore.updateItemChartConfig(
+              dashboard.id,
+              itemId,
+              queryConfig.chartConfig
+            )
+          }
+
+          // Add to local items array
           dashboardItems.value.push({
             id: itemId,
             height: queryConfig.height
           })
-
-          console.log(dashboardStore.dashboards[dashboard!.id])
         }
 
         loaded.value = true
-        dashboardBase.value?.handleRefresh()
+
       } catch (err: any) {
         console.error('Setup failed:', err)
         loadError.value = err.response?.data?.detail || err.message || 'Failed to initialize portfolio analytics'
       } finally {
         loadingDatabase.value = false
+      }
+    }
+
+    const refreshDatabase = async () => {
+      refreshingDatabase.value = true
+      loadError.value = ''
+      loadingMessage.value = 'Exporting new database...'
+
+      try {
+        await exportPortfolioDatabase(
+          props.portfolioName,
+          (message) => { loadingMessage.value = message }
+        )
+
+        loadingMessage.value = 'Reloading data...'
+        await loadDatabase()
+      } catch (err: any) {
+        console.error('Refresh failed:', err)
+        loadError.value = err.response?.data?.detail || err.message || 'Failed to refresh portfolio database'
+      } finally {
+        refreshingDatabase.value = false
       }
     }
 
@@ -223,30 +318,75 @@ export default {
       loadDatabase()
     })
 
-    const name = props.portfolioName
     return {
-      editorStore,
+      // State
       loaded,
       loadingDatabase,
+      refreshingDatabase,
       loadingMessage,
       loadError,
-      queryResults,
-      retryLoad,
-      formatChartTitle,
-      connectionId,
-      name,
-      dashboardBase,
       dashboardId,
-      dashboardItems
+      dashboardItems,
+      connectionId,
+      
+      // Methods
+      retryLoad,
+      refreshDatabase,
     }
   }
 }
 </script>
 
 <style scoped>
-.query-container {
+.portfolio-analytics-container {
   padding: 20px;
   min-height: 500px;
+}
+
+.header-section {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.dashboard-refresh-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.dashboard-refresh-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.dashboard-refresh-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.dashboard-refresh-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.refresh-icon {
+  font-size: 18px;
+  font-weight: bold;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.refresh-icon.spinning {
+  animation: spin 1s linear infinite;
 }
 
 .loading-state,
@@ -272,7 +412,6 @@ export default {
   0% {
     transform: rotate(0deg);
   }
-
   100% {
     transform: rotate(360deg);
   }
@@ -345,42 +484,5 @@ export default {
 .retry-icon {
   font-size: 18px;
   font-weight: bold;
-}
-
-.data-display {
-  width: 100%;
-  height: 100%;
-}
-
-.dashboard-mobile-container {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-  width: 100%;
-  font-size: var(--font-size);
-  color: var(--text-color);
-  background-color: var(--bg-color);
-  overflow: hidden;
-}
-
-
-.chart-section {
-  margin-bottom: 40px;
-  padding: 20px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-}
-
-.chart-section:last-child {
-  margin-bottom: 0;
-}
-
-.chart-title {
-  margin: 0 0 20px 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-  text-align: center;
 }
 </style>

@@ -6,14 +6,14 @@ from fastapi import (
 )
 from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
 from py_portfolio_index.enums import ObjectKey, ProviderType
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config import ActiveConfig
 
 
 class DatabaseExportRequest(BaseModel):
     portfolio_name: str
-    providers: List[ProviderType]
+    providers: List[ProviderType] = Field(default_factory = list)
     force_reset: bool = False
 
 
@@ -42,6 +42,9 @@ def export_portfolio_to_database(
     # Initialize database
     db = DuckDBDatastore(str(db_path))
     stage = 'init'
+    providers = input.providers
+    if not providers:
+        providers = list(config.holding_cache.keys())
     try:
         # Initialize tickers table
         db.intialize_tickers()
@@ -55,7 +58,7 @@ def export_portfolio_to_database(
         providers_processed = []
 
         # Process each provider
-        for provider_type in input.providers:
+        for provider_type in providers:
             stage = f'provider {provider_type}'
             # Get provider instance
             provider = config.provider_cache.get(provider_type)

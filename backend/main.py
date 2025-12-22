@@ -853,7 +853,7 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
 
 
 # Add the endpoint to the router
-@router.post("/export_portfolio_database")
+@router.post("/database/export_portfolio_database")
 def export_portfolio_database(input: DatabaseExportRequest):
     """
     Export portfolio data to a DuckDB database.
