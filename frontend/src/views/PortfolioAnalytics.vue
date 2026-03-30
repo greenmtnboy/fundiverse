@@ -33,9 +33,7 @@
     <!-- Only render the dashboard component when everything is ready -->
     <PortfolioDashboard
       v-else
-      :portfolio-name="portfolioName"
       :dashboard-id="dashboardId"
-      :dashboard-items="dashboardItems"
       :connection-id="connectionId"
     />
   </div>
@@ -43,28 +41,23 @@
 
 <script lang="ts">
 import { ref, onMounted, provide } from 'vue'
-import useEditorStore from 'trilogy-studio-components/stores/editorStore'
 import { 
+  useEditorStore,
   useConnectionStore, 
   useModelConfigStore, 
   useDashboardStore, 
-  useUserSettingsStore 
-} from 'trilogy-studio-components/stores'
-import { DuckDBConnection } from 'trilogy-studio-components/connections'
-import { QueryExecutionService, TrilogyResolver } from 'trilogy-studio-components/stores'
+  useUserSettingsStore,
+  QueryExecutionService,
+  TrilogyResolver,
+} from '@trilogy-data/trilogy-studio-components/stores'
+import { DuckDBConnection } from '@trilogy-data/trilogy-studio-components/connections'
 import { 
   loadTrilogyModels, 
   loadPortfolioDatabase, 
-  executePortfolioQuery, 
   exportPortfolioDatabase 
 } from '../helpers/portfolioAnalytics'
 import PortfolioDashboard from './PortfolioDashboard.vue'
-import { CELL_TYPES } from 'trilogy-studio-components/dashboards/base'
-
-interface DashboardItem {
-  id: string
-  height: number
-}
+import { CELL_TYPES } from '@trilogy-data/trilogy-studio-components/dashboard'
 
 interface QueryConfig {
   name: string
@@ -146,7 +139,7 @@ export default {
 
     // Initialize user settings
     userSettingsStore.updateSettings({
-      'trilogyResolver': 'http://localhost:5678',
+      'trilogyResolver': 'https://trilogy-service.fly.dev',
       'theme': 'light'
     })
 
@@ -168,7 +161,6 @@ export default {
     const loadingMessage = ref('')
     const loadError = ref('')
     const dashboardId = ref('')
-    const dashboardItems = ref<DashboardItem[]>([])
 
     const connectionId = 'portfolio-query'
 
@@ -236,28 +228,20 @@ export default {
 
         // Clear existing dashboard items and execute queries
         dashboardStore.clearDashboardItems(dashboard.id)
-        dashboardItems.value = []
 
         for (const queryConfig of REPORT_QUERIES) {
-          loadingMessage.value = `Executing ${queryConfig.name} query...`
+          loadingMessage.value = `Preparing ${queryConfig.name} chart...`
 
-          // Execute query
-          await executePortfolioQuery(
-            editorStore,
-            queryExecutionService,
-            connectionId,
-            queryConfig.name,
-            queryConfig.query
-          )
+          const layoutHeight = Math.max(Math.ceil(queryConfig.height / 30), 4)
 
           // Add item to dashboard
           const itemId = dashboardStore.addItemToDashboard(
             dashboard.id, 
             CELL_TYPES.CHART,
-            undefined, 
-            undefined, 
-            undefined, 
-            undefined, 
+            0,
+            0,
+            20,
+            layoutHeight,
             queryConfig.query, 
             queryConfig.name
           )
@@ -270,12 +254,6 @@ export default {
               queryConfig.chartConfig
             )
           }
-
-          // Add to local items array
-          dashboardItems.value.push({
-            id: itemId,
-            height: queryConfig.height
-          })
         }
 
         loaded.value = true
@@ -326,7 +304,6 @@ export default {
       loadingMessage,
       loadError,
       dashboardId,
-      dashboardItems,
       connectionId,
       
       // Methods

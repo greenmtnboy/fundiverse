@@ -1,8 +1,9 @@
-import useEditorStore from 'trilogy-studio-components/stores/editorStore'
-import { useModelConfigStore } from 'trilogy-studio-components/stores'
-import { DuckDBConnection } from 'trilogy-studio-components/connections'
-import { QueryExecutionService } from 'trilogy-studio-components/stores'
-import { ModelSource } from 'trilogy-studio-components/models'
+import {
+    useEditorStore,
+    useModelConfigStore,
+    QueryExecutionService,
+} from '@trilogy-data/trilogy-studio-components/stores'
+import { DuckDBConnection } from '@trilogy-data/trilogy-studio-components/connections'
 import instance from '/src/api/instance'
 
 export async function loadTrilogyModels(
@@ -31,15 +32,12 @@ export async function loadTrilogyModels(
         if (!editor) {
             editor = editorStore.newEditor(editorName, 'trilogy', connectionId, content)
         } else {
-            editor.text = content
+            editor.setContent(content)
         }
 
         editor.loading = false
         editor.setError(null)
-        modelStore.addModelConfigSource(
-            modelName,
-            new ModelSource(editor.id, editor.name, [], [])
-        )
+        modelStore.addEditorAsModelSource(modelName, editor)
     })
 
     onProgress('Trilogy models loaded successfully!')

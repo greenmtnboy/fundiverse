@@ -5,7 +5,6 @@ import Os from "os";
 import http from "http";
 import { exec, execFile } from "child_process";
 import { randomInt } from "crypto";
-import instance from "/src/api/instance.ts";
 // import { autoUpdater } from "electron-updater";
 
 // app.on("ready", function () {
@@ -16,10 +15,6 @@ const API_KEY = (
   randomInt(1, 1000000) * 1000000 +
   randomInt(1, 1000000)
 ).toString();
-
-
-instance.defaults.headers.post["Authorization"] = `Bearer ${API_KEY}`;
-instance.defaults.headers.get["Authorization"] = `Bearer ${API_KEY}`;
 
 function isWindows(): boolean {
   return Os.platform() === "win32";
@@ -235,11 +230,6 @@ async function startBackgroundServiceSafe() {
   });
 }
 
-
-
-// enable renders to access store
-Store.initRenderer();
-
 process.env.DIST = path.join(__dirname, "../dist");
 process.env.PUBLIC = app.isPackaged
   ? process.env.DIST
@@ -317,6 +307,9 @@ app.on('activate', function () {
 // app.isPackaged ? app.whenReady().then(startBackgroundServiceSafe).then(createWindow) : app.whenReady().then(createWindow)
 app
   .whenReady()
+  .then(() => {
+    Store.initRenderer();
+  })
   .then(startBackgroundServiceSafe)
   .then(createWindow)
   .catch((err) => {

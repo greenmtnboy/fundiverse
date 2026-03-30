@@ -1,5 +1,7 @@
 import { createApp } from "vue";
 import "./theme.css";
+import "./duckdbAssets";
+import "@trilogy-data/trilogy-studio-components/style.css";
 import App from "/src/App.vue";
 import vuetify from "./plugins/vuetify";
 import router from "./router";

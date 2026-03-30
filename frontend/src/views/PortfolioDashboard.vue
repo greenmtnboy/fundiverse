@@ -4,139 +4,35 @@
       Setting up dashboard...
     </div>
 
-    <div v-else class="data-display">
-      <div class="dashboard-mobile-container">
-        <div 
-          v-for="item in dashboardItems" 
-          :key="item.id" 
-          class="chart-section"
-          :style="{ height: item.height + 'px' }"
-        >
-          <DashboardChart 
-            :dashboardId="dashboardId" 
-            :itemId="item.id" 
-            :setItemData="setItemData"
-            :getItemData="getItemData" 
-            :editMode="false"
-            :getDashboardQueryExecutor="getDashboardQueryExecutor"
-            :symbols="[]"
-            @dimension-click="setCrossFilter" 
-            @background-click="() => unSelect(item.id)" 
-          />
-        </div>
-      </div>
-    </div>
+    <Dashboard
+      v-else
+      class="portfolio-dashboard"
+      :name="dashboardId"
+      :connection-id="connectionId"
+      :view-mode="true"
+    />
   </div>
 </template>
 
-<script lang="ts">
-import { ref, computed, watch, inject, onMounted } from 'vue'
-import { useDashboardStore } from 'trilogy-studio-components/stores'
-import DashboardChart from 'trilogy-studio-components/components/dashboard/DashboardChart.vue'
-import { useDashboard } from 'trilogy-studio-components/components/dashboard/useDashboard'
+<script setup lang="ts">
+import { computed } from 'vue'
+import { Dashboard } from '@trilogy-data/trilogy-studio-components/dashboard'
+import { useDashboardStore } from '@trilogy-data/trilogy-studio-components/stores'
 
-interface DashboardItem {
-  id: string
-  height: number
-}
+const props = defineProps<{
+  dashboardId: string
+  connectionId: string
+}>()
 
-export default {
-  name: 'PortfolioDashboard',
-  components: {
-    DashboardChart,
-  },
-  props: {
-    portfolioName: {
-      type: String,
-      required: true
-    },
-    dashboardId: {
-      type: String,
-      required: true
-    },
-    dashboardItems: {
-      type: Array as () => DashboardItem[],
-      required: true
-    },
-    connectionId: {
-      type: String,
-      required: true
-    }
-  },
-  emits: ['fullScreen'],
-  setup(props, { emit }) {
-    const dashboardStore = useDashboardStore()
-    const queryExecutionService = inject('queryExecutionService')
-
-    if (!queryExecutionService) {
-      throw new Error('QueryExecutionService not provided')
-    }
-
-    // Get the dashboard from the store
-    const dashboard = computed(() => {
-      return Object.values(dashboardStore.dashboards).find((d) => d.id === props.dashboardId) || null
-    })
-
-    // Layout update handler
-    const onLayoutUpdated = (newLayout: any) => {
-      // Handle layout updates if needed
-      console.log('Layout updated:', newLayout)
-    }
-
-    // Initialize dashboard functionality using useDashboard composable
-    // This can be called in setup because the dashboard is guaranteed to exist
-    const dashboardFunctionality = useDashboard(
-      dashboard,
-      {
-        isMobile: false,
-      },
-      {
-        layoutUpdated: (newLayout) => onLayoutUpdated(newLayout),
-        dimensionsUpdate: (itemId) => {},
-        triggerResize: () => {},
-        fullScreen: (enabled) => emit('fullScreen', enabled),
-      },
-      queryExecutionService,
-    )
-
-    const dashboardReady = ref(false)
-
-    // Watch for when dashboard becomes available and refresh
-    watch(dashboard, (newDashboard) => {
-      if (newDashboard) {
-        console.log('Dashboard available, refreshing:', newDashboard.id)
-        // dashboardFunctionality.onRefresh()
-        dashboardReady.value = true
-      }
-    }, { immediate: true })
-
-    // Refresh on mount to ensure data is loaded
-    onMounted(() => {
-      if (dashboard.value) {
-        console.log('Component mounted, refreshing dashboard')
-        dashboardFunctionality.handleRefresh()
-      }
-    })
-
-    return {
-      dashboardReady,
-      
-      // Dashboard methods from useDashboard
-      getDashboardQueryExecutor: dashboardFunctionality.getDashboardQueryExecutor,
-      getItemData: dashboardFunctionality.getItemData,
-      setItemData: dashboardFunctionality.setItemData,
-      setCrossFilter: dashboardFunctionality.setCrossFilter,
-      unSelect: dashboardFunctionality.unSelect,
-      handleRefresh: dashboardFunctionality.handleRefresh,
-    }
-  }
-}
+const dashboardStore = useDashboardStore()
+const dashboardReady = computed(() => Boolean(dashboardStore.dashboards[props.dashboardId]))
 </script>
 
 <style scoped>
 .dashboard-container {
   width: 100%;
   height: 100%;
+  min-height: 0;
 }
 
 .initializing-state {
@@ -150,31 +46,21 @@ export default {
   color: #999;
 }
 
-.data-display {
+.portfolio-dashboard {
   width: 100%;
   height: 100%;
 }
 
-.dashboard-mobile-container {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-  width: 100%;
-  font-size: var(--font-size);
-  color: var(--text-color);
-  background-color: var(--bg-color);
-  overflow: hidden;
+.portfolio-dashboard :deep(.dashboard-controls) {
+  display: none;
 }
 
-.chart-section {
-  /* margin-bottom: 40px; */
-  /* padding: 20px; */
-  background-color: #f8f9fa;
-  border-radius: 0px;
-  /* border: 1px solid #e0e0e0; */
+.portfolio-dashboard :deep(.grid-container) {
+  padding: 0;
+  background: transparent;
 }
 
-.chart-section:last-child {
-  margin-bottom: 0;
+.portfolio-dashboard :deep(.grid-content) {
+  max-width: none !important;
 }
 </style>
