@@ -27,7 +27,7 @@
     "dotenv": "^16.4.5",
     "electron-store": "^10.0.0",
     "electron-updater": "^6.3.9",
-    "pinia": "^3.0.3",
+    "pinia": "^2.3.1",
     "prismjs": "^1.29.0",
     "vue": "^3.5.12",
     "vue-router": "^4.4.5",

@@ -10,6 +10,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 21.x
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - name: Set up Python 3.11
         uses: actions/setup-python@v5.1.0
         with:
@@ -23,7 +26,7 @@ jobs:
           pip install -r requirements-test.txt
       - name: Install Node dependencies
         working-directory: ./frontend
-        run: npm install
+        run: pnpm install
       - name: Install Playwright Browsers
         working-directory: ./frontend
         run: npx playwright install --with-deps chromium
