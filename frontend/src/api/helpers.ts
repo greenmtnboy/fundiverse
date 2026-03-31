@@ -1,11 +1,11 @@
-import axios from "axios";
+import { isFetchError } from "./instance";
 
 const axiosHelpers = {
   getErrorMessage(error: Error): string {
     let base = "An error occured.";
-    if (axios.isAxiosError(error)) {
+    if (isFetchError(error)) {
       base = error.message;
-      if (error.response && error.response.data) {
+      if (error.response?.data) {
         base = error.response.data.detail;
       }
     }
@@ -13,8 +13,8 @@ const axiosHelpers = {
   },
   getResultCode(error: Error): number {
     let base = 400;
-    if (axios.isAxiosError(error)) {
-      if (error.response && error.response.data) {
+    if (isFetchError(error)) {
+      if (error.response?.data) {
         base = error.response.status;
       }
     }

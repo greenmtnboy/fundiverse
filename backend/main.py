@@ -880,8 +880,10 @@ def get_database_info(portfolio_name: str):
         db = DuckDBDatastore(str(db_path))
 
         # Query for basic stats
-        holdings_count = db.query("SELECT holdings.symbol.id.count;").fetchone()[0]
-        dividends_count = db.query("SELECT dividend.id.count;").fetchone()[0]
+        holdings_row = db.query("SELECT holdings.symbol.id.count;").fetchone()
+        holdings_count = holdings_row[0] if holdings_row else 0
+        dividends_row = db.query("SELECT dividend.id.count;").fetchone()
+        dividends_count = dividends_row[0] if dividends_row else 0
         providers = db.query("SELECT provider.name;").fetchall()
 
         return {

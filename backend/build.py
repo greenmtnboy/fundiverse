@@ -59,18 +59,6 @@ if __name__ == "__main__":
     except subprocess.CalledProcessError as e:
         print("Error executing dev requirements install command:", e)
         sys.exit(1)
-    req_command = prefixes + [
-        f"{python_path}",
-        "-m",
-        "pip",
-        "install",
-        "-r" f"{requirements}",
-    ]
-    try:
-        subprocess.check_call(req_command, cwd=root)
-    except subprocess.CalledProcessError as e:
-        print("Error executing requirements install command:", e)
-        sys.exit(1)
     spec_file = root / f"{SCRIPT_NAME}.spec"
     if spec_file.exists():
         command = prefixes + [

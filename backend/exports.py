@@ -62,6 +62,8 @@ def export_portfolio_to_database(
             stage = f'provider {provider_type}'
             # Get provider instance
             provider = config.provider_cache.get(provider_type)
+            if provider is None:
+                raise HTTPException(status_code=400, detail=f"Provider {provider_type} not configured")
             # Get holdings
             holdings = config.holding_cache.get(
                 provider_type, provider.get_holdings()

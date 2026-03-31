@@ -23,7 +23,6 @@
     "@duckdb/duckdb-wasm": "1.29.1-dev269.0",
     "@mdi/js": "^7.4.47",
     "@trilogy-data/trilogy-studio-components": "0.1.19",
-    "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "electron-store": "^10.0.0",
     "electron-updater": "^6.3.9",

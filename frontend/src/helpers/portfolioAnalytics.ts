@@ -77,13 +77,6 @@ export async function loadPortfolioDatabase(
             'Pragma': 'no-cache',
             'Expires': '0'
         },
-        // decompress: false, // Disable automatic decompression
-        onDownloadProgress: (progressEvent) => {
-            if (progressEvent.total) {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-                onProgress(`Downloading database... ${percentCompleted}%`)
-            }
-        }
     })
 
     const dbFile = new File(
