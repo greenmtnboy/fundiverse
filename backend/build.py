@@ -122,8 +122,13 @@ if __name__ == "__main__":
         shutil.move(destination_folder / final_file, destination_folder / SCRIPT_NAME)
 
     print("checking file runs")
-    my_env = os.environ.copy()
-    my_env["in-ci"] = "true"
-    subprocess.check_call([pyinstaller_output_file, "test"], env=my_env)
+    # Run with a clean environment - passing Python-related vars (PYTHONPATH, PYTHONHOME, etc.)
+    # from the build environment into a PyInstaller frozen binary can cause segfaults at startup.
+    python_vars = {"PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP", "PYTHONDONTWRITEBYTECODE",
+                   "PYTHONINSPECT", "PYTHONOPTIMIZE", "PYTHONNOUSERSITE", "PYTHONUSERBASE",
+                   "VIRTUAL_ENV", "pythonLocation"}
+    clean_env = {k: v for k, v in os.environ.items() if k not in python_vars}
+    clean_env["in-ci"] = "true"
+    subprocess.check_call([pyinstaller_output_file, "test"], env=clean_env)
 
     print("Verified package ran basic tests and exited 0")
