@@ -196,7 +196,7 @@ def main(portfolio: str):
     
     # Example portfolio configuration
     portfolio_name = portfolio
-    providers = ["alpaca", "robinhood", "moomoo", "webull", "schwab"]  # Adjust based on your logged-in providers
+    #providers = ["alpaca", "robinhood", "moomoo", "webull", "schwab"]  # Adjust based on your logged-in providers
 
     # Method 1: Synchronous export (blocks until complete)
     print("=" * 60)
