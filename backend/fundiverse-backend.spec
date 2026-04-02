@@ -10,7 +10,7 @@ hiddenimports = [
     'schwab.client',
     'moomoo',
 ]
-for pkg in ['py_portfolio_index', 'uvicorn', 'duckdb']:
+for pkg in ['py_portfolio_index', 'uvicorn', 'duckdb', 'trilogy']:
     tmp_ret = collect_all(pkg)
     datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 

@@ -128,7 +128,7 @@ if __name__ == "__main__":
                    "PYTHONINSPECT", "PYTHONOPTIMIZE", "PYTHONNOUSERSITE", "PYTHONUSERBASE",
                    "VIRTUAL_ENV", "pythonLocation"}
     clean_env = {k: v for k, v in os.environ.items() if k not in python_vars}
-    clean_env["in-ci"] = "true"
+    clean_env["IN_CI"] = "true"
     subprocess.check_call([pyinstaller_output_file, "test"], env=clean_env)
 
     print("Verified package ran basic tests and exited 0")

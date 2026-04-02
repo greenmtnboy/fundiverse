@@ -48,7 +48,7 @@ jobs:
       - name: Build and test executable
         working-directory: ./backend
         env:
-          in-ci: "true"
+          IN_CI: "true"
         run: |
           python build.py
       - name: Upload PyInstaller warn file

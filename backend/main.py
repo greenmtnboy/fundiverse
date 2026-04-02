@@ -1053,7 +1053,7 @@ def run():
     LOGGING_CONFIG["disable_existing_loggers"] = True
     import sys
 
-    if os.environ.get("in-ci"):
+    if os.environ.get("IN_CI"):
         assert all(
             x in AVAILABLE_PROVIDERS
             for x in [
