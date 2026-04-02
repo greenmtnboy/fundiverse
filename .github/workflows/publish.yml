@@ -23,16 +23,9 @@ jobs:
         with:
           node-version: "20"
       - name: Set up Python 3.12
-        id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Override pythonLocation for Windows
-        if: startsWith(matrix.os, 'windows')
-        run: |
-          $dir = python -c "import sys; print(sys.exec_prefix)"
-          echo "pythonLocation=$dir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        shell: pwsh
       - run: pip install -r backend/requirements.txt
         
       # - name: Install dependencies

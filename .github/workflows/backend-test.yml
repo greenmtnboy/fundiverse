@@ -49,6 +49,7 @@ jobs:
         working-directory: ./backend
         env:
           IN_CI: "true"
+          PYTHONFAULTHANDLER: "1"
         run: |
           python build.py
       - name: Upload PyInstaller warn file
