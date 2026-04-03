@@ -109,10 +109,9 @@ const desiredResponseCode = 200;
 async function makeAsyncRequestInner(
   guid: string,
   startTime: number,
-): Promise<{ data: any; status: number } | undefined> {
+): Promise<{ data: any; status: number }> {
   if (Date.now() - startTime >= maxAsyncMinutes * 60 * 1000) {
-    console.log("Loop has been running for more than 10 minutes. Breaking the loop.");
-    return;
+    throw new Error("Async request timed out after 10 minutes.");
   }
   const response = await get(`background_tasks/${guid}`);
   if (response.status === desiredResponseCode) {

@@ -194,10 +194,9 @@ import CompositePortfolioModel from "/src/models/CompositePortfolioModel";
 //API
 import instance from "../api/instance";
 import exceptions from "../api/exceptions";
+import debounce from "../helpers/debounce";
 
 import { mapActions, mapGetters } from "vuex";
-
-import { debounce } from "lodash";
 
 export default {
   name: "CompositePortfolioManagementView",
