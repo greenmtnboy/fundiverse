@@ -1,6 +1,6 @@
 import { isFetchError } from "./instance";
 
-const axiosHelpers = {
+const apiHelpers = {
   getErrorMessage(error: Error): string {
     let base = "An error occured.";
     if (isFetchError(error)) {
@@ -22,4 +22,4 @@ const axiosHelpers = {
   },
 };
 
-export default axiosHelpers;
+export default apiHelpers;

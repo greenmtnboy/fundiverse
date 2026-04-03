@@ -1,61 +1,83 @@
-import axios from "axios";
-// import exceptions from './exceptions';
+const BASE_URL = "http://localhost:5000";
 
-export const instance = axios.create({
-  baseURL: "http://localhost:5000",
-});
+export class FetchError extends Error {
+  response: { status: number; data: any };
 
-instance.interceptors.response.use(
-  (response) => {
-    // If the response is successful, pass it through
-    return response;
-  },
-  (error) => {
-    if (error.response) {
-      // Access the HTTP status code
-      const status = error.response.status;
+  constructor(message: string, status: number, data: any) {
+    super(message);
+    this.name = "FetchError";
+    this.response = { status, data };
+  }
+}
 
-      // Add more conditions for other error codes as needed
-    }
+async function handleResponse(
+  res: Response,
+): Promise<{ data: any; status: number }> {
+  if (!res.ok) {
+    let errorData: any = null;
+    try {
+      errorData = await res.json();
+    } catch {}
 
-    // Return the error to propagate it further
-    return Promise.reject(error);
-  },
-);
+    throw new FetchError(
+      `Request failed with status ${res.status}`,
+      res.status,
+      errorData,
+    );
+  }
+
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {}
+
+  return { data, status: res.status };
+}
+
+async function get(path: string): Promise<{ data: any; status: number }> {
+  const res = await fetch(`${BASE_URL}/${path}`, {
+    method: "GET",
+  });
+  return handleResponse(res);
+}
+
+async function post(
+  path: string,
+  body?: unknown,
+): Promise<{ data: any; status: number }> {
+  const res = await fetch(`${BASE_URL}/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse(res);
+}
 
 const desiredResponseCode = 200;
 
 const maxAsyncMinutes = 10;
 
-// Define a function for making the Axios request
 async function makeAsyncRequestInner(guid, startTime) {
   const currentTime = Date.now();
   if (currentTime - startTime >= maxAsyncMinutes * 60 * 1000) {
-    console.log(
-      "Loop has been running for more than 5 minutes. Breaking the loop.",
-    );
-    return; // Exit the loop
+    throw new Error("Async request timed out after 10 minutes.");
   }
-  try {
-    const response = await instance.get(`background_tasks/${guid}`);
-    const { status } = response;
-    if (status === desiredResponseCode) {
-      return response;
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return await makeAsyncRequestInner(guid, startTime);
-    }
-  } catch (error) {
-    throw error;
+
+  const response = await get(`background_tasks/${guid}`);
+  const { status } = response;
+  if (status === desiredResponseCode) {
+    return response;
   }
+
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return await makeAsyncRequestInner(guid, startTime);
 }
 
 export async function makeAsyncRequest(asyncApi, args) {
-  const response = await instance.post(`async_${asyncApi}`, args);
+  const response = await post(`async_${asyncApi}`, args);
   const guid = response.data.guid;
   const startTime = Date.now();
   return await makeAsyncRequestInner(guid, startTime);
 }
 
-// Start the polling loop
-instance["makeAsyncRequest"] = makeAsyncRequest;
+export const instance = { get, post, makeAsyncRequest };

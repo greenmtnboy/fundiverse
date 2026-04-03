@@ -77,7 +77,7 @@
 // Views
 
 import instance from "/src/api/instance";
-import axiosHelpers from "/src/api/helpers";
+import apiHelpers from "/src/api/helpers";
 import exceptions from "/src/api/exceptions";
 import { mapActions, mapGetters } from "vuex";
 export default {
@@ -319,7 +319,7 @@ export default {
             }
             else {
               this.extraLogin = true;
-              this.error = axiosHelpers.getErrorMessage(exc);
+              this.error = apiHelpers.getErrorMessage(exc);
             }
 
           }
@@ -327,7 +327,7 @@ export default {
             this.externalLoginURL = exc.message;
           }
           else {
-            this.error = axiosHelpers.getErrorMessage(exc);
+            this.error = apiHelpers.getErrorMessage(exc);
           }
         })
         .finally(() => {
