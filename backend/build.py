@@ -31,7 +31,7 @@ if pyenv_env:
     pyinstaller_path = Path(pyenv_env) / parent / "pyinstaller"
 else:
     python_path = Path(sys.executable)
-    pyinstaller_path = python_path.parent / ("pyinstaller.exe" if system() != "Linux" else "pyinstaller")
+    pyinstaller_path = python_path.parent / parent / ("pyinstaller.exe" if system() != "Linux" else "pyinstaller")
 
 ci_requirements = root / "requirements-ci.txt"
 requirements = root / "requirements-lock.txt"
