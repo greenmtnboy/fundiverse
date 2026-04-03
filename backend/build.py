@@ -23,15 +23,19 @@ else:
     SCRIPT_NAME = f"{SCRIPT_NAME}.exe"
     print(f"on windows, building {final_file}")
 
+ci_python = os.environ.get("pythonLocation")
 pyenv_env = os.environ.get("pyenv")
 virtual_env_path = environ.get("VIRTUAL_ENV", f"{base}/.venv")
 
 if pyenv_env:
     python_path = Path(pyenv_env) / "bin" / "python"
     pyinstaller_path = Path(pyenv_env) / parent / "pyinstaller"
+elif ci_python:
+    python_path = Path(ci_python) / "python"
+    pyinstaller_path = Path(ci_python) / parent / "pyinstaller"
 else:
-    python_path = Path(sys.executable)
-    pyinstaller_path = python_path.parent / parent / ("pyinstaller.exe" if system() != "Linux" else "pyinstaller")
+    python_path = Path(virtual_env_path) / parent / "python"
+    pyinstaller_path = Path(virtual_env_path) / parent / "pyinstaller"
 
 ci_requirements = root / "requirements-ci.txt"
 requirements = root / "requirements-lock.txt"
