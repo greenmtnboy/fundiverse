@@ -83,7 +83,7 @@ async function get(
   path: string,
   options: RequestOptions = {},
 ): Promise<{ data: any; status: number }> {
-  const res = await fetch(`${BASE_URL}/${path}`, {
+  const res = await fetch(`${BASE_URL}/${path.replace(/^\//, "")}`, {
     method: "GET",
     headers: buildHeaders("GET", options.headers),
   });
@@ -95,7 +95,7 @@ async function post(
   body?: unknown,
   options: RequestOptions = {},
 ): Promise<{ data: any; status: number }> {
-  const res = await fetch(`${BASE_URL}/${path}`, {
+  const res = await fetch(`${BASE_URL}/${path.replace(/^\//, "")}`, {
     method: "POST",
     headers: buildHeaders("POST", options.headers),
     body: body !== undefined ? JSON.stringify(body) : undefined,
