@@ -13,6 +13,9 @@
                   <span class="pr-2">Portfolio Return: </span>
                   <CurrencyItem
                     :value="portfolio.profit_or_loss.value ? portfolio.profit_or_loss : { currency: 'USD', value: portfolio.profit_or_loss }" />
+  
+
+                    <span class="pl-2">({{ portfolioReturnPercentage }}%)</span>
                 </v-chip>
               </template>
               <span>Dividends:
@@ -33,9 +36,7 @@
         </p>
         <p v-if="selectedIndex">
           Based on index
-          <span class="font-weight-black" :style="{ color: 'purple' }">{{
-      this.selectedIndex
-    }}</span>
+          <span class="font-weight-black" :style="{ color: 'purple' }">{{ selectedIndex }}</span>
           with {{ customizationCount }} customizations.
         </p>
         <p v-else :style="{ color: 'orange' }">
@@ -94,6 +95,9 @@
       <v-btn :disabled="portfolio.keys.length === 0" @click="navigatePortfolio">
         Configure
       </v-btn>
+            <v-btn :disabled="portfolio.keys.length === 0" @click="navigateAnalytics">
+       Analytics
+      </v-btn>
       <ProviderLoginPopup  :portfolioName="portfolio.name" :providerKeys="portfolio.keys" />
 
       <v-btn :disabled="portfolio.keys.length === 0 || portfolio.loading" @click="refresh">
@@ -141,6 +145,10 @@ export default {
     //         }
     //     }
     // },
+    portfolioReturnPercentage() {
+      const percentage = (this.portfolio.profit_or_loss.value / (this.portfolioSum - this.portfolio.profit_or_loss.value)) * 100;
+      return percentage.toFixed(2);
+    },
     timeDisplay() {
       const options: Intl.DateTimeFormatOptions = {
         weekday: "long",
@@ -244,6 +252,9 @@ export default {
     ]),
     navigatePortfolio() {
       this.$router.push({ path: `composite_portfolio/${this.portfolio.name}` });
+    },
+    navigateAnalytics() {
+      this.$router.push({ path: `portfolio_analytics/${this.portfolio.name}` });
     },
     async refreshChild(sportfolio) {
       await this.refreshCompositePortfolio({

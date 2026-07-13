@@ -1,23 +1,23 @@
-from typing import Annotated, Any, Callable, Dict, List, Optional
+import os
+import sys
+from typing import Annotated, Any, Dict, List, Optional
 
 import dotenv
 
 dotenv.load_dotenv()
 import asyncio
 import multiprocessing
-import os
-import sys
 import traceback
 import uuid
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import asynccontextmanager
 from copy import deepcopy
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from logging import StreamHandler, getLogger
 from os import environ
+from pathlib import Path
 from typing import get_type_hints
 
 import uvicorn
@@ -51,6 +51,7 @@ from py_portfolio_index import (
     WebullProvider,
     generate_composite_order_plan,
 )
+from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
 from py_portfolio_index.enums import ProviderType
 from py_portfolio_index.exceptions import (
     ConfigurationError,
@@ -60,7 +61,6 @@ from py_portfolio_index.exceptions import (
 from py_portfolio_index.models import (
     CompositePortfolio,
     IdealPortfolio,
-    LoginResponse,
     Money,
     OrderElement,
     OrderPlan,
@@ -83,6 +83,12 @@ from pydantic.alias_generators import to_camel
 from pytz import UTC
 from starlette.background import BackgroundTask
 from uvicorn.config import LOGGING_CONFIG
+
+from config import ActiveConfig, BackgroundStatus, run_task
+from exports import (
+    DatabaseExportRequest,
+    export_portfolio_to_database,
+)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
@@ -109,76 +115,21 @@ class SubPortfolioRefreshException(Exception):
         self.provider = provider
 
 
-class BackgroundStatus(Enum):
-    RUNNING = 1
-    SUCCESS = 2
-    FAILED = -1
+# Add to the request models section
 
 
-@dataclass
-class AsyncTask:
-    guid: str
-    status: BackgroundStatus
-    started: datetime
-    result: Any
-    error: Exception | None = None
-
-
-@dataclass
-class ActiveConfig:
-    logged_in: str | None = None
-    provider_cache: Dict[ProviderType, BaseProvider] = field(default_factory=dict)
-    holding_cache: Dict[ProviderType, RealPortfolio] = field(default_factory=dict)
-    pending_auth_response: LoginResponse | None = None
-    pending_schwab_response: SchwabAuthContext | None = None
-    pending_momoo_response: str | None = None
-    auth_token: str | None = None
-    validate: bool = False
-    background_tasks: Dict[str, AsyncTask] = field(default_factory=dict)
-
-    @property
-    def default_provider(self):
-        # get the fastest provider
-        priority = [
-            ProviderType.ALPACA,
-            ProviderType.ROBINHOOD,
-            ProviderType.WEBULL,
-            ProviderType.SCHWAB,
-            ProviderType.MOOMOO,
-            ProviderType.ALPACA_PAPER,
-            ProviderType.WEBULL_PAPER,
-        ]
-        for provider in priority:
-            for key, _ in self.provider_cache.items():
-                if key == provider:
-                    return key
-        if self.provider_cache:
-            return list(self.provider_cache.keys())[0]
-        raise HTTPException(401, "No logged in provider specified")
+# Add helper function to get database path
+def get_database_path(portfolio_name: str) -> Path:
+    """Get canonical storage location for portfolio database"""
+    db_dir = Path.home() / ".fundiverse" / "databases"
+    db_dir.mkdir(parents=True, exist_ok=True)
+    return db_dir / f"{portfolio_name}.db"
 
 
 IN_APP_CONFIG = ActiveConfig()
 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     IN_APP_CONFIG.validate = True
 IN_APP_CONFIG.auth_token = os.environ.get("FUNDIVERSE_API_SECRET_KEY")
-
-
-def run_task(config: ActiveConfig, guid: str, func: Callable, *args, **kwargs):
-    task = AsyncTask(
-        guid=guid,
-        status=BackgroundStatus.RUNNING,
-        started=datetime.now(tz=UTC),
-        result=None,
-    )
-    config.background_tasks[guid] = task
-
-    try:
-        task.result = func(*args, **kwargs)
-        task.status = BackgroundStatus.SUCCESS
-    except Exception as e:
-        task.error = e
-        task.status = BackgroundStatus.FAILED
-    config.background_tasks[guid] = task
 
 
 def canonicalize_key(key: str | None) -> str:
@@ -236,7 +187,7 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization"],
+    allow_headers=["Authorization", "Cache-Control", "Pragma", "Expires"],
     allow_origin_regex=allow_origin_regex,
 )
 
@@ -253,6 +204,7 @@ class LoginRequest(BaseModel):
     force: bool = False
     wait_for_external_auth: bool = False
     quote_provider: ProviderType | None = None
+    response_json: str | None = None
 
 
 class RealPortfolioOutput(BaseModel):
@@ -487,7 +439,10 @@ def login(input: LoginRequest) -> bool:
         environ[WebullProvider.USERNAME_ENV] = input.key
         environ[WebullProvider.TRADE_TOKEN_ENV] = input.trading_pin
         environ[WebullProvider.DEVICE_ID_ENV] = input.device_id
-        provider = WebullProvider()
+        if input.response_json:
+            provider = WebullProvider(response_json=input.response_json)
+        else:
+            provider = WebullProvider()
         IN_APP_CONFIG.provider_cache[input.provider] = provider
     elif input.provider == ProviderType.WEBULL_PAPER:
         assert input.trading_pin is not None
@@ -897,6 +852,119 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
     return BuyRequestFinalMultiProviderOutput(orders=output)
 
 
+# Add the endpoint to the router
+@router.post("/database/export_portfolio_database")
+def export_portfolio_database(input: DatabaseExportRequest):
+    """
+    Export portfolio data to a DuckDB database.
+    Database will be stored at ~/.fundiverse/databases/{portfolio_name}.db
+    """
+    try:
+        return export_portfolio_to_database(input, IN_APP_CONFIG)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(500, f"Error exporting portfolio database: {e}")
+
+
+# Add endpoint to get database info
+@router.get("/database_info/{portfolio_name}")
+def get_database_info(portfolio_name: str):
+    """Get information about an existing portfolio database"""
+    db_path = get_database_path(portfolio_name)
+
+    if not db_path.exists():
+        raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
+    db = None
+    try:
+        db = DuckDBDatastore(str(db_path))
+
+        # Query for basic stats
+        holdings_row = db.query("SELECT holdings.symbol.id.count;").fetchone()
+        holdings_count = holdings_row[0] if holdings_row else 0
+        dividends_row = db.query("SELECT dividend.id.count;").fetchone()
+        dividends_count = dividends_row[0] if dividends_row else 0
+        providers = db.query("SELECT provider.name;").fetchall()
+
+        return {
+            "database_path": str(db_path),
+            "portfolio_name": portfolio_name,
+            "exists": True,
+            "total_holdings": holdings_count,
+            "total_dividends": dividends_count,
+            "providers": [p[0] for p in providers],
+            "file_size_mb": db_path.stat().st_size / (1024 * 1024),
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Error reading database info: {e}")
+    finally:
+        if db:
+            db.close()
+
+
+# Add endpoint to download the database file
+@router.get("/database/download/{portfolio_name}")
+def download_database(portfolio_name: str):
+    """Download the portfolio database file for use in DuckDB WASM"""
+    db_path = get_database_path(portfolio_name)
+
+    if not db_path.exists():
+        raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
+    db = None
+    try:
+        # Open connection, checkpoint, and close
+        db = DuckDBDatastore(str(db_path))
+        db.executor.execute_raw_sql(
+            "CHECKPOINT;"
+        )  # This writes all WAL data to the main file
+        db.close()
+        db = None
+
+        # Small delay to ensure file system sync
+        # Read entire file into memory
+        file_content = db_path.read_bytes()
+
+        from fastapi.responses import Response
+
+        return Response(
+            content=file_content,
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{portfolio_name}.db"',
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Error downloading database: {e}")
+    finally:
+        if db:
+            db.close()
+
+
+# Add endpoint to delete a database
+@router.delete("/database/{portfolio_name}")
+def delete_database(portfolio_name: str):
+    """Delete a portfolio database"""
+    db_path = get_database_path(portfolio_name)
+
+    if not db_path.exists():
+        raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
+
+    try:
+        db_path.unlink()
+        return {"deleted": True, "portfolio_name": portfolio_name}
+    except Exception as e:
+        raise HTTPException(500, f"Error deleting database: {e}")
+
+
+@router.get("/trilogy_model")
+def trilogy_model():
+    from py_portfolio_index.datastores.base_datastore import BaseDatastore
+
+    files: dict[str, str] = BaseDatastore.get_files_and_contents()
+    return files
+
+
 class SleepRequest(BaseModel):
     sleep: int
 
@@ -934,7 +1002,7 @@ router_routes = list(router.routes)
 for path in router_routes:
     if not isinstance(path, APIRoute):
         continue
-    if "POST" in path.methods:
+    if path.methods and "POST" in path.methods:
 
         def make_function(endpoint):
             args = get_type_hints(endpoint)
@@ -977,15 +1045,11 @@ async def provider_auth_handler(request: Request, exc: ConfigurationError):
 app.include_router(router)
 
 
-# @router.post("/async_plan_composite_purchase")
-# def async_plan_composite_purchase(input: BuyRequest, background_tasks: BackgroundTasks):
-
-
 def run():
     LOGGING_CONFIG["disable_existing_loggers"] = True
     import sys
 
-    if os.environ.get("in-ci"):
+    if os.environ.get("IN_CI"):
         assert all(
             x in AVAILABLE_PROVIDERS
             for x in [

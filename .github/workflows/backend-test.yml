@@ -47,7 +47,15 @@ jobs:
           pytest tests --ignore=docs_src/ --cov=./tests
       - name: Build and test executable
         working-directory: ./backend
-        env: 
-          in-ci: "true"
+        env:
+          IN_CI: "true"
+          PYTHONFAULTHANDLER: "1"
         run: |
           python build.py
+      - name: Upload PyInstaller warn file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyinstaller-warnings
+          path: backend/build/fundiverse-backend/warn-fundiverse-backend.txt
+          if-no-files-found: ignore

@@ -27,7 +27,6 @@ ci_python = os.environ.get("pythonLocation")
 pyenv_env = os.environ.get("pyenv")
 virtual_env_path = environ.get("VIRTUAL_ENV", f"{base}/.venv")
 
-
 if pyenv_env:
     python_path = Path(pyenv_env) / "bin" / "python"
     pyinstaller_path = Path(pyenv_env) / parent / "pyinstaller"
@@ -58,18 +57,6 @@ if __name__ == "__main__":
         subprocess.check_call(setup_command, cwd=root)
     except subprocess.CalledProcessError as e:
         print("Error executing dev requirements install command:", e)
-        sys.exit(1)
-    req_command = prefixes + [
-        f"{python_path}",
-        "-m",
-        "pip",
-        "install",
-        "-r" f"{requirements}",
-    ]
-    try:
-        subprocess.check_call(req_command, cwd=root)
-    except subprocess.CalledProcessError as e:
-        print("Error executing requirements install command:", e)
         sys.exit(1)
     spec_file = root / f"{SCRIPT_NAME}.spec"
     if spec_file.exists():
@@ -134,8 +121,13 @@ if __name__ == "__main__":
         shutil.move(destination_folder / final_file, destination_folder / SCRIPT_NAME)
 
     print("checking file runs")
-    my_env = os.environ.copy()
-    my_env["in-ci"] = "true"
-    subprocess.check_call([pyinstaller_output_file, "test"], env=my_env)
+    # Run with a clean environment - passing Python-related vars (PYTHONPATH, PYTHONHOME, etc.)
+    # from the build environment into a PyInstaller frozen binary can cause segfaults at startup.
+    python_vars = {"PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP", "PYTHONDONTWRITEBYTECODE",
+                   "PYTHONINSPECT", "PYTHONOPTIMIZE", "PYTHONNOUSERSITE", "PYTHONUSERBASE",
+                   "VIRTUAL_ENV", "pythonLocation"}
+    clean_env = {k: v for k, v in os.environ.items() if k not in python_vars}
+    clean_env["IN_CI"] = "true"
+    subprocess.check_call([pyinstaller_output_file, "test"], env=clean_env)
 
     print("Verified package ran basic tests and exited 0")

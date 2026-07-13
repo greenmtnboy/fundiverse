@@ -33,7 +33,7 @@ const pyInstallerProcess = spawn(
 // Set a timeout (e.g., 30 minutes = 1800000 ms)
 const TIMEOUT_MS = 900000;
 const timeout = setTimeout(() => {
-  console.error("PyInstaller build timed out after 30 minutes");
+  console.error("PyInstaller build timed out after 15 minutes");
   pyInstallerProcess.kill();
   process.exit(1);
 }, TIMEOUT_MS);

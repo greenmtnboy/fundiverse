@@ -38,7 +38,7 @@
         </template>
         <span>This stock has unsettled orders</span>
       </v-tooltip>
-      <v-btn v-else-if="!this.targetWeight" icon density="compact"> </v-btn>
+      <v-btn v-else-if="targetWeightDisplay === null" icon density="compact"> </v-btn>
       <v-tooltip v-else-if="onGoal">
         <template v-slot:activator="{ props }">
           <v-btn v-bind="props" icon density="compact">
@@ -126,7 +126,7 @@ export default {
       return "gray";
     },
     onGoal() {
-      if (!this.totalPortfolioSize) {
+      if (!this.totalPortfolioSize || this.targetWeightDisplay === null || this.elementWeight === null) {
         return false;
       }
       return (
@@ -144,12 +144,15 @@ export default {
       });
     },
     overGoal() {
-      if (!this.totalPortfolioSize) {
+      if (!this.totalPortfolioSize || this.targetWeightDisplay === null || this.elementWeight === null) {
         return false;
       }
       return this.elementWeight > this.targetWeightDisplay;
     },
     targetWeightDisplay() {
+      if (this.targetWeight == null) {
+        return null;
+      }
       return Math.round(this.targetWeight * 10000) / 100;
     },
     elementWeight() {

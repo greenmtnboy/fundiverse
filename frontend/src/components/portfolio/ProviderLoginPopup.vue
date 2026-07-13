@@ -77,7 +77,7 @@
 // Views
 
 import instance from "/src/api/instance";
-import axiosHelpers from "/src/api/helpers";
+import apiHelpers from "/src/api/helpers";
 import exceptions from "/src/api/exceptions";
 import { mapActions, mapGetters } from "vuex";
 export default {
@@ -181,6 +181,7 @@ export default {
           { key: "secret", label: "Password", type: "secret" },
           { key: "device_id", label: "Device ID", type: "secret" },
           { key: "trading_pin", label: "Trading Pin", type: "secret" },
+          { key: "response_json", label: "Response JSON (Optional)", optional: true },
         ];
       }
       else if (["schwab"].includes(provider)) {
@@ -269,6 +270,7 @@ export default {
       if (this.quoteProvider) {
         command = { ...command, quote_provider: this.quoteProvider }
       }
+
       this.externalLoginURL = "";
       return instance
         .post("login", command)
@@ -317,7 +319,7 @@ export default {
             }
             else {
               this.extraLogin = true;
-              this.error = axiosHelpers.getErrorMessage(exc);
+              this.error = apiHelpers.getErrorMessage(exc);
             }
 
           }
@@ -325,7 +327,7 @@ export default {
             this.externalLoginURL = exc.message;
           }
           else {
-            this.error = axiosHelpers.getErrorMessage(exc);
+            this.error = apiHelpers.getErrorMessage(exc);
           }
         })
         .finally(() => {

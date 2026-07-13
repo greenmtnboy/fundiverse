@@ -151,7 +151,7 @@ import exceptions from "../../api/exceptions";
 import OrderResult from "./OrderResult.vue";
 import CurrencyItem from "../generic/CurrencyItem.vue";
 import TickerDisplay from "../generic/TickerDisplay.vue";
-import { debounce } from "lodash";
+import debounce from "../../helpers/debounce";
 function roundToNearestTen(number) {
   return Math.floor(number / 10) * 10;
 }
