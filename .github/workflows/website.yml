@@ -25,7 +25,7 @@ jobs:
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        server: pixie-ftp.porkbun.com
+        server: pixie-ss1-ftp.porkbun.com
         username: fundiverse.dev
         password: ${{ secrets.WEBSITE_SFTP_PASSWORD }}
         local-dir: docs/src/.vuepress/dist/
