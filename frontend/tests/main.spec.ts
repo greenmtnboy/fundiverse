@@ -18,16 +18,21 @@ test.describe("Test App", async () => {
 
   test.beforeAll(async () => {
     electronApp = await electron.launch({ args: [path.join(cwdPath,'dist-electron/main.js')] })
-    // electronApp.process().stdout.on('data', (data) => console.log(`stdout: ${data}`));
-    // electronApp.process().stderr.on('data', (error) => console.log`stderr: ${error}`);
+    electronApp.process().stdout?.on('data', (data) => console.log(`stdout: ${data}`));
+    electronApp.process().stderr?.on('data', (error) => console.log(`stderr: ${error}`));
     firstWindow = await electronApp.firstWindow();
     await firstWindow.setViewportSize({ width: 1580, height: 1280 });
 
   });
 
   test("Create and Delete Portfolio", async () => {
+    // First interaction waits for the packaged backend to start (onefile
+    // extraction on CI runners is slow), so give it a generous timeout.
+    test.setTimeout(90000);
     await firstWindow.title();
-    await firstWindow.getByTestId("add-portfolio").click({ delay: 500 });
+    await firstWindow
+      .getByTestId("add-portfolio")
+      .click({ delay: 500, timeout: 60000 });
     // const popup = await firstWindow.waitForEvent('popup');
     const newPortfolioInput = await firstWindow.locator(
       "#input-add-portfolio-name",

@@ -40,6 +40,6 @@ jobs:
       - name: Run tests
         working-directory: ./frontend
         run: npm run test
-        timeout-minutes: 2
+        timeout-minutes: 5
         env:
           DEBUG: 'pw:api'

@@ -142,11 +142,29 @@ const startBackgroundService = () => {
   const spath = path.join(process.env.PUBLIC, targetProcessName);
   //const spath = path.join(app.getAppPath(), '/src/background/', `${targetProcessName}`)
   console.log(`spawning background service at ${spath}`);
+  // Python-related vars (PYTHONPATH, PYTHONHOME, etc.) leaking into the
+  // PyInstaller frozen binary can crash it at startup - same list as backend/build.py
+  const pythonVars = [
+    "PYTHONPATH",
+    "PYTHONHOME",
+    "PYTHONSTARTUP",
+    "PYTHONDONTWRITEBYTECODE",
+    "PYTHONINSPECT",
+    "PYTHONOPTIMIZE",
+    "PYTHONNOUSERSITE",
+    "PYTHONUSERBASE",
+    "VIRTUAL_ENV",
+    "pythonLocation",
+  ];
+  const childEnv = { ...process.env, FUNDIVERSE_API_SECRET_KEY: API_KEY };
+  for (const v of pythonVars) {
+    delete childEnv[v];
+  }
   const backgroundService = execFile(
     spath,
     [API_KEY],
     {
-      env: { ...process.env, FUNDIVERSE_API_SECRET_KEY: API_KEY },
+      env: childEnv,
       windowsHide: true,
     },
     (error, stdout, stderr) => {
