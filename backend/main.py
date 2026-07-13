@@ -2,10 +2,6 @@ import os
 import sys
 from typing import Annotated, Any, Dict, List, Optional
 
-if __name__ == "__main__" and os.environ.get("IN_CI"):
-    print("Running in a unit test, exiting")
-    sys.exit(0)
-
 import dotenv
 
 dotenv.load_dotenv()
