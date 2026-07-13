@@ -1049,10 +1049,6 @@ async def provider_auth_handler(request: Request, exc: ConfigurationError):
 app.include_router(router)
 
 
-# @router.post("/async_plan_composite_purchase")
-# def async_plan_composite_purchase(input: BuyRequest, background_tasks: BackgroundTasks):
-
-
 def run():
     LOGGING_CONFIG["disable_existing_loggers"] = True
     import sys
