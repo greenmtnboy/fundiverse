@@ -1006,7 +1006,7 @@ router_routes = list(router.routes)
 for path in router_routes:
     if not isinstance(path, APIRoute):
         continue
-    if "POST" in path.methods:
+    if path.methods and "POST" in path.methods:
 
         def make_function(endpoint):
             args = get_type_hints(endpoint)
