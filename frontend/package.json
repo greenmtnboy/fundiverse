@@ -17,7 +17,7 @@
     "debug_bg": "node test-bg.js",
     "dist_linux": "pnpm exec vue-tsc && pnpm exec vite build && node build-backend.js && pnpm exec electron-builder --linux snap",
     "dist_windows": "pnpm exec vue-tsc && pnpm exec vite build && node build-backend.js && pnpm exec electron-builder --win",
-    "test": "npx playwright test"
+    "test": "pnpm exec playwright test"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "1.29.1-dev269.0",

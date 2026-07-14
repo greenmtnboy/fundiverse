@@ -12,7 +12,7 @@ jobs:
           node-version: 21.x
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
       - name: Set up Python 3.12
         uses: actions/setup-python@v5.1.0
         with:
@@ -29,17 +29,17 @@ jobs:
         run: pnpm install
       - name: Install Playwright Browsers
         working-directory: ./frontend
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
       - name: Build the electron package and webservice
         working-directory: ./frontend
-        run: npm run build
+        run: pnpm run build
       # - name: check build
       #   working-directory: ./frontend
       #   run: npm run dev
       #   timeout-minutes: 2
       - name: Run tests
         working-directory: ./frontend
-        run: npm run test
+        run: pnpm run test
         timeout-minutes: 5
         env:
           DEBUG: 'pw:api'
