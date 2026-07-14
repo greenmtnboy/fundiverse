@@ -1,4 +1,4 @@
-on: 
+on:
   push:
     branches:
       - main
@@ -11,21 +11,25 @@ jobs:
     - name: 🚚 Get latest code
       uses: actions/checkout@v4.1.4
 
-    - name: Use Node.js 16
+    - name: Use Node.js 20
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
-        
+        node-version: '20'
+
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+
     - name: 🔨 Build Project
       working-directory: ./docs
       run: |
-        npm install
-        npm run build
-    
+        pnpm install --frozen-lockfile
+        pnpm run build
+
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        server: pixie-ftp.porkbun.com
+        server: pixie-ss1-ftp.porkbun.com
         username: fundiverse.dev
         password: ${{ secrets.WEBSITE_SFTP_PASSWORD }}
         local-dir: docs/src/.vuepress/dist/
