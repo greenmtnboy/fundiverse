@@ -30,6 +30,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r backend/requirements.txt
+      - run: pip install --no-deps -r backend/requirements-webull.txt
 
       - name: Install Snapcraft
         uses: samuelmeuli/action-snapcraft@v2

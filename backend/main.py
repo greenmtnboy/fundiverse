@@ -33,7 +33,7 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
 from fastapi.security import OAuth2PasswordBearer
 from py_portfolio_index import (
@@ -41,13 +41,13 @@ from py_portfolio_index import (
     INDEXES,
     STOCK_LISTS,
     AlpacaProvider,
+    ETradeProvider,
     Logger,
     MooMooProvider,
     PaperAlpacaProvider,
     PurchaseStrategy,
     RobinhoodProvider,
     SchwabProvider,
-    WebullPaperProvider,
     WebullProvider,
     generate_composite_order_plan,
 )
@@ -70,6 +70,18 @@ from py_portfolio_index.models import (
     RealPortfolioElement,
 )
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
+from py_portfolio_index.portfolio_providers.helpers.etrade import (
+    ETradeAuthContext,
+)
+from py_portfolio_index.portfolio_providers.helpers.etrade import (
+    complete_authorization as etrade_complete_authorization,
+)
+from py_portfolio_index.portfolio_providers.helpers.etrade import (
+    create_login_context as etrade_create_login_context,
+)
+from py_portfolio_index.portfolio_providers.helpers.etrade import (
+    load_cached_token as etrade_load_cached_token,
+)
 from py_portfolio_index.portfolio_providers.helpers.robinhood import (
     login as rh_login,
 )
@@ -105,6 +117,12 @@ class ShutdownException(Exception):
 
 class SchwabExtraAuthenticationStepException(Exception):
     def __init__(self, response: SchwabAuthContext, *args):
+        super().__init__(*args)
+        self.response = response
+
+
+class ETradeExtraAuthenticationStepException(Exception):
+    def __init__(self, response: ETradeAuthContext, *args):
         super().__init__(*args)
         self.response = response
 
@@ -198,13 +216,20 @@ class LoginRequest(BaseModel):
     secret: str
     provider: ProviderType
     extra_factor: str | int | None = None
-    device_id: str | None = None
     trading_pin: str | None = None
     proxy_path: str | None = None
     force: bool = False
     wait_for_external_auth: bool = False
     quote_provider: ProviderType | None = None
-    response_json: str | None = None
+    # etrade: target the sandbox environment; arrives as free text from the
+    # login form, so anything truthy-looking counts
+    sandbox: str | bool | None = None
+
+    @property
+    def sandbox_enabled(self) -> bool:
+        if isinstance(self.sandbox, bool):
+            return self.sandbox
+        return str(self.sandbox or "").strip().lower() in ("1", "true", "yes", "on")
 
 
 class RealPortfolioOutput(BaseModel):
@@ -349,17 +374,6 @@ def get_provider_safe(iprovider: ProviderType | None = None) -> BaseProvider:
             else:
                 raise HTTPException(401, "No logged in webull provider found")
 
-        elif _provider == ProviderType.WEBULL_PAPER:
-            wb_paper_provider = IN_APP_CONFIG.provider_cache.get(
-                ProviderType.WEBULL_PAPER, None
-            )
-            if wb_paper_provider:
-                IN_APP_CONFIG.provider_cache[ProviderType.WEBULL_PAPER] = (
-                    wb_paper_provider
-                )
-                provider = wb_paper_provider
-            else:
-                raise HTTPException(401, "No logged in webull provider found")
         elif _provider == ProviderType.SCHWAB:
             schwab_provider = IN_APP_CONFIG.provider_cache.get(
                 ProviderType.SCHWAB, None
@@ -369,6 +383,13 @@ def get_provider_safe(iprovider: ProviderType | None = None) -> BaseProvider:
                 provider = schwab_provider
             else:
                 raise HTTPException(401, "No logged in schwab provider found")
+        elif _provider == ProviderType.ETRADE:
+            etrade_provider = IN_APP_CONFIG.provider_cache.get(ProviderType.ETRADE, None)
+            if etrade_provider:
+                IN_APP_CONFIG.provider_cache[ProviderType.ETRADE] = etrade_provider
+                provider = etrade_provider
+            else:
+                raise HTTPException(401, "No logged in etrade provider found")
         elif _provider == ProviderType.MOOMOO:
             momoo_provider = IN_APP_CONFIG.provider_cache.get(ProviderType.MOOMOO, None)
             if momoo_provider:
@@ -433,25 +454,11 @@ def login(input: LoginRequest) -> bool:
         IN_APP_CONFIG.provider_cache[input.provider] = provider
         IN_APP_CONFIG.pending_auth_response = None
     elif input.provider == ProviderType.WEBULL:
-        assert input.trading_pin is not None
-        assert input.device_id is not None
-        environ[WebullProvider.PASSWORD_ENV] = input.secret
-        environ[WebullProvider.USERNAME_ENV] = input.key
-        environ[WebullProvider.TRADE_TOKEN_ENV] = input.trading_pin
-        environ[WebullProvider.DEVICE_ID_ENV] = input.device_id
-        if input.response_json:
-            provider = WebullProvider(response_json=input.response_json)
-        else:
-            provider = WebullProvider()
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-    elif input.provider == ProviderType.WEBULL_PAPER:
-        assert input.trading_pin is not None
-        assert input.device_id is not None
-        environ[WebullPaperProvider.PASSWORD_ENV] = input.secret
-        environ[WebullPaperProvider.USERNAME_ENV] = input.key
-        environ[WebullPaperProvider.TRADE_TOKEN_ENV] = input.trading_pin
-        environ[WebullPaperProvider.DEVICE_ID_ENV] = input.device_id
-        provider = WebullPaperProvider()
+        # the official OpenAPI SDK authenticates with an app key/secret pair
+        # generated in the Webull developer portal
+        environ[WebullProvider.API_KEY_ENV] = input.key
+        environ[WebullProvider.API_SECRET_ENV] = input.secret
+        provider = WebullProvider()
         IN_APP_CONFIG.provider_cache[input.provider] = provider
     elif input.provider == ProviderType.SCHWAB:
         environ[SchwabProvider.API_KEY_ENV] = input.key
@@ -465,6 +472,33 @@ def login(input: LoginRequest) -> bool:
         provider = SchwabProvider(external_auth=True)
         IN_APP_CONFIG.provider_cache[input.provider] = provider
         IN_APP_CONFIG.pending_schwab_response = None
+    elif input.provider == ProviderType.ETRADE:
+        environ[ETradeProvider.API_KEY_ENV] = input.key
+        environ[ETradeProvider.API_SECRET_ENV] = input.secret
+        sandbox = input.sandbox_enabled
+        environ[ETradeProvider.SANDBOX_ENV] = "true" if sandbox else "false"
+        pending = IN_APP_CONFIG.pending_etrade_response
+        if pending and input.extra_factor:
+            # the user pasted the verification code from the oob page
+            etrade_complete_authorization(pending, str(input.extra_factor))
+            IN_APP_CONFIG.pending_etrade_response = None
+        elif pending:
+            # a flow is in flight with no code supplied; the /public/etrade/callback
+            # endpoint may have finished it for us (registered-callback mode)
+            if not etrade_load_cached_token(sandbox):
+                raise ETradeExtraAuthenticationStepException(response=pending)
+            IN_APP_CONFIG.pending_etrade_response = None
+        else:
+            # reuses/renews a cached token when possible; otherwise hands back
+            # an authorization URL for the user to visit
+            lc = etrade_create_login_context(
+                input.key, input.secret, sandbox=sandbox
+            )
+            if lc:
+                raise ETradeExtraAuthenticationStepException(response=lc)
+        provider = ETradeProvider(external_auth=True, sandbox=sandbox)
+        IN_APP_CONFIG.provider_cache[input.provider] = provider
+        IN_APP_CONFIG.pending_etrade_response = None
     elif input.provider == ProviderType.MOOMOO:
 
         environ[MooMooProvider.ACCOUNT_ENV] = input.key
@@ -499,6 +533,9 @@ def login_handler(input: LoginRequest):
         return login(input)
     except SchwabExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_schwab_response = e.response
+        raise HTTPException(303, e.response.authorization_url)
+    except ETradeExtraAuthenticationStepException as e:
+        IN_APP_CONFIG.pending_etrade_response = e.response
         raise HTTPException(303, e.response.authorization_url)
     except ExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_auth_response = e.response
@@ -541,9 +578,13 @@ def refresh_sub_portfolio(
             rport = item.get_holdings()
             rport.profit_and_loss = item.get_profit_or_loss()
         except ConfigurationError:
+            logger.error(
+                f"Auth error refreshing {key}, dropping login:\n{traceback.format_exc()}"
+            )
             del IN_APP_CONFIG.provider_cache[key]
             raise
         except Exception as e:
+            logger.error(f"Error refreshing {key}:\n{traceback.format_exc()}")
             raise SubPortfolioRefreshException(error=e, provider=key)
         IN_APP_CONFIG.holding_cache[key] = rport
     else:
@@ -1044,6 +1085,56 @@ async def provider_auth_handler(request: Request, exc: ConfigurationError):
 
 app.include_router(router)
 
+## Public (unauthenticated) endpoints, mounted as a sub-app so they bypass the
+## bearer-token dependency. OAuth redirect callbacks arrive from the user's
+## browser, which does not carry our auth header.
+public_app = FastAPI()
+
+
+def _callback_page(message: str, detail: str, status_code: int = 200) -> HTMLResponse:
+    return HTMLResponse(
+        f"<html><body><h3>{message}</h3><p>{detail}</p></body></html>",
+        status_code=status_code,
+    )
+
+
+@public_app.get("/etrade/callback")
+async def etrade_oauth_callback(oauth_verifier: str = "", oauth_token: str = ""):
+    """Complete a pending E*TRADE authorization from a callback redirect.
+
+    E*TRADE only redirects here once their API support team has registered
+    this URL (http://localhost:3042/public/etrade/callback) for the consumer
+    key. Until then, the oob flow applies: the user pastes the verification
+    code into the login form as the extra factor instead.
+    """
+    pending = IN_APP_CONFIG.pending_etrade_response
+    if not pending:
+        return _callback_page(
+            "No E*TRADE authorization is in progress.",
+            "Start a login from Fundiverse first.",
+            status_code=404,
+        )
+    if not oauth_verifier:
+        return _callback_page(
+            "E*TRADE did not supply a verification code.",
+            "The redirect was missing the oauth_verifier parameter.",
+            status_code=400,
+        )
+    try:
+        etrade_complete_authorization(pending, oauth_verifier)
+    except Exception as e:
+        return _callback_page(
+            "E*TRADE authorization failed.", str(e), status_code=400
+        )
+    IN_APP_CONFIG.pending_etrade_response = None
+    return _callback_page(
+        "E*TRADE authorization complete.",
+        "You may close this window, return to Fundiverse, and click Authenticate again.",
+    )
+
+
+app.mount("/public", public_app)
+
 
 def run():
     LOGGING_CONFIG["disable_existing_loggers"] = True
@@ -1057,9 +1148,9 @@ def run():
                 ProviderType.ROBINHOOD,
                 ProviderType.WEBULL,
                 ProviderType.SCHWAB,
+                ProviderType.ETRADE,
                 ProviderType.ALPACA,
                 ProviderType.ALPACA_PAPER,
-                ProviderType.WEBULL_PAPER,
             ]
         )
         print("Running in a unit test, exiting")

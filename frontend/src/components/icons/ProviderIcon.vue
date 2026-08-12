@@ -20,6 +20,9 @@
     <template v-else-if="iconType === 'moomoo'">
       <v-img :src="moomooSrc" alt="'MooMoo Logo'" />
     </template>
+    <template v-else-if="iconType === 'etrade'">
+      <v-img :src="etradeSrc" alt="'E*TRADE Logo'" />
+    </template>
   </v-avatar>
 </template>
 <style>
@@ -34,6 +37,7 @@ import robinhoodURL from "/src/assets/robinhood.png";
 import webullPNG from "/src/assets/webull.png";
 import schwabSVG from "/src/assets/schwab.svg";
 import moomooSVG from '/src/assets/moomoo.svg';
+import etradeSVG from '/src/assets/etrade.svg';
 export default {
   name: "ProviderIcon",
   data() {
@@ -42,6 +46,7 @@ export default {
       webullSrc: webullPNG,
       schwabSrc: schwabSVG,
       moomooSrc: moomooSVG,
+      etradeSrc: etradeSVG,
     };
   },
   components: {

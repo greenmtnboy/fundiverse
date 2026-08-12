@@ -6,11 +6,12 @@ binaries = []
 hiddenimports = [
     'alpaca.trading.client',
     'robin_stocks.robinhood',
-    'webull.webull',
+    'webullsdktrade.api',
     'schwab.client',
     'moomoo',
+    'requests_oauthlib',
 ]
-for pkg in ['py_portfolio_index', 'uvicorn', 'duckdb', 'trilogy']:
+for pkg in ['py_portfolio_index', 'uvicorn', 'duckdb', 'trilogy', 'webullsdkcore', 'webullsdktrade', 'webullsdkmdata']:
     tmp_ret = collect_all(pkg)
     datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 

@@ -79,8 +79,12 @@ def export_portfolio_to_database(
                 provider_type=provider_type, object_key=ObjectKey.DIVIDENDS
             )
 
-            # Get and persist dividends
-            dividends = provider.get_dividend_details(start=max_dividends)
+            # Get and persist dividends; some providers (webull) have no
+            # dividend endpoint at all, so export holdings for them regardless
+            try:
+                dividends = provider.get_dividend_details(start=max_dividends)
+            except NotImplementedError:
+                dividends = []
             db.persist_dividend_data(dividends)
             total_dividends += len(dividends)
 

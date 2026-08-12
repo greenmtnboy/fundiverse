@@ -1,0 +1,15 @@
+# Webull's official OpenAPI SDK, which MUST be installed with --no-deps:
+#
+#   pip install --no-deps -r requirements-webull.txt
+#
+# Both packages declare a dependency on Webull's streaming sub-packages
+# (webull-python-sdk-quotes-core / webull-python-sdk-trade-events-core), which
+# in turn pin grpcio==1.51.1 and paho-mqtt==1.6.1. Neither has wheels for
+# Python 3.12+, and neither builds from source there, so a normal install
+# fails. We only use the REST surface (webullsdktrade.api.API), which does not
+# import the streaming packages at all.
+#
+# webull-python-sdk-core carries the real shared dependencies and is installed
+# normally from requirements.txt.
+webull-python-sdk-trade==0.1.18
+webull-python-sdk-mdata==0.1.18

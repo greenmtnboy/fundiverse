@@ -135,6 +135,10 @@ gtag('config', 'G-53FSTW9NTV');
             text: "Schwab",
             link: "/install/schwab",
           },
+          {
+            text: "E*TRADE",
+            link: "/install/etrade",
+          },
         ],
 
     }

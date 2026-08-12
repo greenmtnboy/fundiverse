@@ -37,8 +37,8 @@
               v-model="providerKeyValues[selectedProvider][key.key]" color="primary" :label="key.label"
               variant="underlined"></v-text-field>
           </template>
-          <v-text-field v-if="extraLogin" :readonly="loading" :rules="[required]" v-model="factor" color="primary"
-            label="Extra Factor" :append-icon="showFactor ? 'mdi-eye' : 'mdi-eye-off'"
+          <v-text-field v-if="extraLogin" :readonly="loading" :rules="extraFactorRules" v-model="factor" color="primary"
+            :label="extraFactorLabel" :append-icon="showFactor ? 'mdi-eye' : 'mdi-eye-off'"
             :type="showFactor ? 'text' : 'password'" @click:append="showFactor = !showFactor"
             variant="underlined"></v-text-field>
           <v-select v-if="showQuoteProvider" v-model="providerKeyValues[selectedProvider]['quote_provider']" color="primary" :items="availableQuoteProviders"
@@ -143,6 +143,16 @@ export default {
     providerLoginKeys() {
       return this.getProviderLoginKeys(this.selectedProvider);
     },
+    extraFactorRules() {
+      // etrade's verification code is only needed in the paste-a-code (oob)
+      // flow; with a registered callback the backend completes auth itself
+      return this.selectedProvider == "etrade" ? [] : [this.required];
+    },
+    extraFactorLabel() {
+      return this.selectedProvider == "etrade"
+        ? "Verification Code (from E*TRADE popup)"
+        : "Extra Factor";
+    },
   },
   methods: {
     ...mapActions([
@@ -175,19 +185,23 @@ export default {
           { key: "key", label: "Username" },
           { key: "secret", label: "Password", type: "secret" },
         ];
-      } else if (["webull", "webull_paper"].includes(provider)) {
+      } else if (provider == "webull") {
         return [
-          { key: "key", label: "Email" },
-          { key: "secret", label: "Password", type: "secret" },
-          { key: "device_id", label: "Device ID", type: "secret" },
-          { key: "trading_pin", label: "Trading Pin", type: "secret" },
-          { key: "response_json", label: "Response JSON (Optional)", optional: true },
+          { key: "key", label: "App Key" },
+          { key: "secret", label: "App Secret", type: "secret" },
         ];
       }
       else if (["schwab"].includes(provider)) {
         return [
           { key: "key", label: "API Key" },
           { key: "secret", label: "App Secret", type: "secret" },
+        ];
+      }
+      else if (["etrade"].includes(provider)) {
+        return [
+          { key: "key", label: "API Key (Consumer Key)" },
+          { key: "secret", label: "API Secret", type: "secret" },
+          { key: "sandbox", label: "Sandbox mode (true/false, optional)", optional: true },
         ];
       }
       else if (["moomoo"].includes(provider)) {
@@ -325,6 +339,13 @@ export default {
           }
           else if (exc instanceof exceptions.auth_external_login) {
             this.externalLoginURL = exc.message;
+            if (this.selectedProvider == "etrade") {
+              // etrade's default (oob) flow shows a verification code at the
+              // end of the external login; surface a field to paste it into
+              this.extraLogin = true;
+              this.error =
+                "Authorize Fundiverse in the E*TRADE window. If you are shown a verification code, paste it below; then click Authenticate again.";
+            }
           }
           else {
             this.error = apiHelpers.getErrorMessage(exc);

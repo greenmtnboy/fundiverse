@@ -16,6 +16,9 @@ from py_portfolio_index.models import (
     RealPortfolio,
 )
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
+from py_portfolio_index.portfolio_providers.helpers.etrade import (
+    ETradeAuthContext,
+)
 from py_portfolio_index.portfolio_providers.helpers.schwab import (
     SchwabAuthContext,
 )
@@ -44,6 +47,7 @@ class ActiveConfig:
     holding_cache: Dict[ProviderType, RealPortfolio] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
     pending_schwab_response: SchwabAuthContext | None = None
+    pending_etrade_response: ETradeAuthContext | None = None
     pending_momoo_response: str | None = None
     auth_token: str | None = None
     validate: bool = False
@@ -57,9 +61,9 @@ class ActiveConfig:
             ProviderType.ROBINHOOD,
             ProviderType.WEBULL,
             ProviderType.SCHWAB,
+            ProviderType.ETRADE,
             ProviderType.MOOMOO,
             ProviderType.ALPACA_PAPER,
-            ProviderType.WEBULL_PAPER,
         ]
         for provider in priority:
             for key, _ in self.provider_cache.items():

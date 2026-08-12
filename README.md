@@ -47,8 +47,8 @@ Fundiverse also makes it easy to exclude companies you can't trade in, such as y
 Fundiverse is built on an [open-source python framework](https://github.com/greenmtnboy/py-portfolio-index) for constructing customized portfolios tracking indexes across hundreds of stocks. Fundiverse wraps this in an Electron desktop app, which simplifies the process of creating curated indices and understanding how your changes adjust the composition of the stocks. 
 
 ## Supported Platforms
-Fundiverse requires you to have an account sent up with one of the following platforms. Alpaca and
-Webull both support paper trading to experiment without connecting a real bank account.
+Fundiverse requires you to have an account sent up with one of the following platforms. Alpaca
+supports paper trading to experiment without connecting a real bank account.
 
 - Alpaca
 - Robinhood
