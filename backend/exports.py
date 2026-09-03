@@ -15,6 +15,7 @@ class DatabaseExportRequest(BaseModel):
     portfolio_name: str
     providers: List[ProviderType] = Field(default_factory = list)
     force_reset: bool = False
+    require_all: bool = False
 
 
 class DatabaseExportResponse(BaseModel):
@@ -23,6 +24,8 @@ class DatabaseExportResponse(BaseModel):
     providers_processed: List[ProviderType]
     total_holdings: int
     total_dividends: int
+    #: providers left out because we are not authenticated to them
+    providers_skipped: List[ProviderType] = Field(default_factory=list)
 
 
 # Add helper function to get database path
@@ -56,6 +59,7 @@ def export_portfolio_to_database(
         total_holdings = 0
         total_dividends = 0
         providers_processed = []
+        providers_skipped = []
 
         # Process each provider
         for provider_type in providers:
@@ -63,11 +67,17 @@ def export_portfolio_to_database(
             # Get provider instance
             provider = config.provider_cache.get(provider_type)
             if provider is None:
-                raise HTTPException(status_code=400, detail=f"Provider {provider_type} not configured")
+                # exports run against whatever is authenticated; an
+                # unreachable provider is skipped rather than failing the
+                # export for every other provider
+                if input.require_all:
+                    raise HTTPException(status_code=400, detail=f"Provider {provider_type.value} not configured")
+                providers_skipped.append(provider_type)
+                continue
             # Get holdings
-            holdings = config.holding_cache.get(
-                provider_type, provider.get_holdings()
-            )
+            holdings = config.holding_cache.get(provider_type)
+            if holdings is None:
+                holdings = provider.get_holdings()
 
 
             # Persist holdings
@@ -90,6 +100,13 @@ def export_portfolio_to_database(
 
             providers_processed.append(provider_type)
 
+        if not providers_processed and providers_skipped:
+            raise HTTPException(
+                401,
+                "Not authenticated to any provider in this portfolio: "
+                + ", ".join(p.value for p in providers_skipped),
+            )
+
         db.close()
 
         return DatabaseExportResponse(
@@ -98,8 +115,14 @@ def export_portfolio_to_database(
             providers_processed=providers_processed,
             total_holdings=total_holdings,
             total_dividends=total_dividends,
+            providers_skipped=providers_skipped,
         )
 
+    except HTTPException:
+        # auth/config problems already carry the right status code; don't
+        # relabel them as a 500
+        db.close()
+        raise
     except Exception as e:
         db.close()
         raise HTTPException(500, f"Error exporting portfolio to database in {stage}: {e}")

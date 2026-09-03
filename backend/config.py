@@ -45,6 +45,10 @@ class ActiveConfig:
     logged_in: str | None = None
     provider_cache: Dict[ProviderType, BaseProvider] = field(default_factory=dict)
     holding_cache: Dict[ProviderType, RealPortfolio] = field(default_factory=dict)
+    # when each entry in holding_cache was last known to be accurate. Entries
+    # seeded from a client-held cache carry the client's timestamp, so the UI
+    # can show how stale a partially-refreshed portfolio is per provider.
+    holding_refreshed_at: Dict[ProviderType, datetime] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
     pending_schwab_response: SchwabAuthContext | None = None
     pending_etrade_response: ETradeAuthContext | None = None
@@ -52,6 +56,18 @@ class ActiveConfig:
     auth_token: str | None = None
     validate: bool = False
     background_tasks: Dict[str, AsyncTask] = field(default_factory=dict)
+
+    def is_authenticated(self, provider: ProviderType) -> bool:
+        return provider in self.provider_cache
+
+    def authenticated_subset(self, providers) -> list[ProviderType]:
+        return [p for p in providers if p in self.provider_cache]
+
+    def drop_login(self, provider: ProviderType) -> None:
+        """Forget a login without discarding the holdings we already fetched -
+        stale data is still useful for planning against the rest of a
+        partially authenticated portfolio."""
+        self.provider_cache.pop(provider, None)
 
     @property
     def default_provider(self):

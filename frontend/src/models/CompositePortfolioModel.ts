@@ -9,6 +9,8 @@ export default class CompositePortfolioModel {
   loading: boolean;
   holdings: Array<PortfolioElementModel>;
   cash: CashModel;
+  /** Cash held at a provider we are currently authenticated to. */
+  investable_cash: CashModel;
   target_size: number;
   keys: Array<string>;
   components: Array<SubPortfolioModel>;
@@ -18,6 +20,9 @@ export default class CompositePortfolioModel {
   dividends: CashModel;
   appreciation: CashModel;
   error?: string | null;
+  /** At least one provider is showing stale or missing data. */
+  partial: boolean;
+  degraded_providers: Array<string>;
 
   constructor({
     name,
@@ -30,11 +35,20 @@ export default class CompositePortfolioModel {
     profit_or_loss_v2,
     dividends,
     appreciation,
+    // absent from portfolios persisted before the partial model existed
+    investable_cash = null,
+    partial = false,
+    degraded_providers = [],
   }) {
     this.name = name;
     this.loading = false;
     this.holdings = holdings;
     this.cash = new CashModel(cash);
+    // portfolios saved before the partial model existed have no separate
+    // investable figure; treat all cash as spendable until a refresh says so
+    this.investable_cash = new CashModel(investable_cash ?? cash);
+    this.partial = partial ?? false;
+    this.degraded_providers = degraded_providers ?? [];
     this.target_size = target_size;
     const scomponents: Array<any> = components as Array<any>;
     this.keys = reactive(
@@ -69,6 +83,28 @@ export default class CompositePortfolioModel {
     if (appreciation) {
       this.appreciation = new CashModel(appreciation);
     }
+  }
+
+  /**
+   * Snapshots to replay to the backend so providers we are not logged into
+   * still count toward composite totals and purchase planning.
+   */
+  cachedSnapshots() {
+    return this.components
+      .filter(
+        // only replay data we actually fetched at some point; a freshly added
+        // provider is a placeholder, not a snapshot
+        (component) =>
+          component.refreshed_at !== null || component.holdings.length > 0,
+      )
+      .map((component) => component.toSnapshot());
+  }
+
+  /** Providers that can currently take orders. */
+  get usableProviders(): Array<string> {
+    return this.components
+      .filter((component) => !component.isUnusable)
+      .map((component) => component.provider);
   }
 
   get totalValue() {

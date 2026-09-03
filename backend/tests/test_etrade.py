@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 import pytest
 from fastapi.testclient import TestClient
 from py_portfolio_index.enums import ProviderType
@@ -32,7 +34,7 @@ class DummyETradeProvider:
 @pytest.fixture
 def etrade_env(monkeypatch, test_client: TestClient):
     """Fake out the library's auth seams and reset login state."""
-    state = {
+    state: Dict[str, Any] = {
         "cached_token": None,
         "completed": [],
         "context": _context(),
@@ -81,6 +83,7 @@ def test_login_completes_with_pasted_verifier(etrade_env, test_client: TestClien
     assert response.status_code == 200
     assert etrade_env["completed"] == [(etrade_env["context"], "code123")]
     provider = main.IN_APP_CONFIG.provider_cache[ProviderType.ETRADE]
+    assert isinstance(provider, DummyETradeProvider)
     assert provider.external_auth
     assert provider.sandbox
 

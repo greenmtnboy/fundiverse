@@ -27,6 +27,10 @@
       </v-row>
     </v-card-title>
     <v-alert type="error" v-if="portfolio.error">{{ portfolio.error }}</v-alert>
+    <v-alert type="warning" density="compact" v-else-if="degradedProviders.length" data-testid="partial-alert">
+      Showing saved holdings for {{ degradedProviders.join(", ") }}. Everything else is live, and orders will only be
+      placed on the providers you are authenticated to.
+    </v-alert>
     <v-card-text class="text-high-emphasis text--primary">
       <div>
         <p class="text-high-emphasis font-weight-black text--primary">
@@ -90,8 +94,10 @@
       </v-alert>
     </v-card-text>
     <v-card-actions>
-      <ConfirmPurchase :selectedIndex="selectedIndex" :targetSize="portfolio.target_size" :cash="portfolio.cash"
-        :providers="portfolio.keys" :portfolioName="portfolio.name" :disabled="portfolio.loading" />
+      <!-- only cash at an authenticated provider can actually be spent -->
+      <ConfirmPurchase :selectedIndex="selectedIndex" :targetSize="portfolio.target_size"
+        :cash="portfolio.investable_cash" :providers="portfolio.keys" :portfolioName="portfolio.name"
+        :disabled="portfolio.loading" />
       <v-btn :disabled="portfolio.keys.length === 0" @click="navigatePortfolio">
         Configure
       </v-btn>
@@ -137,6 +143,11 @@ export default {
   },
   computed: {
     ...mapGetters(["portfolioCustomizations", "indexes"]),
+    degradedProviders() {
+      return this.portfolio.components
+        .filter((component) => component.isUnusable)
+        .map((component) => component.provider);
+    },
     // TODO: disable buy button when not logged in
     // canPurchase() {
     //     for x in this.portfolio.components {
@@ -260,17 +271,18 @@ export default {
       await this.refreshCompositePortfolio({
         portfolioName: this.portfolio.name,
         keys: this.portfolio.keys,
-        keys_to_refresh: [sportfolio.provider],
+        providersToRefresh: [sportfolio.provider],
       });
       await this.saveCompositePortfolios();
     },
     async refresh() {
       this.error = null;
       try {
+        // no explicit target list: the backend refreshes every provider we
+        // are authenticated to and leaves the rest on their last snapshot
         await this.refreshCompositePortfolio({
           portfolioName: this.portfolio.name,
           keys: this.portfolio.keys,
-          keys_to_refresh: this.portfolio.keys,
         });
         await this.saveCompositePortfolios();
       } catch (e) {

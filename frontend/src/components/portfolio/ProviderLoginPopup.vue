@@ -264,8 +264,24 @@ export default {
         await this.login();
       }
     },
+    /**
+     * Whether we hold every credential this provider needs.
+     *
+     * Auto-login is only worth attempting when it can actually succeed;
+     * firing blind at providers the user never saved credentials for just
+     * paints error states on startup.
+     */
+    hasSavedCredentials() {
+      const values = this.providerKeyValues[this.provider];
+      if (!values) {
+        return false;
+      }
+      return this.getProviderLoginKeys(this.provider)
+        .filter((key) => !key.optional)
+        .every((key) => Boolean(values[key.key]));
+    },
 
-    async login(refresh = true) {
+    async login(refresh = true, silent = false) {
       this.loading = true;
       this.error = "";
       this.extraLogin = false;
@@ -320,12 +336,38 @@ export default {
             this.probeLogin({ provider: this.provider });
           }
           if (refresh) {
+            // only the provider we just authenticated needs re-fetching; the
+            // rest keep whatever they already had
             return this.refreshCompositePortfolio({
               portfolioName: this.portfolioName,
+              providersToRefresh: [this.selectedProvider],
             });
           }
         })
         .catch((exc) => {
+          if (exc instanceof exceptions.auth_external_login) {
+            // always capture the URL, even on a silent attempt: the backend has
+            // already spawned a redirect server and stashed the matching auth
+            // context, and holding the URL is what makes the next submit send
+            // wait_for_external_auth. Dropping it here strands that context and
+            // makes the following login mint a second one, whose callback
+            // server never receives the redirect.
+            this.externalLoginURL = exc.message;
+            if (!silent && this.selectedProvider == "etrade") {
+              // etrade's default (oob) flow shows a verification code at the
+              // end of the external login; surface a field to paste it into
+              this.extraLogin = true;
+              this.error =
+                "Authorize Fundiverse in the E*TRADE window. If you are shown a verification code, paste it below; then click Authenticate again.";
+            }
+            return;
+          }
+          if (silent) {
+            // a background attempt the user did not ask for; leave the button
+            // in its normal state rather than reporting a failure they cannot
+            // act on yet
+            return;
+          }
           if (exc instanceof exceptions.auth_extra) {
             if (this.selectedProvider == "robinhood") {
               this.extraLogin = true;
@@ -336,16 +378,6 @@ export default {
               this.error = apiHelpers.getErrorMessage(exc);
             }
 
-          }
-          else if (exc instanceof exceptions.auth_external_login) {
-            this.externalLoginURL = exc.message;
-            if (this.selectedProvider == "etrade") {
-              // etrade's default (oob) flow shows a verification code at the
-              // end of the external login; surface a field to paste it into
-              this.extraLogin = true;
-              this.error =
-                "Authorize Fundiverse in the E*TRADE window. If you are shown a verification code, paste it below; then click Authenticate again.";
-            }
           }
           else {
             this.error = apiHelpers.getErrorMessage(exc);
@@ -368,8 +400,12 @@ export default {
           this.probeLogin({ provider: this.provider }),
           this.getDefaults(this.provider),
         ]).then(() => {
-          if (!this.loginSuccess) {
-            this.login(false);
+          // opportunistic only: try providers whose credentials we already
+          // hold, and stay quiet about the ones that don't work out. Anything
+          // that fails is simply a provider the portfolio runs partially
+          // without until the user logs in.
+          if (!this.loginSuccess && this.hasSavedCredentials()) {
+            this.login(false, true);
           }
         });
       }

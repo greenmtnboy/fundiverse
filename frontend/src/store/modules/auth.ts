@@ -30,12 +30,16 @@ const state = {
   // keys: [],
   keys: storageAPI.getCredentials(),
   activeProviders: [],
+  providerRefreshedAt: {},
 };
 
 const getters = {
   isLoggedIn: (state) => state.loggedIn,
   keys: (state) => state.keys,
   activeProviders: (state) => state.activeProviders,
+  providerRefreshedAt: (state) => state.providerRefreshedAt,
+  isProviderActive: (state) => (provider: string) =>
+    state.activeProviders.includes(provider),
 };
 
 // const helpers = {
@@ -54,6 +58,20 @@ const actions = {
         { commit },
         { provider: data.provider, loggedIn: false },
       );
+    }
+  },
+  /**
+   * Refresh the auth state of every provider in one call.
+   *
+   * Cheaper than probing providers individually, and it is what lets the UI
+   * show up front which providers a partial operation will actually reach.
+   */
+  async probeAllLogins({ commit }) {
+    try {
+      const response = await instance.get(`/provider_status`);
+      commit("setAllProviderStates", response.data.providers);
+    } catch {
+      // leave the last known state alone; the backend may still be starting
     }
   },
   async setProviderState({ commit }, data) {
@@ -86,6 +104,15 @@ const mutations = {
   storeCredential(state, data) {
     storageAPI.setCredential(data.key, data.value);
     state.keys.push(data);
+  },
+  setAllProviderStates(state, providers) {
+    state.activeProviders = providers
+      .filter((entry) => entry.authenticated)
+      .map((entry) => entry.provider);
+    state.providerRefreshedAt = providers.reduce((acc, entry) => {
+      acc[entry.provider] = entry.refreshed_at;
+      return acc;
+    }, {});
   },
   setProviderState(state, data) {
     if (data.loggedIn) {

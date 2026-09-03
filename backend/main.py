@@ -13,7 +13,9 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import asynccontextmanager
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
 from enum import Enum
 from logging import StreamHandler, getLogger
 from os import environ
@@ -52,7 +54,7 @@ from py_portfolio_index import (
     generate_composite_order_plan,
 )
 from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
-from py_portfolio_index.enums import ProviderType
+from py_portfolio_index.enums import Currency, ProviderType
 from py_portfolio_index.exceptions import (
     ConfigurationError,
     ExtraAuthenticationStepException,
@@ -90,7 +92,7 @@ from py_portfolio_index.portfolio_providers.helpers.schwab import (
     create_login_context,
     fetch_response,
 )
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 from pytz import UTC
 from starlette.background import BackgroundTask
@@ -127,10 +129,39 @@ class ETradeExtraAuthenticationStepException(Exception):
         self.response = response
 
 
-class SubPortfolioRefreshException(Exception):
-    def __init__(self, provider: ProviderType, error: Exception):
-        self.error = error
-        self.provider = provider
+def schwab_context_is_live(context: SchwabAuthContext) -> bool:
+    """Whether a pending schwab auth context can still complete.
+
+    A context is only usable while the subprocess holding the callback port is
+    alive; that process is what puts the redirect on the queue fetch_response
+    waits on. Once it is gone the context can never be redeemed.
+    """
+    import psutil
+
+    pid = context.server_pid
+    if pid is None:
+        return False
+    try:
+        return psutil.Process(pid).is_running()
+    except psutil.Error:
+        return False
+
+
+def discard_schwab_context(context: SchwabAuthContext) -> None:
+    """Release a context we are giving up on, freeing the callback port.
+
+    A leaked server keeps listening on the callback port, so it would intercept
+    the redirect meant for whatever context comes next.
+    """
+    import psutil
+
+    IN_APP_CONFIG.pending_schwab_response = None
+    if context.server_pid is None:
+        return
+    try:
+        psutil.Process(context.server_pid).kill()
+    except psutil.Error:
+        pass
 
 
 # Add to the request models section
@@ -232,6 +263,119 @@ class LoginRequest(BaseModel):
         return str(self.sandbox or "").strip().lower() in ("1", "true", "yes", "on")
 
 
+class ProviderStatus(str, Enum):
+    """Per-provider outcome of a portfolio operation.
+
+    Operations are partial by default: a provider that cannot be reached
+    downgrades to its last known snapshot rather than failing the whole call.
+    """
+
+    # live data was fetched from the provider on this call
+    REFRESHED = "refreshed"
+    # provider was authenticated but deliberately not refreshed this call
+    CACHED = "cached"
+    # no login for this provider; any holdings shown are a stale snapshot
+    UNAUTHENTICATED = "unauthenticated"
+    # login exists but the refresh itself failed
+    ERROR = "error"
+
+
+#: statuses where the data shown is not live
+STALE_STATUSES = {
+    ProviderStatus.CACHED,
+    ProviderStatus.UNAUTHENTICATED,
+    ProviderStatus.ERROR,
+}
+#: statuses that mean the provider cannot participate in orders
+UNUSABLE_STATUSES = {ProviderStatus.UNAUTHENTICATED, ProviderStatus.ERROR}
+
+_CURRENCY_ALIASES = {"USD": "$", "EUR": "€", "GBP": "£"}
+_CURRENCY_VALUES = {c.value for c in Currency}
+
+
+def _coerce_currency(value: Any) -> Any:
+    """Rewrite currency codes into the symbols py-portfolio-index expects.
+
+    Client snapshots are replayed out of long-lived local storage, which has
+    accumulated both ``USD`` and ``$`` spellings over time.
+    """
+    if isinstance(value, dict):
+        out = dict(value)
+        currency = out.get("currency")
+        if isinstance(currency, str) and currency not in _CURRENCY_VALUES:
+            resolved = _CURRENCY_ALIASES.get(currency.upper())
+            if resolved:
+                out["currency"] = resolved
+            else:
+                out.pop("currency")
+        return {k: _coerce_currency(v) for k, v in out.items()}
+    if isinstance(value, list):
+        return [_coerce_currency(v) for v in value]
+    return value
+
+
+class SnapshotHolding(BaseModel):
+    """A holding replayed from a client-held cache.
+
+    Deliberately more forgiving than RealPortfolioElement: this data may have
+    been written by an older version of the app.
+    """
+
+    ticker: str
+    units: Decimal = Decimal(0)
+    value: Money = Field(default_factory=lambda: Money(value=0))
+    weight: Decimal = Decimal(0)
+    unsettled: bool = False
+    dividends: Money = Field(default_factory=lambda: Money(value=0))
+    appreciation: Money = Field(default_factory=lambda: Money(value=0))
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, values):
+        return _coerce_currency(values)
+
+    def to_element(self) -> RealPortfolioElement:
+        return RealPortfolioElement(
+            ticker=self.ticker,
+            units=self.units,
+            value=self.value,
+            weight=self.weight,
+            unsettled=self.unsettled,
+            dividends=self.dividends,
+            appreciation=self.appreciation,
+        )
+
+
+class ProviderSnapshot(BaseModel):
+    """The client's last known state for one provider.
+
+    Sent alongside partial operations so a provider the user has not logged
+    into this session still contributes its holdings to composite totals and
+    to purchase planning.
+    """
+
+    provider: ProviderType
+    holdings: List[SnapshotHolding] = Field(default_factory=list)
+    cash: Money = Field(default_factory=lambda: Money(value=0))
+    profit_or_loss_v2: ProfitModel | None = None
+    refreshed_at: int | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, values):
+        return _coerce_currency(values)
+
+    def to_portfolio(self) -> RealPortfolio:
+        # provider is left unset: an un-authenticated snapshot must never be
+        # picked up as an order destination by generate_composite_order_plan
+        return RealPortfolio(
+            holdings=[h.to_element() for h in self.holdings],
+            cash=self.cash,
+            profit_and_loss=self.profit_or_loss_v2,
+            provider=None,
+        )
+
+
 class RealPortfolioOutput(BaseModel):
     name: str
     holdings: List[RealPortfolioElement]
@@ -240,6 +384,9 @@ class RealPortfolioOutput(BaseModel):
     holding_size: Money | None = None
     profit_or_loss: Money | None = None
     profit_or_loss_v2: ProfitModel | None
+    status: ProviderStatus = ProviderStatus.REFRESHED
+    error: str | None = None
+    refreshed_at: int | None = None
 
 
 class CompositePortfolioOutput(BaseModel):
@@ -252,6 +399,13 @@ class CompositePortfolioOutput(BaseModel):
     profit_or_loss: Money | None = None
     profit_or_loss_v2: ProfitModel | None
     refresh_time: Dict[str, timedelta] = Field(default_factory=dict)
+    #: cash that can actually be spent right now, i.e. held at a provider we
+    #: are authenticated to. `cash` includes un-authenticated providers.
+    investable_cash: Money = Field(default_factory=lambda: Money(value=0))
+    #: true when at least one provider is showing stale or missing data
+    partial: bool = False
+    #: providers that contributed no live data on this refresh
+    degraded_providers: List[ProviderType] = Field(default_factory=list)
 
 
 class OrderStatus(Enum):
@@ -274,6 +428,11 @@ class OrderItem(BaseModel):
 
 class PurchaseOrderOutput(BaseModel):
     to_buy: List[OrderItem]
+    #: providers whose holdings were counted from a stale snapshot and which
+    #: therefore received no orders
+    skipped_providers: List[ProviderType] = Field(default_factory=list)
+    #: providers that orders will actually be routed to
+    order_providers: List[ProviderType] = Field(default_factory=list)
 
 
 class ListMutation(BaseModel):
@@ -313,7 +472,19 @@ class TargetPortfolioRequest(BaseModel):
     providers: List[ProviderType] = Field(default_factory=list)
 
 
-class BuyRequest(TargetPortfolioRequest):
+class PartialOperationRequest(BaseModel):
+    """Mixin for operations that tolerate partially authenticated portfolios.
+
+    ``require_all`` restores the old all-or-nothing behaviour for callers that
+    genuinely need every provider present.
+    """
+
+    require_all: bool = False
+    #: client-held snapshots for providers we may not be logged into
+    cached: List[ProviderSnapshot] = Field(default_factory=list)
+
+
+class BuyRequest(TargetPortfolioRequest, PartialOperationRequest):
     to_purchase: float
     target_size: float
 
@@ -326,16 +497,32 @@ class BuyRequestFinal(BaseModel):
 class BuyRequestFinalMultiProvider(BaseModel):
     plan: PurchaseOrderOutput
     providers: list[ProviderType]
+    require_all: bool = False
 
 
 class BuyRequestFinalMultiProviderOutput(BaseModel):
     orders: List[OrderItem]
+    #: providers that were skipped because we are not authenticated to them
+    skipped_providers: List[ProviderType] = Field(default_factory=list)
 
 
-class CompositePortfolioRefreshRequest(BaseModel):
+class CompositePortfolioRefreshRequest(PartialOperationRequest):
     key: str
     providers: List[ProviderType]
-    providers_to_refresh: List[ProviderType]
+    #: providers to fetch live data for. Omit (or send null) to refresh every
+    #: provider we are currently authenticated to - the partial default.
+    providers_to_refresh: List[ProviderType] | None = None
+
+
+class ProviderStatusOutput(BaseModel):
+    provider: ProviderType
+    authenticated: bool
+    has_cached_holdings: bool
+    refreshed_at: int | None = None
+
+
+class ProviderStatusResponse(BaseModel):
+    providers: List[ProviderStatusOutput]
 
 
 ## Shared Functions
@@ -345,13 +532,15 @@ def get_provider_safe(iprovider: ProviderType | None = None) -> BaseProvider:
     _provider = iprovider or IN_APP_CONFIG.default_provider
     try:
         if _provider == ProviderType.ALPACA:
-            provider = IN_APP_CONFIG.provider_cache.get(
-                ProviderType.ALPACA, AlpacaProvider()
-            )
+            # constructed lazily: building a provider we already have cached
+            # re-reads the environment and fails when credentials only ever
+            # arrived through the login endpoint
+            provider = IN_APP_CONFIG.provider_cache.get(ProviderType.ALPACA) or AlpacaProvider()
             IN_APP_CONFIG.provider_cache[ProviderType.ALPACA] = provider
         elif _provider == ProviderType.ALPACA_PAPER:
-            provider = IN_APP_CONFIG.provider_cache.get(
-                ProviderType.ALPACA_PAPER, PaperAlpacaProvider()
+            provider = (
+                IN_APP_CONFIG.provider_cache.get(ProviderType.ALPACA_PAPER)
+                or PaperAlpacaProvider()
             )
             IN_APP_CONFIG.provider_cache[ProviderType.ALPACA_PAPER] = provider
         elif _provider == ProviderType.ROBINHOOD:
@@ -428,6 +617,27 @@ async def logged_in_handler(provider):
     return provider_enum in IN_APP_CONFIG.provider_cache
 
 
+@router.get("/provider_status")
+async def provider_status_handler():
+    """Auth and cache state for every provider, in one call.
+
+    Lets the client decide what a partial refresh should target without
+    probing each provider individually.
+    """
+    out = []
+    for provider in AVAILABLE_PROVIDERS:
+        refreshed = IN_APP_CONFIG.holding_refreshed_at.get(provider)
+        out.append(
+            ProviderStatusOutput(
+                provider=provider,
+                authenticated=IN_APP_CONFIG.is_authenticated(provider),
+                has_cached_holdings=provider in IN_APP_CONFIG.holding_cache,
+                refreshed_at=int(refreshed.timestamp()) if refreshed else None,
+            )
+        )
+    return ProviderStatusResponse(providers=out)
+
+
 def login(input: LoginRequest) -> bool:
     if input.provider == ProviderType.ALPACA:
         environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
@@ -463,11 +673,25 @@ def login(input: LoginRequest) -> bool:
     elif input.provider == ProviderType.SCHWAB:
         environ[SchwabProvider.API_KEY_ENV] = input.key
         environ[SchwabProvider.APP_SECRET_ENV] = input.secret
-        if IN_APP_CONFIG.pending_schwab_response and input.wait_for_external_auth:
-            fetch_response(IN_APP_CONFIG.pending_schwab_response)
-        lc = create_login_context(api_key=input.key, app_secret=input.secret)
-        if lc:
-            raise SchwabExtraAuthenticationStepException(response=lc)
+        schwab_pending = IN_APP_CONFIG.pending_schwab_response
+        if schwab_pending and not schwab_context_is_live(schwab_pending):
+            # its callback server died; the URL it handed out is worthless
+            discard_schwab_context(schwab_pending)
+            schwab_pending = None
+        if schwab_pending and input.wait_for_external_auth:
+            # the user has finished the external login - redeem the code that
+            # this context's own callback server captured
+            fetch_response(schwab_pending)
+        elif schwab_pending:
+            # a flow is already in flight. Its redirect server owns the callback
+            # port, so minting a second context here would hand back a URL whose
+            # redirect that context can never collect - the source of a hang
+            # that only ends at callback_timeout. Re-offer the live one instead.
+            raise SchwabExtraAuthenticationStepException(response=schwab_pending)
+        else:
+            lc = create_login_context(api_key=input.key, app_secret=input.secret)
+            if lc:
+                raise SchwabExtraAuthenticationStepException(response=lc)
 
         provider = SchwabProvider(external_auth=True)
         IN_APP_CONFIG.provider_cache[input.provider] = provider
@@ -563,96 +787,214 @@ async def get_portfolio(_provider: ProviderType):
     return provider.get_holdings()
 
 
+@dataclass
+class SubPortfolioResult:
+    """Outcome of touching one provider during a composite operation."""
+
+    provider: ProviderType
+    status: ProviderStatus
+    duration: timedelta
+    portfolio: RealPortfolio | None = None
+    error: str | None = None
+    refreshed_at: datetime | None = None
+
+
+def seed_holding_cache(snapshots: List[ProviderSnapshot]) -> None:
+    """Prime the holding cache from the client's own copy.
+
+    The backend cache lives for one app session; the client keeps holdings on
+    disk indefinitely. Replaying the client's copy is what lets a provider the
+    user never logged into this session still count toward composite totals
+    and purchase planning. Live data always wins - we only fill gaps.
+    """
+    for snapshot in snapshots:
+        if snapshot.provider in IN_APP_CONFIG.holding_cache:
+            continue
+        IN_APP_CONFIG.holding_cache[snapshot.provider] = snapshot.to_portfolio()
+        if snapshot.refreshed_at:
+            IN_APP_CONFIG.holding_refreshed_at[snapshot.provider] = datetime.fromtimestamp(
+                snapshot.refreshed_at, tz=UTC
+            )
+
+
+def cached_snapshot(key: ProviderType) -> RealPortfolio | None:
+    """The last known holdings for a provider, detached from any live login.
+
+    Detaching matters: a RealPortfolio still carrying a provider object is
+    treated as an order destination by generate_composite_order_plan, and a
+    provider whose login has since been dropped must not receive orders.
+    """
+    port = IN_APP_CONFIG.holding_cache.get(key)
+    if port is None:
+        return None
+    if port.provider is not None and IN_APP_CONFIG.is_authenticated(key):
+        return port
+    return RealPortfolio(
+        holdings=port.holdings,
+        cash=port.cash,
+        profit_and_loss=port.profit_and_loss,
+        provider=None,
+    )
+
+
 def refresh_sub_portfolio(
     key: ProviderType, providers_to_refresh: list[ProviderType]
-) -> tuple[timedelta, RealPortfolio]:
-    item: BaseProvider | None = IN_APP_CONFIG.provider_cache.get(key, None)
+) -> SubPortfolioResult:
+    """Fetch or recover one provider's holdings, never raising.
+
+    Every failure mode degrades to the last known snapshot so that one
+    unavailable provider cannot block an operation on the others.
+    """
     start = datetime.now()
-    if not item:
-        raise HTTPException(
-            401, f"Must log into {key} to refresh any element in this portfolio."
+    item: BaseProvider | None = IN_APP_CONFIG.provider_cache.get(key, None)
+
+    def elapsed() -> timedelta:
+        return datetime.now() - start
+
+    def fallback(status: ProviderStatus, error: str | None) -> SubPortfolioResult:
+        return SubPortfolioResult(
+            provider=key,
+            status=status,
+            duration=elapsed(),
+            portfolio=cached_snapshot(key),
+            error=error,
+            refreshed_at=IN_APP_CONFIG.holding_refreshed_at.get(key),
         )
-    if key in providers_to_refresh:
-        try:
-            item.clear_cache(skip_clearing=["instrument_to_symbol_map"])
-            rport = item.get_holdings()
-            rport.profit_and_loss = item.get_profit_or_loss()
-        except ConfigurationError:
-            logger.error(
-                f"Auth error refreshing {key}, dropping login:\n{traceback.format_exc()}"
-            )
-            del IN_APP_CONFIG.provider_cache[key]
-            raise
-        except Exception as e:
-            logger.error(f"Error refreshing {key}:\n{traceback.format_exc()}")
-            raise SubPortfolioRefreshException(error=e, provider=key)
-        IN_APP_CONFIG.holding_cache[key] = rport
-    else:
-        rport = IN_APP_CONFIG.holding_cache[key]
-    return datetime.now() - start, rport
+
+    if not item:
+        return fallback(
+            ProviderStatus.UNAUTHENTICATED,
+            f"Not authenticated to {key.value}; showing last known holdings.",
+        )
+    if key not in providers_to_refresh:
+        return fallback(ProviderStatus.CACHED, None)
+
+    try:
+        item.clear_cache(skip_clearing=["instrument_to_symbol_map"])
+        rport = item.get_holdings()
+        rport.profit_and_loss = item.get_profit_or_loss()
+    except ConfigurationError as e:
+        logger.error(
+            f"Auth error refreshing {key}, dropping login:\n{traceback.format_exc()}"
+        )
+        IN_APP_CONFIG.drop_login(key)
+        return fallback(ProviderStatus.UNAUTHENTICATED, str(e))
+    except Exception as e:
+        logger.error(f"Error refreshing {key}:\n{traceback.format_exc()}")
+        return fallback(ProviderStatus.ERROR, str(e))
+
+    now = datetime.now(tz=UTC)
+    IN_APP_CONFIG.holding_cache[key] = rport
+    IN_APP_CONFIG.holding_refreshed_at[key] = now
+    return SubPortfolioResult(
+        provider=key,
+        status=ProviderStatus.REFRESHED,
+        duration=elapsed(),
+        portfolio=rport,
+        refreshed_at=now,
+    )
 
 
 def sum_holdings(holdings: List[RealPortfolioElement]) -> Money:
     return Money(value=sum([x.value for x in holdings]))
 
 
+def resolve_refresh_targets(
+    input: CompositePortfolioRefreshRequest,
+) -> list[ProviderType]:
+    """Which providers to fetch live data for.
+
+    Defaulting to "every provider we can actually reach" is what makes a
+    partial refresh the no-argument behaviour.
+    """
+    if input.providers_to_refresh is None:
+        return IN_APP_CONFIG.authenticated_subset(input.providers)
+    return [p for p in input.providers_to_refresh if p in input.providers]
+
+
 @router.post("/composite_portfolio/refresh")
 def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
-    active: Dict[str, RealPortfolioOutput] = {}
-    raw = []
-    profit_and_loss = ProfitModel(
-        appreciation=Money(value=0.0), dividends=Money(value=0.0)
-    )
-    durations: Dict[str, timedelta] = {}
+    seed_holding_cache(input.cached)
+    targets = resolve_refresh_targets(input)
+
+    results: List[SubPortfolioResult] = []
     with ThreadPoolExecutor(max_workers=10) as executor:
         portfolios = {
-            executor.submit(refresh_sub_portfolio, key, input.providers_to_refresh)
+            executor.submit(refresh_sub_portfolio, key, targets)
             for key in input.providers
         }
         for future in as_completed(portfolios):
-            try:
-                duration, rport = future.result()
-                if not rport.provider:
-                    continue
-                key = rport.provider.PROVIDER
-                durations[key] = duration
-                active[key] = RealPortfolioOutput(
-                    name=f"{key.name}",
-                    holdings=rport.holdings,
-                    holding_size=sum_holdings(rport.holdings),
-                    cash=rport.cash,
-                    provider=key,
-                    profit_or_loss_v2=rport.profit_and_loss,
-                    profit_or_loss=(
-                        rport.profit_and_loss.total if rport.profit_and_loss else None
-                    ),
-                )
-                if rport.profit_and_loss:
-                    profit_and_loss += rport.profit_and_loss
-                raw.append(rport)
-            except ConfigurationError:
-                raise
-            except HTTPException:
-                raise
-            except SubPortfolioRefreshException as e:
-                raise HTTPException(
-                    422, f"Error refreshing {e.provider}: {str(e.error)}"
-                )
-            except Exception as e:
-                raise HTTPException(422, f"Error refreshing: {str(e)}")
+            results.append(future.result())
+
+    if input.require_all:
+        unauthenticated = [
+            r.provider for r in results if r.status == ProviderStatus.UNAUTHENTICATED
+        ]
+        if unauthenticated:
+            raise HTTPException(
+                401,
+                "Must log into "
+                + ", ".join(p.value for p in unauthenticated)
+                + " to refresh any element in this portfolio.",
+            )
+        failed = [r for r in results if r.status == ProviderStatus.ERROR]
+        if failed:
+            raise HTTPException(
+                422, f"Error refreshing {failed[0].provider}: {failed[0].error}"
+            )
+
+    active: Dict[str, RealPortfolioOutput] = {}
+    raw: List[RealPortfolio] = []
+    durations: Dict[str, timedelta] = {}
+    profit_and_loss = ProfitModel(
+        appreciation=Money(value=0.0), dividends=Money(value=0.0)
+    )
+    investable = Money(value=0.0)
+
+    for result in results:
+        key = result.provider
+        rport = result.portfolio
+        durations[key] = result.duration
+        holdings = rport.holdings if rport else []
+        cash = rport.cash if rport else Money(value=0.0)
+        pnl = rport.profit_and_loss if rport else None
+        active[key] = RealPortfolioOutput(
+            name=f"{key.name}",
+            holdings=holdings,
+            holding_size=sum_holdings(holdings),
+            cash=cash,
+            provider=key,
+            profit_or_loss_v2=pnl,
+            profit_or_loss=pnl.total if pnl else None,
+            status=result.status,
+            error=result.error,
+            refreshed_at=(
+                int(result.refreshed_at.timestamp()) if result.refreshed_at else None
+            ),
+        )
+        if pnl:
+            profit_and_loss += pnl
+        if rport:
+            raw.append(rport)
+            if result.status not in UNUSABLE_STATUSES and cash:
+                investable += max(cash, Money(value=0.0))
 
     active = {k: active[k] for k in sorted(active.keys(), key=lambda x: active[x].holding_size.value if active[x].holding_size is not None else 0.0, reverse=True)}  # type: ignore
     internal = CompositePortfolio(raw)
+    degraded = [r.provider for r in results if r.status in UNUSABLE_STATUSES]
 
     return CompositePortfolioOutput(
         name=input.key,
         holdings=internal.holdings,
         cash=internal.cash,
+        investable_cash=investable,
         refresh_time=durations,
         components=active,
         refreshed_at=int(datetime.now(tz=UTC).timestamp()),
         profit_or_loss_v2=profit_and_loss,
         profit_or_loss=profit_and_loss.total,
+        partial=bool(degraded),
+        degraded_providers=degraded,
     )
 
 
@@ -737,25 +1079,61 @@ async def get_background_task(guid):
 
 
 def _plan_composite_purchase(input: BuyRequest):
-    children = []
-    buy_orders = {}
+    seed_holding_cache(input.cached)
+    children: List[RealPortfolio] = []
+    buy_orders: Dict[ProviderType, PurchaseStrategy] = {}
+    skipped: List[ProviderType] = []
+
     for provider in input.providers:
+        if not IN_APP_CONFIG.is_authenticated(provider):
+            # holdings still shape the plan - they are part of the portfolio we
+            # are trying to reach the target allocation for - but no orders can
+            # be routed here, so the provider stays out of buy_orders.
+            snapshot = cached_snapshot(provider)
+            if snapshot:
+                children.append(snapshot)
+            skipped.append(provider)
+            continue
         try:
             iprovider = get_provider_safe(provider)
-            sub_port = sub_port = IN_APP_CONFIG.holding_cache.get(
-                provider, iprovider.get_holdings()
-            )
+            sub_port = IN_APP_CONFIG.holding_cache.get(provider)
+            if sub_port is None or sub_port.provider is None:
+                # a snapshot seeded from the client has no live provider
+                # attached, so it cannot be used as an order destination
+                sub_port = iprovider.get_holdings()
+                IN_APP_CONFIG.holding_cache[provider] = sub_port
+                IN_APP_CONFIG.holding_refreshed_at[provider] = datetime.now(tz=UTC)
             buy_orders[provider] = input.purchase_strategy
             children.append(sub_port)
         except ConfigurationError as e:
-            del IN_APP_CONFIG.provider_cache[provider]
-            raise e
+            IN_APP_CONFIG.drop_login(provider)
+            if input.require_all:
+                raise e
+            snapshot = cached_snapshot(provider)
+            if snapshot:
+                children.append(snapshot)
+            skipped.append(provider)
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(
                 500, f"Error planning composite purchase: {e} on provider {provider}"
             )
+
+    if skipped and input.require_all:
+        raise HTTPException(
+            401,
+            "Not authenticated to " + ", ".join(p.value for p in skipped),
+        )
+    if not buy_orders:
+        raise HTTPException(
+            401,
+            "Authenticate to at least one provider in this portfolio to plan a purchase.",
+        )
+    if input.provider and input.provider not in buy_orders:
+        # reweighting needs a provider to price against; prefer one we can reach
+        input = input.model_copy(update={"provider": None})
+
     real_port = CompositePortfolio(children)
     ideal_port = index_to_processed_index(input)
     plan = generate_composite_order_plan(
@@ -779,8 +1157,11 @@ def _plan_composite_purchase(input: BuyRequest):
                     message=None,
                 )
             )
-    output = PurchaseOrderOutput(to_buy=final)
-    return output
+    return PurchaseOrderOutput(
+        to_buy=final,
+        skipped_providers=skipped,
+        order_providers=list(buy_orders.keys()),
+    )
 
 
 @router.post("/plan_composite_purchase")
@@ -868,29 +1249,47 @@ def place_orders(
 
 @router.post("/buy_index_from_plan_multi_provider")
 def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
-    providers: Dict[ProviderType, BaseProvider] = {
-        p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers  # type: ignore
-    }
-    if not all(providers.values()):
-        raise HTTPException(401, "Not all providers are logged in")
-    # check each of our p
     output: List[OrderItem] = []
     stale_providers: set[ProviderType] = set()
     grouped = defaultdict(list)
     for order in input.plan.to_buy:
         grouped[order.provider].append(order)
 
+    missing = [key for key in grouped if not IN_APP_CONFIG.is_authenticated(key)]
+    if missing and input.require_all:
+        raise HTTPException(
+            401,
+            "Not logged in to " + ", ".join(p.value for p in missing),
+        )
+    if missing and len(missing) == len(grouped):
+        raise HTTPException(
+            401,
+            "Not logged in to any provider with orders to place: "
+            + ", ".join(p.value for p in missing),
+        )
+    # orders bound for a provider we cannot reach fail individually; the rest
+    # of the plan still executes
+    for key in missing:
+        for order in grouped.pop(key):
+            order.status = OrderStatus.FAILED
+            order.message = f"Not authenticated to {key.value}; order skipped."
+            output.append(order)
+
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {
-            executor.submit(place_orders, orders, providers[key], stale_providers)
+            executor.submit(
+                place_orders,
+                orders,
+                IN_APP_CONFIG.provider_cache[key],
+                stale_providers,
+            )
             for key, orders in grouped.items()
         }
         for future in as_completed(futures):
             output += future.result()
     for provider in stale_providers:
-        if provider in IN_APP_CONFIG.provider_cache:
-            del IN_APP_CONFIG.provider_cache[provider]
-    return BuyRequestFinalMultiProviderOutput(orders=output)
+        IN_APP_CONFIG.drop_login(provider)
+    return BuyRequestFinalMultiProviderOutput(orders=output, skipped_providers=missing)
 
 
 # Add the endpoint to the router

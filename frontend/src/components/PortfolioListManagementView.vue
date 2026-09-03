@@ -109,6 +109,7 @@ export default {
       "loadCompositePortfolios",
       "loadCustomizations",
       "loadIndexes",
+      "probeAllLogins",
     ]),
     async savePortfolios() {
       this.saving = true;
@@ -137,6 +138,9 @@ export default {
   },
   async mounted() {
     await this.loadPortfolios();
+    // establish up front which providers are reachable, so each sub-portfolio
+    // can show whether it is live or on saved data
+    await this.probeAllLogins();
     await this.loadCustomizations();
     await this.loadIndexes();
   },
