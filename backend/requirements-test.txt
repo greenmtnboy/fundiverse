@@ -1,9 +1,7 @@
 pytest
 pytest-cov
 black
-# pinned so a new ruff release cannot turn CI red on its own: 0.16 widened the
-# default rule set and did exactly that. Bump deliberately, with the cleanup.
-ruff==0.16.5
+ruff
 mypy
 httpx
 types-pytz

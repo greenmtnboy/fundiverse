@@ -1583,19 +1583,28 @@ def run():
         sys.exit(0)
     elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         print("running in a PyInstaller bundle, sending stdout to devnull")
-        with open(os.devnull, "w") as devnull:
-            sys.stdout = devnull
-            run = uvicorn.run(
-                app,
-                host="0.0.0.0",
-                port=SERVE_PORT,
-                log_level="info",
-                log_config=LOGGING_CONFIG,
-            )
+
+        def serve():
+            # the devnull handle lives exactly as long as the server it
+            # silences; stdout is put back before it closes so that the
+            # shutdown handlers below still have somewhere to print
+            original_stdout = sys.stdout
+            with open(os.devnull, "w") as devnull:
+                sys.stdout = devnull
+                try:
+                    return uvicorn.run(
+                        app,
+                        host="0.0.0.0",
+                        port=SERVE_PORT,
+                        log_level="info",
+                        log_config=LOGGING_CONFIG,
+                    )
+                finally:
+                    sys.stdout = original_stdout
     else:
         print("Running in a normal Python process, assuming dev")
 
-        def run():
+        def serve():
             return uvicorn.run(
                 "main:app",
                 host="0.0.0.0",
@@ -1606,7 +1615,7 @@ def run():
             )
 
     try:
-        run()
+        serve()
     except ShutdownException:
         print("Server is shutting down due to excepted shutdown call")
         sys.exit(0)
