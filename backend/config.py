@@ -7,6 +7,7 @@ dotenv.load_dotenv()
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from logging import getLogger
 
 from fastapi import (
     HTTPException,
@@ -90,6 +91,9 @@ class ActiveConfig:
         raise HTTPException(401, "No logged in provider specified")
 
 
+logger = getLogger(__name__)
+
+
 def run_task(config: ActiveConfig, guid: str, func: Callable, *args, **kwargs):
     task = AsyncTask(
         guid=guid,
@@ -103,6 +107,9 @@ def run_task(config: ActiveConfig, guid: str, func: Callable, *args, **kwargs):
         task.result = func(*args, **kwargs)
         task.status = BackgroundStatus.SUCCESS
     except Exception as e:
+        # the task result carries the error to its caller, but nothing else
+        # would ever surface the traceback of a background failure
+        logger.exception(f"Background task {guid} failed")
         task.error = e
         task.status = BackgroundStatus.FAILED
     config.background_tasks[guid] = task

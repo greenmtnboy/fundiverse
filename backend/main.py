@@ -8,7 +8,6 @@ import dotenv
 dotenv.load_dotenv()
 import asyncio
 import multiprocessing
-import traceback
 import uuid
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -802,7 +801,7 @@ def login_handler(input: LoginRequest):
         raise
     except Exception as e:
         IN_APP_CONFIG.pending_auth_response = None
-        raise HTTPException(400, f"Error logging in: {e}")
+        raise HTTPException(400, f"Error logging in: {e}") from e
 
 
 @router.get("/portfolio/")
@@ -908,13 +907,12 @@ def refresh_sub_portfolio(
         rport = item.get_holdings()
         rport.profit_and_loss = item.get_profit_or_loss()
     except ConfigurationError as e:
-        logger.error(
-            f"Auth error refreshing {key}, dropping login:\n{traceback.format_exc()}"
-        )
+        logger.exception(f"Auth error refreshing {key}, dropping login")
         IN_APP_CONFIG.drop_login(key)
         return fallback(ProviderStatus.UNAUTHENTICATED, str(e))
     except Exception as e:
-        logger.error(f"Error refreshing {key}:\n{traceback.format_exc()}")
+        # exception() attaches the traceback, so it need not be formatted in
+        logger.exception(f"Error refreshing {key}")
         return fallback(ProviderStatus.ERROR, str(e))
 
     now = datetime.now(tz=UTC)
@@ -1152,7 +1150,7 @@ def _plan_composite_purchase(input: BuyRequest):
         except Exception as e:
             raise HTTPException(
                 500, f"Error planning composite purchase: {e} on provider {provider}"
-            )
+            ) from e
 
     if skipped and input.require_all:
         raise HTTPException(
@@ -1207,7 +1205,7 @@ def plan_composite_purchase(input: BuyRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, f"Error planning composite purchase: {e}")
+        raise HTTPException(500, f"Error planning composite purchase: {e}") from e
 
 
 @router.get("/force_terminate")
@@ -1275,6 +1273,7 @@ def place_orders(
             order.message = str(e)
             output.append(order)
         except Exception as e:
+            logger.exception(f"Unexpected failure placing order for {order.ticker}")
             order.status = OrderStatus.FAILED
             order.message = str(e)
             output.append(order)
@@ -1338,7 +1337,7 @@ def export_portfolio_database(input: DatabaseExportRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, f"Error exporting portfolio database: {e}")
+        raise HTTPException(500, f"Error exporting portfolio database: {e}") from e
 
 
 # Add endpoint to get database info
@@ -1370,7 +1369,7 @@ def get_database_info(portfolio_name: str):
             "file_size_mb": db_path.stat().st_size / (1024 * 1024),
         }
     except Exception as e:
-        raise HTTPException(500, f"Error reading database info: {e}")
+        raise HTTPException(500, f"Error reading database info: {e}") from e
     finally:
         if db:
             db.close()
@@ -1409,7 +1408,7 @@ def download_database(portfolio_name: str):
             },
         )
     except Exception as e:
-        raise HTTPException(500, f"Error downloading database: {e}")
+        raise HTTPException(500, f"Error downloading database: {e}") from e
     finally:
         if db:
             db.close()
@@ -1428,7 +1427,7 @@ def delete_database(portfolio_name: str):
         db_path.unlink()
         return {"deleted": True, "portfolio_name": portfolio_name}
     except Exception as e:
-        raise HTTPException(500, f"Error deleting database: {e}")
+        raise HTTPException(500, f"Error deleting database: {e}") from e
 
 
 @router.get("/trilogy_model")
@@ -1451,19 +1450,13 @@ def long_sleep(sleep: SleepRequest):
     return {"slept": sleep.sleep}
 
 
-def _get_last_exc():
-    exc_type, exc_value, exc_traceback = sys.exc_info()
-    sTB = "\n".join(traceback.format_tb(exc_traceback))
-    return f"{exc_type}\n - msg: {exc_value}\n stack: {sTB}"
-
-
 async def exit_app():
     for task in asyncio.all_tasks():
         print(f"cancelling task: {task}")
         try:
             task.cancel()
         except Exception:
-            print(f"Task kill failed: {_get_last_exc()}")
+            logger.exception(f"Failed to cancel task {task}")
     asyncio.gather(*asyncio.all_tasks())
     loop = asyncio.get_running_loop()
     loop.stop()
@@ -1482,7 +1475,7 @@ for path in router_routes:
 
             async def dynamic_route_handler(
                 background_tasks: BackgroundTasks,
-                arg: Any = Body(None),
+                arg: Annotated[Any, Body()] = None,
             ):
                 guid = str(uuid.uuid4())
                 arg_model: BaseModel = next(iter(args.values()))
@@ -1555,6 +1548,7 @@ async def etrade_oauth_callback(oauth_verifier: str = "", oauth_token: str = "")
     try:
         etrade_complete_authorization(pending, oauth_verifier)
     except Exception as e:
+        logger.exception("E*TRADE callback failed")
         return _callback_page(
             "E*TRADE authorization failed.", str(e), status_code=400
         )
@@ -1589,17 +1583,15 @@ def run():
         sys.exit(0)
     elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         print("running in a PyInstaller bundle, sending stdout to devnull")
-        # deliberately not a context manager: this handle becomes the process's
-        # stdout for the rest of its life, so closing it here would defeat it
-        f = open(os.devnull, "w")  # noqa: SIM115
-        sys.stdout = f
-        run = uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=SERVE_PORT,
-            log_level="info",
-            log_config=LOGGING_CONFIG,
-        )
+        with open(os.devnull, "w") as devnull:
+            sys.stdout = devnull
+            run = uvicorn.run(
+                app,
+                host="0.0.0.0",
+                port=SERVE_PORT,
+                log_level="info",
+                log_config=LOGGING_CONFIG,
+            )
     else:
         print("Running in a normal Python process, assuming dev")
 
@@ -1618,8 +1610,8 @@ def run():
     except ShutdownException:
         print("Server is shutting down due to excepted shutdown call")
         sys.exit(0)
-    except Exception as e:
-        print(f"Server is shutting down due to {e}")
+    except Exception:
+        logger.exception("Server is shutting down due to an unhandled error")
         sys.exit(1)
 
 

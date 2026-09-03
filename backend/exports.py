@@ -124,4 +124,6 @@ def export_portfolio_to_database(
         raise
     except Exception as e:
         db.close()
-        raise HTTPException(500, f"Error exporting portfolio to database in {stage}: {e}")
+        raise HTTPException(
+            500, f"Error exporting portfolio to database in {stage}: {e}"
+        ) from e
