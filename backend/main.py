@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Callable, Dict, List, Optional
 
 import dotenv
 
@@ -638,112 +638,145 @@ async def provider_status_handler():
     return ProviderStatusResponse(providers=out)
 
 
-def login(input: LoginRequest) -> bool:
-    if input.provider == ProviderType.ALPACA:
-        environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
-        environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
-        # ensure we can login
-        provider: BaseProvider = AlpacaProvider()
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-    elif input.provider == ProviderType.ALPACA_PAPER:
-        environ[PaperAlpacaProvider.API_KEY_VARIABLE] = input.key
-        environ[PaperAlpacaProvider.API_SECRET_VARIABLE] = input.secret
-        # ensure we can login
-        provider = PaperAlpacaProvider()
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-    elif input.provider == ProviderType.ROBINHOOD:
-        environ["ROBINHOOD_USERNAME"] = input.key
-        environ["ROBINHOOD_PASSWORD"] = input.secret
-        # login using RH helper to handle
-        # two factor auth
-        rh_login(
-            challenge_response=input.extra_factor,
-            prior_response=IN_APP_CONFIG.pending_auth_response,
-        )
-        provider = RobinhoodProvider(external_auth=True)
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-        IN_APP_CONFIG.pending_auth_response = None
-    elif input.provider == ProviderType.WEBULL:
-        # the official OpenAPI SDK authenticates with an app key/secret pair
-        # generated in the Webull developer portal
-        environ[WebullProvider.API_KEY_ENV] = input.key
-        environ[WebullProvider.API_SECRET_ENV] = input.secret
-        provider = WebullProvider()
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-    elif input.provider == ProviderType.SCHWAB:
-        environ[SchwabProvider.API_KEY_ENV] = input.key
-        environ[SchwabProvider.APP_SECRET_ENV] = input.secret
-        schwab_pending = IN_APP_CONFIG.pending_schwab_response
-        if schwab_pending and not schwab_context_is_live(schwab_pending):
-            # its callback server died; the URL it handed out is worthless
-            discard_schwab_context(schwab_pending)
-            schwab_pending = None
-        if schwab_pending and input.wait_for_external_auth:
-            # the user has finished the external login - redeem the code that
-            # this context's own callback server captured
-            fetch_response(schwab_pending)
-        elif schwab_pending:
-            # a flow is already in flight. Its redirect server owns the callback
-            # port, so minting a second context here would hand back a URL whose
-            # redirect that context can never collect - the source of a hang
-            # that only ends at callback_timeout. Re-offer the live one instead.
-            raise SchwabExtraAuthenticationStepException(response=schwab_pending)
-        else:
-            lc = create_login_context(api_key=input.key, app_secret=input.secret)
-            if lc:
-                raise SchwabExtraAuthenticationStepException(response=lc)
+def _login_alpaca(input: LoginRequest) -> BaseProvider:
+    environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
+    environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
+    # constructing the provider is what proves the credentials work
+    return AlpacaProvider()
 
-        provider = SchwabProvider(external_auth=True)
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-        IN_APP_CONFIG.pending_schwab_response = None
-    elif input.provider == ProviderType.ETRADE:
-        environ[ETradeProvider.API_KEY_ENV] = input.key
-        environ[ETradeProvider.API_SECRET_ENV] = input.secret
-        sandbox = input.sandbox_enabled
-        environ[ETradeProvider.SANDBOX_ENV] = "true" if sandbox else "false"
-        pending = IN_APP_CONFIG.pending_etrade_response
-        if pending and input.extra_factor:
-            # the user pasted the verification code from the oob page
-            etrade_complete_authorization(pending, str(input.extra_factor))
-            IN_APP_CONFIG.pending_etrade_response = None
-        elif pending:
-            # a flow is in flight with no code supplied; the /public/etrade/callback
-            # endpoint may have finished it for us (registered-callback mode)
-            if not etrade_load_cached_token(sandbox):
-                raise ETradeExtraAuthenticationStepException(response=pending)
-            IN_APP_CONFIG.pending_etrade_response = None
-        else:
-            # reuses/renews a cached token when possible; otherwise hands back
-            # an authorization URL for the user to visit
-            lc = etrade_create_login_context(
-                input.key, input.secret, sandbox=sandbox
-            )
-            if lc:
-                raise ETradeExtraAuthenticationStepException(response=lc)
-        provider = ETradeProvider(external_auth=True, sandbox=sandbox)
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-        IN_APP_CONFIG.pending_etrade_response = None
-    elif input.provider == ProviderType.MOOMOO:
 
-        environ[MooMooProvider.ACCOUNT_ENV] = input.key
-        environ[MooMooProvider.PASSWORD_ENV] = input.secret
-        if input.trading_pin:
-            environ[MooMooProvider.TRADE_TOKEN_ENV] = input.trading_pin
-        if input.proxy_path:
-            environ[MooMooProvider.OPEND_ENV] = input.proxy_path
+def _login_alpaca_paper(input: LoginRequest) -> BaseProvider:
+    environ[PaperAlpacaProvider.API_KEY_VARIABLE] = input.key
+    environ[PaperAlpacaProvider.API_SECRET_VARIABLE] = input.secret
+    # constructing the provider is what proves the credentials work
+    return PaperAlpacaProvider()
 
-        extra_kwargs = {}
-        if input.quote_provider:
-            extra_kwargs["quote_provider"] = IN_APP_CONFIG.provider_cache[
-                input.quote_provider
-            ]
-        else:
-            raise HTTPException(400, "No quote provider specified")
-        provider = MooMooProvider(proxy=MooMooProvider.Proxy(opend_path=input.proxy_path), **extra_kwargs)  # type: ignore
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-        IN_APP_CONFIG.pending_momoo_response = None
+
+def _login_robinhood(input: LoginRequest) -> BaseProvider:
+    environ["ROBINHOOD_USERNAME"] = input.key
+    environ["ROBINHOOD_PASSWORD"] = input.secret
+    # login using RH helper to handle
+    # two factor auth
+    rh_login(
+        challenge_response=input.extra_factor,
+        prior_response=IN_APP_CONFIG.pending_auth_response,
+    )
+    provider = RobinhoodProvider(external_auth=True)
+    IN_APP_CONFIG.pending_auth_response = None
+    return provider
+
+
+def _login_webull(input: LoginRequest) -> BaseProvider:
+    # the official OpenAPI SDK authenticates with an app key/secret pair
+    # generated in the Webull developer portal
+    environ[WebullProvider.API_KEY_ENV] = input.key
+    environ[WebullProvider.API_SECRET_ENV] = input.secret
+    return WebullProvider()
+
+
+def _login_schwab(input: LoginRequest) -> BaseProvider:
+    environ[SchwabProvider.API_KEY_ENV] = input.key
+    environ[SchwabProvider.APP_SECRET_ENV] = input.secret
+    pending = IN_APP_CONFIG.pending_schwab_response
+    if pending and not schwab_context_is_live(pending):
+        # its callback server died; the URL it handed out is worthless
+        discard_schwab_context(pending)
+        pending = None
+    if pending and input.wait_for_external_auth:
+        # the user has finished the external login - redeem the code that
+        # this context's own callback server captured
+        fetch_response(pending)
+    elif pending:
+        # a flow is already in flight. Its redirect server owns the callback
+        # port, so minting a second context here would hand back a URL whose
+        # redirect that context can never collect - the source of a hang
+        # that only ends at callback_timeout. Re-offer the live one instead.
+        raise SchwabExtraAuthenticationStepException(response=pending)
     else:
+        context = create_login_context(api_key=input.key, app_secret=input.secret)
+        if context:
+            raise SchwabExtraAuthenticationStepException(response=context)
+
+    provider = SchwabProvider(external_auth=True)
+    IN_APP_CONFIG.pending_schwab_response = None
+    return provider
+
+
+def _login_etrade(input: LoginRequest) -> BaseProvider:
+    environ[ETradeProvider.API_KEY_ENV] = input.key
+    environ[ETradeProvider.API_SECRET_ENV] = input.secret
+    sandbox = input.sandbox_enabled
+    environ[ETradeProvider.SANDBOX_ENV] = "true" if sandbox else "false"
+    pending = IN_APP_CONFIG.pending_etrade_response
+    if pending and input.extra_factor:
+        # the user pasted the verification code from the oob page
+        etrade_complete_authorization(pending, str(input.extra_factor))
+        IN_APP_CONFIG.pending_etrade_response = None
+    elif pending:
+        # a flow is in flight with no code supplied; the /public/etrade/callback
+        # endpoint may have finished it for us (registered-callback mode)
+        if not etrade_load_cached_token(sandbox):
+            raise ETradeExtraAuthenticationStepException(response=pending)
+        IN_APP_CONFIG.pending_etrade_response = None
+    else:
+        # reuses/renews a cached token when possible; otherwise hands back
+        # an authorization URL for the user to visit
+        context = etrade_create_login_context(input.key, input.secret, sandbox=sandbox)
+        if context:
+            raise ETradeExtraAuthenticationStepException(response=context)
+    provider = ETradeProvider(external_auth=True, sandbox=sandbox)
+    IN_APP_CONFIG.pending_etrade_response = None
+    return provider
+
+
+def _login_moomoo(input: LoginRequest) -> BaseProvider:
+    environ[MooMooProvider.ACCOUNT_ENV] = input.key
+    environ[MooMooProvider.PASSWORD_ENV] = input.secret
+    if input.trading_pin:
+        environ[MooMooProvider.TRADE_TOKEN_ENV] = input.trading_pin
+    if input.proxy_path:
+        environ[MooMooProvider.OPEND_ENV] = input.proxy_path
+
+    # moomoo bills for quotes, so they are sourced from another logged in provider
+    if not input.quote_provider:
+        raise HTTPException(400, "No quote provider specified")
+    quote_provider = IN_APP_CONFIG.provider_cache.get(input.quote_provider)
+    if quote_provider is None:
+        raise HTTPException(
+            400, f"Quote provider {input.quote_provider.value} is not logged in"
+        )
+    provider = MooMooProvider(  # type: ignore
+        proxy=MooMooProvider.Proxy(opend_path=input.proxy_path),
+        quote_provider=quote_provider,
+    )
+    IN_APP_CONFIG.pending_momoo_response = None
+    return provider
+
+
+#: how each provider turns a LoginRequest into a live provider.
+#:
+#: Each entry owns only what is specific to that provider - the environment it
+#: needs, its handshake, and clearing its own in-flight auth state. What every
+#: successful login has in common lives in login() instead of being repeated
+#: seven times, and the per-provider locals no longer share one scope.
+PROVIDER_LOGINS: Dict[ProviderType, Callable[[LoginRequest], BaseProvider]] = {
+    ProviderType.ALPACA: _login_alpaca,
+    ProviderType.ALPACA_PAPER: _login_alpaca_paper,
+    ProviderType.ROBINHOOD: _login_robinhood,
+    ProviderType.WEBULL: _login_webull,
+    ProviderType.SCHWAB: _login_schwab,
+    ProviderType.ETRADE: _login_etrade,
+    ProviderType.MOOMOO: _login_moomoo,
+}
+
+
+def login(input: LoginRequest) -> bool:
+    provider_login = PROVIDER_LOGINS.get(input.provider)
+    if provider_login is None:
         raise HTTPException(404, "Selected provider not supported yet")
+    # only reached when the handshake succeeded; a provider that needs another
+    # step raises out of here rather than returning
+    IN_APP_CONFIG.provider_cache[input.provider] = provider_login(input)
     IN_APP_CONFIG.logged_in = input.provider.value
     return True
 
