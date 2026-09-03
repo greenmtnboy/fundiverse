@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -34,7 +34,7 @@ class DummyETradeProvider:
 @pytest.fixture
 def etrade_env(monkeypatch, test_client: TestClient):
     """Fake out the library's auth seams and reset login state."""
-    state: Dict[str, Any] = {
+    state: dict[str, Any] = {
         "cached_token": None,
         "completed": [],
         "context": _context(),

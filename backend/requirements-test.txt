@@ -1,9 +1,9 @@
 pytest
 pytest-cov
 black
-# pinned: ruff 0.16 turned on rules that fail this repo wholesale, and CI
-# installs whatever is newest. Unpin deliberately, with the cleanup.
-ruff==0.15.21
+# pinned so a new ruff release cannot turn CI red on its own: 0.16 widened the
+# default rule set and did exactly that. Bump deliberately, with the cleanup.
+ruff==0.16.5
 mypy
 httpx
 types-pytz

@@ -1,5 +1,4 @@
 import time
-from typing import Optional
 
 import httpx
 
@@ -140,7 +139,7 @@ def get_database_info(portfolio_name: str) -> dict:
         return response.json()
 
 
-def download_database(portfolio_name: str, output_path: Optional[str] = None) -> str:
+def download_database(portfolio_name: str, output_path: str | None = None) -> str:
     """
     Download the portfolio database file.
     

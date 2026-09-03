@@ -1,6 +1,7 @@
 import os
 import sys
-from typing import Annotated, Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Annotated, Any
 
 import dotenv
 
@@ -355,7 +356,7 @@ class ProviderSnapshot(BaseModel):
     """
 
     provider: ProviderType
-    holdings: List[SnapshotHolding] = Field(default_factory=list)
+    holdings: list[SnapshotHolding] = Field(default_factory=list)
     cash: Money = Field(default_factory=lambda: Money(value=0))
     profit_or_loss_v2: ProfitModel | None = None
     refreshed_at: int | None = None
@@ -378,7 +379,7 @@ class ProviderSnapshot(BaseModel):
 
 class RealPortfolioOutput(BaseModel):
     name: str
-    holdings: List[RealPortfolioElement]
+    holdings: list[RealPortfolioElement]
     cash: Money | None
     provider: ProviderType | None
     holding_size: Money | None = None
@@ -391,21 +392,21 @@ class RealPortfolioOutput(BaseModel):
 
 class CompositePortfolioOutput(BaseModel):
     name: str
-    holdings: List[RealPortfolioElement]
+    holdings: list[RealPortfolioElement]
     cash: Money
-    components: Dict[str, RealPortfolioOutput]
+    components: dict[str, RealPortfolioOutput]
     target_size: float = 250_000
     refreshed_at: int
     profit_or_loss: Money | None = None
     profit_or_loss_v2: ProfitModel | None
-    refresh_time: Dict[str, timedelta] = Field(default_factory=dict)
+    refresh_time: dict[str, timedelta] = Field(default_factory=dict)
     #: cash that can actually be spent right now, i.e. held at a provider we
     #: are authenticated to. `cash` includes un-authenticated providers.
     investable_cash: Money = Field(default_factory=lambda: Money(value=0))
     #: true when at least one provider is showing stale or missing data
     partial: bool = False
     #: providers that contributed no live data on this refresh
-    degraded_providers: List[ProviderType] = Field(default_factory=list)
+    degraded_providers: list[ProviderType] = Field(default_factory=list)
 
 
 class OrderStatus(Enum):
@@ -427,12 +428,12 @@ class OrderItem(BaseModel):
 
 
 class PurchaseOrderOutput(BaseModel):
-    to_buy: List[OrderItem]
+    to_buy: list[OrderItem]
     #: providers whose holdings were counted from a stale snapshot and which
     #: therefore received no orders
-    skipped_providers: List[ProviderType] = Field(default_factory=list)
+    skipped_providers: list[ProviderType] = Field(default_factory=list)
     #: providers that orders will actually be routed to
-    order_providers: List[ProviderType] = Field(default_factory=list)
+    order_providers: list[ProviderType] = Field(default_factory=list)
 
 
 class ListMutation(BaseModel):
@@ -443,7 +444,7 @@ class ListMutation(BaseModel):
 class StockMutation(BaseModel):
     ticker: str
     scale: float | None
-    min_weight: Optional[float] = None
+    min_weight: float | None = None
 
     model_config = ConfigDict(
         alias_generator=to_camel,
@@ -453,7 +454,7 @@ class StockMutation(BaseModel):
 
 
 class ProviderResponse(BaseModel):
-    available: List[ProviderType]
+    available: list[ProviderType]
 
 
 class PortfolioRequest(BaseModel):
@@ -463,13 +464,13 @@ class PortfolioRequest(BaseModel):
 class TargetPortfolioRequest(BaseModel):
     index: str
     reweight: bool = False
-    stock_exclusions: List[str] = Field(default_factory=list)
-    list_exclusions: List[str] = Field(default_factory=list)
-    stock_modifications: List[StockMutation] = Field(default_factory=list)
-    list_modifications: List[ListMutation] = Field(default_factory=list)
+    stock_exclusions: list[str] = Field(default_factory=list)
+    list_exclusions: list[str] = Field(default_factory=list)
+    stock_modifications: list[StockMutation] = Field(default_factory=list)
+    list_modifications: list[ListMutation] = Field(default_factory=list)
     purchase_strategy: PurchaseStrategy = PurchaseStrategy.LARGEST_DIFF_FIRST
     provider: ProviderType | None = None
-    providers: List[ProviderType] = Field(default_factory=list)
+    providers: list[ProviderType] = Field(default_factory=list)
 
 
 class PartialOperationRequest(BaseModel):
@@ -481,7 +482,7 @@ class PartialOperationRequest(BaseModel):
 
     require_all: bool = False
     #: client-held snapshots for providers we may not be logged into
-    cached: List[ProviderSnapshot] = Field(default_factory=list)
+    cached: list[ProviderSnapshot] = Field(default_factory=list)
 
 
 class BuyRequest(TargetPortfolioRequest, PartialOperationRequest):
@@ -501,17 +502,17 @@ class BuyRequestFinalMultiProvider(BaseModel):
 
 
 class BuyRequestFinalMultiProviderOutput(BaseModel):
-    orders: List[OrderItem]
+    orders: list[OrderItem]
     #: providers that were skipped because we are not authenticated to them
-    skipped_providers: List[ProviderType] = Field(default_factory=list)
+    skipped_providers: list[ProviderType] = Field(default_factory=list)
 
 
 class CompositePortfolioRefreshRequest(PartialOperationRequest):
     key: str
-    providers: List[ProviderType]
+    providers: list[ProviderType]
     #: providers to fetch live data for. Omit (or send null) to refresh every
     #: provider we are currently authenticated to - the partial default.
-    providers_to_refresh: List[ProviderType] | None = None
+    providers_to_refresh: list[ProviderType] | None = None
 
 
 class ProviderStatusOutput(BaseModel):
@@ -522,7 +523,7 @@ class ProviderStatusOutput(BaseModel):
 
 
 class ProviderStatusResponse(BaseModel):
-    providers: List[ProviderStatusOutput]
+    providers: list[ProviderStatusOutput]
 
 
 ## Shared Functions
@@ -759,7 +760,7 @@ def _login_moomoo(input: LoginRequest) -> BaseProvider:
 #: needs, its handshake, and clearing its own in-flight auth state. What every
 #: successful login has in common lives in login() instead of being repeated
 #: seven times, and the per-provider locals no longer share one scope.
-PROVIDER_LOGINS: Dict[ProviderType, Callable[[LoginRequest], BaseProvider]] = {
+PROVIDER_LOGINS: dict[ProviderType, Callable[[LoginRequest], BaseProvider]] = {
     ProviderType.ALPACA: _login_alpaca,
     ProviderType.ALPACA_PAPER: _login_alpaca_paper,
     ProviderType.ROBINHOOD: _login_robinhood,
@@ -797,8 +798,8 @@ def login_handler(input: LoginRequest):
     except ExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_auth_response = e.response
         raise HTTPException(412, f"Additional authentication required: {e}")
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         IN_APP_CONFIG.pending_auth_response = None
         raise HTTPException(400, f"Error logging in: {e}")
@@ -832,7 +833,7 @@ class SubPortfolioResult:
     refreshed_at: datetime | None = None
 
 
-def seed_holding_cache(snapshots: List[ProviderSnapshot]) -> None:
+def seed_holding_cache(snapshots: list[ProviderSnapshot]) -> None:
     """Prime the holding cache from the client's own copy.
 
     The backend cache lives for one app session; the client keeps holdings on
@@ -878,11 +879,11 @@ def refresh_sub_portfolio(
     Every failure mode degrades to the last known snapshot so that one
     unavailable provider cannot block an operation on the others.
     """
-    start = datetime.now()
+    start = datetime.now(UTC)
     item: BaseProvider | None = IN_APP_CONFIG.provider_cache.get(key, None)
 
     def elapsed() -> timedelta:
-        return datetime.now() - start
+        return datetime.now(UTC) - start
 
     def fallback(status: ProviderStatus, error: str | None) -> SubPortfolioResult:
         return SubPortfolioResult(
@@ -928,7 +929,7 @@ def refresh_sub_portfolio(
     )
 
 
-def sum_holdings(holdings: List[RealPortfolioElement]) -> Money:
+def sum_holdings(holdings: list[RealPortfolioElement]) -> Money:
     return Money(value=sum([x.value for x in holdings]))
 
 
@@ -950,7 +951,7 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
     seed_holding_cache(input.cached)
     targets = resolve_refresh_targets(input)
 
-    results: List[SubPortfolioResult] = []
+    results: list[SubPortfolioResult] = []
     with ThreadPoolExecutor(max_workers=10) as executor:
         portfolios = {
             executor.submit(refresh_sub_portfolio, key, targets)
@@ -976,9 +977,9 @@ def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
                 422, f"Error refreshing {failed[0].provider}: {failed[0].error}"
             )
 
-    active: Dict[str, RealPortfolioOutput] = {}
-    raw: List[RealPortfolio] = []
-    durations: Dict[str, timedelta] = {}
+    active: dict[str, RealPortfolioOutput] = {}
+    raw: list[RealPortfolio] = []
+    durations: dict[str, timedelta] = {}
     profit_and_loss = ProfitModel(
         appreciation=Money(value=0.0), dividends=Money(value=0.0)
     )
@@ -1113,9 +1114,9 @@ async def get_background_task(guid):
 
 def _plan_composite_purchase(input: BuyRequest):
     seed_holding_cache(input.cached)
-    children: List[RealPortfolio] = []
-    buy_orders: Dict[ProviderType, PurchaseStrategy] = {}
-    skipped: List[ProviderType] = []
+    children: list[RealPortfolio] = []
+    buy_orders: dict[ProviderType, PurchaseStrategy] = {}
+    skipped: list[ProviderType] = []
 
     for provider in input.providers:
         if not IN_APP_CONFIG.is_authenticated(provider):
@@ -1138,10 +1139,10 @@ def _plan_composite_purchase(input: BuyRequest):
                 IN_APP_CONFIG.holding_refreshed_at[provider] = datetime.now(tz=UTC)
             buy_orders[provider] = input.purchase_strategy
             children.append(sub_port)
-        except ConfigurationError as e:
+        except ConfigurationError:
             IN_APP_CONFIG.drop_login(provider)
             if input.require_all:
-                raise e
+                raise
             snapshot = cached_snapshot(provider)
             if snapshot:
                 children.append(snapshot)
@@ -1201,10 +1202,10 @@ def _plan_composite_purchase(input: BuyRequest):
 def plan_composite_purchase(input: BuyRequest):
     try:
         return _plan_composite_purchase(input)
-    except ConfigurationError as e:
-        raise e
-    except HTTPException as e:
-        raise e
+    except ConfigurationError:
+        raise
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, f"Error planning composite purchase: {e}")
 
@@ -1244,7 +1245,7 @@ def buy_index_from_plan(input: BuyRequestFinal):
 
 
 def place_orders(
-    orders: List[OrderItem], provider: BaseProvider, stale_providers: set[ProviderType]
+    orders: list[OrderItem], provider: BaseProvider, stale_providers: set[ProviderType]
 ):
     output = []
     for order in orders:
@@ -1282,7 +1283,7 @@ def place_orders(
 
 @router.post("/buy_index_from_plan_multi_provider")
 def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
-    output: List[OrderItem] = []
+    output: list[OrderItem] = []
     stale_providers: set[ProviderType] = set()
     grouped = defaultdict(list)
     for order in input.plan.to_buy:
@@ -1334,8 +1335,8 @@ def export_portfolio_database(input: DatabaseExportRequest):
     """
     try:
         return export_portfolio_to_database(input, IN_APP_CONFIG)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, f"Error exporting portfolio database: {e}")
 
@@ -1463,7 +1464,6 @@ async def exit_app():
             task.cancel()
         except Exception:
             print(f"Task kill failed: {_get_last_exc()}")
-            pass
     asyncio.gather(*asyncio.all_tasks())
     loop = asyncio.get_running_loop()
     loop.stop()
@@ -1485,7 +1485,7 @@ for path in router_routes:
                 arg: Any = Body(None),
             ):
                 guid = str(uuid.uuid4())
-                arg_model: BaseModel = list(args.values())[0]
+                arg_model: BaseModel = next(iter(args.values()))
                 parsed_arg = arg_model.model_validate(arg)
                 background_tasks.add_task(
                     run_task, IN_APP_CONFIG, guid, endpoint, parsed_arg
@@ -1589,7 +1589,9 @@ def run():
         sys.exit(0)
     elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         print("running in a PyInstaller bundle, sending stdout to devnull")
-        f = open(os.devnull, "w")
+        # deliberately not a context manager: this handle becomes the process's
+        # stdout for the rest of its life, so closing it here would defeat it
+        f = open(os.devnull, "w")  # noqa: SIM115
         sys.stdout = f
         run = uvicorn.run(
             app,

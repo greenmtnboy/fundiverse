@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 from fastapi import (
     HTTPException,
@@ -13,7 +12,7 @@ from config import ActiveConfig
 
 class DatabaseExportRequest(BaseModel):
     portfolio_name: str
-    providers: List[ProviderType] = Field(default_factory = list)
+    providers: list[ProviderType] = Field(default_factory = list)
     force_reset: bool = False
     require_all: bool = False
 
@@ -21,11 +20,11 @@ class DatabaseExportRequest(BaseModel):
 class DatabaseExportResponse(BaseModel):
     database_path: str
     portfolio_name: str
-    providers_processed: List[ProviderType]
+    providers_processed: list[ProviderType]
     total_holdings: int
     total_dividends: int
     #: providers left out because we are not authenticated to them
-    providers_skipped: List[ProviderType] = Field(default_factory=list)
+    providers_skipped: list[ProviderType] = Field(default_factory=list)
 
 
 # Add helper function to get database path
@@ -85,7 +84,7 @@ def export_portfolio_to_database(
             total_holdings += len(holdings.holdings)
 
             # Get dividend watermarks
-            min_dividends, max_dividends = db.get_watermarks(
+            _min_dividends, max_dividends = db.get_watermarks(
                 provider_type=provider_type, object_key=ObjectKey.DIVIDENDS
             )
 

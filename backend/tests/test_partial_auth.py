@@ -6,7 +6,6 @@ provider is authenticated.
 """
 
 from decimal import Decimal
-from typing import Dict, List, Optional, Set
 
 import pytest
 from fastapi.testclient import TestClient
@@ -29,19 +28,19 @@ class FakeProvider(BaseProvider):
     def __init__(
         self,
         provider: ProviderType,
-        holdings: Optional[List[RealPortfolioElement]] = None,
+        holdings: list[RealPortfolioElement] | None = None,
         cash: float = 1000.0,
-        fail_with: Optional[Exception] = None,
+        fail_with: Exception | None = None,
     ):
         self.PROVIDER = provider
         self._holdings = holdings if holdings is not None else []
         self._cash = Money(value=cash)
         self._fail_with = fail_with
-        self.orders: List = []
+        self.orders: list = []
         self.refresh_count = 0
 
     # --- surface used by refresh ---
-    def clear_cache(self, skip_clearing: Optional[List[str]] = None):
+    def clear_cache(self, skip_clearing: list[str] | None = None):
         return None
 
     def get_holdings(self) -> RealPortfolio:
@@ -60,12 +59,12 @@ class FakeProvider(BaseProvider):
     def cash(self) -> Money:
         return self._cash
 
-    def get_unsettled_instruments(self) -> Set[str]:
+    def get_unsettled_instruments(self) -> set[str]:
         return set()
 
     def get_instrument_prices(
         self, tickers, at_day=None
-    ) -> Dict[str, Optional[Decimal]]:
+    ) -> dict[str, Decimal | None]:
         return {ticker: Decimal(10) for ticker in tickers}
 
     def get_instrument_price(self, ticker, at_day=None):

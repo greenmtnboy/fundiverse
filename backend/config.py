@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 import dotenv
 
@@ -43,19 +44,19 @@ class AsyncTask:
 @dataclass
 class ActiveConfig:
     logged_in: str | None = None
-    provider_cache: Dict[ProviderType, BaseProvider] = field(default_factory=dict)
-    holding_cache: Dict[ProviderType, RealPortfolio] = field(default_factory=dict)
+    provider_cache: dict[ProviderType, BaseProvider] = field(default_factory=dict)
+    holding_cache: dict[ProviderType, RealPortfolio] = field(default_factory=dict)
     # when each entry in holding_cache was last known to be accurate. Entries
     # seeded from a client-held cache carry the client's timestamp, so the UI
     # can show how stale a partially-refreshed portfolio is per provider.
-    holding_refreshed_at: Dict[ProviderType, datetime] = field(default_factory=dict)
+    holding_refreshed_at: dict[ProviderType, datetime] = field(default_factory=dict)
     pending_auth_response: LoginResponse | None = None
     pending_schwab_response: SchwabAuthContext | None = None
     pending_etrade_response: ETradeAuthContext | None = None
     pending_momoo_response: str | None = None
     auth_token: str | None = None
     validate: bool = False
-    background_tasks: Dict[str, AsyncTask] = field(default_factory=dict)
+    background_tasks: dict[str, AsyncTask] = field(default_factory=dict)
 
     def is_authenticated(self, provider: ProviderType) -> bool:
         return provider in self.provider_cache
@@ -82,11 +83,10 @@ class ActiveConfig:
             ProviderType.ALPACA_PAPER,
         ]
         for provider in priority:
-            for key, _ in self.provider_cache.items():
-                if key == provider:
-                    return key
+            if provider in self.provider_cache:
+                return provider
         if self.provider_cache:
-            return list(self.provider_cache.keys())[0]
+            return next(iter(self.provider_cache))
         raise HTTPException(401, "No logged in provider specified")
 
 

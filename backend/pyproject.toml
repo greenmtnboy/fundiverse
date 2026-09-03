@@ -1,9 +1,20 @@
 [tool.ruff]
 line-length = 100
 
-lint.ignore = ["E402", "F403"]
-lint.extend-select = ["I"]
+[tool.ruff.lint]
+extend-select = ["I"]
+ignore = [
+    "E402",
+    "F403",
+    # Broad `except Exception` is the design here, not an oversight: a provider
+    # that fails degrades to its last known snapshot rather than taking down an
+    # operation spanning every other provider.
+    "BLE001",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# fastapi declares these in argument defaults by design
+extend-immutable-calls = ["fastapi.Body", "fastapi.Depends", "fastapi.Query"]
 
 [tool.mypy]
 ignore_missing_imports = true
-

@@ -9,7 +9,7 @@ bound callback port never feeds, so its redemption blocks until callback_timeout
 
 import multiprocessing
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -47,7 +47,7 @@ class DummySchwabProvider:
 @pytest.fixture
 def schwab_env(monkeypatch, test_client: TestClient):
     """Fake out the library's auth seams and reset login state."""
-    state: Dict[str, Any] = {
+    state: dict[str, Any] = {
         "contexts": [],
         "fetched": [],
         "discarded": [],
