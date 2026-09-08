@@ -51,7 +51,11 @@ async function handleResponse(
       store.getters.providers.forEach((provider: string) => {
         store.dispatch("probeLogin", { provider });
       });
-      throw new exceptions.auth("User is not authenticated");
+      // surface the backend's detail (e.g. which provider needs login, or the
+      // underlying provider error) instead of a generic message
+      throw new exceptions.auth(
+        errorData?.detail || "User is not authenticated",
+      );
     }
     if (res.status === 303) {
       throw new exceptions.auth_external_login(errorData?.detail);

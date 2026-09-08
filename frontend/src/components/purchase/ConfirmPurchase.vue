@@ -58,6 +58,15 @@
             </v-chip-group>
           </v-col>
         </v-row>
+        <v-row v-if="skippedProviders.length > 0">
+          <v-col cols="12">
+            <v-alert type="info" density="compact" data-testid="skipped-providers-alert">
+              Orders will go to {{ orderProviders.join(", ") || "no providers" }}.
+              Holdings at {{ skippedProviders.join(", ") }} are counted toward your target
+              from saved data, but no orders can be placed there until you authenticate.
+            </v-alert>
+          </v-col>
+        </v-row>
         <v-row>
           <v-col cols="12">
             <v-text-field :disabled="loading || initialLoading" class="input-field" variant="solo"
@@ -223,7 +232,26 @@ export default {
   },
 
   computed: {
-    ...mapGetters(["portfolioCustomizations", "getCustomizationByName"]),
+    ...mapGetters([
+      "portfolioCustomizations",
+      "getCustomizationByName",
+      "compositePortfolios",
+    ]),
+    portfolio() {
+      return this.compositePortfolios.find(
+        (item) => item.name === this.portfolioName,
+      );
+    },
+    /**
+     * Providers whose holdings shape the plan but which cannot receive
+     * orders, because we are not authenticated to them.
+     */
+    skippedProviders() {
+      return this.plan.skipped_providers || [];
+    },
+    orderProviders() {
+      return this.plan.order_providers || [];
+    },
     placedBatches() {
       return divideArrayIntoBatches(this.placedOrders, this.batchSize);
     },
@@ -321,6 +349,9 @@ export default {
           reweight: this.customizations.reweightIndex,
           purchase_strategy: this.selectedMode,
           providers: this.providers,
+          // holdings at providers we are not logged into still count toward
+          // the target allocation, so replay our saved copy of them
+          cached: this.portfolio ? this.portfolio.cachedSnapshots() : [],
         })
         .then((response) => {
           this.plan = response.data;
@@ -351,10 +382,13 @@ export default {
           providers: this.providers,
         })
         .then((resp) => {
+          // only the providers we actually traded on have changed
+          const touched = this.orderProviders;
           this.plan = { to_buy: [], to_sell: [] };
           this.refreshCompositePortfolio({
             portfolioName: this.portfolioName,
             keys: this.providers,
+            providersToRefresh: touched.length ? touched : null,
           });
           this.placedOrders = resp.data.orders;
           // this.dialog = false;

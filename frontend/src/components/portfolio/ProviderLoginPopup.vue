@@ -37,8 +37,8 @@
               v-model="providerKeyValues[selectedProvider][key.key]" color="primary" :label="key.label"
               variant="underlined"></v-text-field>
           </template>
-          <v-text-field v-if="extraLogin" :readonly="loading" :rules="[required]" v-model="factor" color="primary"
-            label="Extra Factor" :append-icon="showFactor ? 'mdi-eye' : 'mdi-eye-off'"
+          <v-text-field v-if="extraLogin" :readonly="loading" :rules="extraFactorRules" v-model="factor" color="primary"
+            :label="extraFactorLabel" :append-icon="showFactor ? 'mdi-eye' : 'mdi-eye-off'"
             :type="showFactor ? 'text' : 'password'" @click:append="showFactor = !showFactor"
             variant="underlined"></v-text-field>
           <v-select v-if="showQuoteProvider" v-model="providerKeyValues[selectedProvider]['quote_provider']" color="primary" :items="availableQuoteProviders"
@@ -143,6 +143,16 @@ export default {
     providerLoginKeys() {
       return this.getProviderLoginKeys(this.selectedProvider);
     },
+    extraFactorRules() {
+      // etrade's verification code is only needed in the paste-a-code (oob)
+      // flow; with a registered callback the backend completes auth itself
+      return this.selectedProvider == "etrade" ? [] : [this.required];
+    },
+    extraFactorLabel() {
+      return this.selectedProvider == "etrade"
+        ? "Verification Code (from E*TRADE popup)"
+        : "Extra Factor";
+    },
   },
   methods: {
     ...mapActions([
@@ -175,19 +185,23 @@ export default {
           { key: "key", label: "Username" },
           { key: "secret", label: "Password", type: "secret" },
         ];
-      } else if (["webull", "webull_paper"].includes(provider)) {
+      } else if (provider == "webull") {
         return [
-          { key: "key", label: "Email" },
-          { key: "secret", label: "Password", type: "secret" },
-          { key: "device_id", label: "Device ID", type: "secret" },
-          { key: "trading_pin", label: "Trading Pin", type: "secret" },
-          { key: "response_json", label: "Response JSON (Optional)", optional: true },
+          { key: "key", label: "App Key" },
+          { key: "secret", label: "App Secret", type: "secret" },
         ];
       }
       else if (["schwab"].includes(provider)) {
         return [
           { key: "key", label: "API Key" },
           { key: "secret", label: "App Secret", type: "secret" },
+        ];
+      }
+      else if (["etrade"].includes(provider)) {
+        return [
+          { key: "key", label: "API Key (Consumer Key)" },
+          { key: "secret", label: "API Secret", type: "secret" },
+          { key: "sandbox", label: "Sandbox mode (true/false, optional)", optional: true },
         ];
       }
       else if (["moomoo"].includes(provider)) {
@@ -250,8 +264,24 @@ export default {
         await this.login();
       }
     },
+    /**
+     * Whether we hold every credential this provider needs.
+     *
+     * Auto-login is only worth attempting when it can actually succeed;
+     * firing blind at providers the user never saved credentials for just
+     * paints error states on startup.
+     */
+    hasSavedCredentials() {
+      const values = this.providerKeyValues[this.provider];
+      if (!values) {
+        return false;
+      }
+      return this.getProviderLoginKeys(this.provider)
+        .filter((key) => !key.optional)
+        .every((key) => Boolean(values[key.key]));
+    },
 
-    async login(refresh = true) {
+    async login(refresh = true, silent = false) {
       this.loading = true;
       this.error = "";
       this.extraLogin = false;
@@ -306,12 +336,38 @@ export default {
             this.probeLogin({ provider: this.provider });
           }
           if (refresh) {
+            // only the provider we just authenticated needs re-fetching; the
+            // rest keep whatever they already had
             return this.refreshCompositePortfolio({
               portfolioName: this.portfolioName,
+              providersToRefresh: [this.selectedProvider],
             });
           }
         })
         .catch((exc) => {
+          if (exc instanceof exceptions.auth_external_login) {
+            // always capture the URL, even on a silent attempt: the backend has
+            // already spawned a redirect server and stashed the matching auth
+            // context, and holding the URL is what makes the next submit send
+            // wait_for_external_auth. Dropping it here strands that context and
+            // makes the following login mint a second one, whose callback
+            // server never receives the redirect.
+            this.externalLoginURL = exc.message;
+            if (!silent && this.selectedProvider == "etrade") {
+              // etrade's default (oob) flow shows a verification code at the
+              // end of the external login; surface a field to paste it into
+              this.extraLogin = true;
+              this.error =
+                "Authorize Fundiverse in the E*TRADE window. If you are shown a verification code, paste it below; then click Authenticate again.";
+            }
+            return;
+          }
+          if (silent) {
+            // a background attempt the user did not ask for; leave the button
+            // in its normal state rather than reporting a failure they cannot
+            // act on yet
+            return;
+          }
           if (exc instanceof exceptions.auth_extra) {
             if (this.selectedProvider == "robinhood") {
               this.extraLogin = true;
@@ -322,9 +378,6 @@ export default {
               this.error = apiHelpers.getErrorMessage(exc);
             }
 
-          }
-          else if (exc instanceof exceptions.auth_external_login) {
-            this.externalLoginURL = exc.message;
           }
           else {
             this.error = apiHelpers.getErrorMessage(exc);
@@ -347,8 +400,12 @@ export default {
           this.probeLogin({ provider: this.provider }),
           this.getDefaults(this.provider),
         ]).then(() => {
-          if (!this.loginSuccess) {
-            this.login(false);
+          // opportunistic only: try providers whose credentials we already
+          // hold, and stay quiet about the ones that don't work out. Anything
+          // that fails is simply a provider the portfolio runs partially
+          // without until the user logs in.
+          if (!this.loginSuccess && this.hasSavedCredentials()) {
+            this.login(false, true);
           }
         });
       }

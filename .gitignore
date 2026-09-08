@@ -21,6 +21,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# local dev-server logs
+.devlogs/
+
 # Editor directories and files
 .idea
 .vscode
@@ -59,3 +62,5 @@ frontend/test-results
 did.bin
 
 .claude
+# coverage artifacts
+.coverage

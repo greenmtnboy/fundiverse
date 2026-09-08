@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 from py_portfolio_index.models import IdealPortfolio
@@ -30,7 +30,7 @@ def test_async_functions(test_client: TestClient):
     guid2 = response.json().get("guid")
     assert guid2 is not None
 
-    datetime1 = datetime.now()
+    datetime1 = datetime.now(timezone.utc)
 
     found: set[str] = set()
     attempts = 0
@@ -56,7 +56,7 @@ def test_async_functions(test_client: TestClient):
         if attempts > max_attempts:
             raise ValueError(f"Too many attempts, last response {response}")
     # basic check that they ran async and not 5+5 seconds
-    assert (datetime.now() - datetime1).seconds < 7
+    assert (datetime.now(timezone.utc) - datetime1).seconds < 7
 
 
 def test_index_to_processed_index(test_client: TestClient):

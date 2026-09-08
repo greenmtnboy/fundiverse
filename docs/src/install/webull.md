@@ -1,21 +1,29 @@
 ## Webull Setup
 
-::: warning
-Webull access uses a open-source library that is not officially supported by Schwab, [webull](https://github.com/tedchou12/webull). Ensure you are comfortable with this library as well.
-:::
-
+Webull access uses Webull's official
+[OpenAPI SDK](https://developer.webull.com/api-doc/), so you authenticate with
+an app key and app secret rather than your account password.
 
 ### Prod
 
-Create an account on Webull as normal.
+Create an account on Webull as normal, then:
 
-Webull connections use an [unofficial API package](https://github.com/tedchou12/webull).
+1. Apply for OpenAPI access in the
+   [Webull developer portal](https://developer.webull.com/) for your region.
+2. Generate an app key / app secret pair.
+3. Subscribe the credentials to the brokerage account you want Fundiverse to
+   trade. If the credentials cover more than one account, Fundiverse uses the
+   first one returned.
 
 To login to webull in the app, you will need
 
-- username
-- password
-- trading password
-- device token [retrieved from your web browser](https://github.com/tedchou12/webull/wiki/Workaround-for-Login-%E2%80%90-Method-2)
+- app key
+- app secret
 
 Add a provider and select webull, then fill in the fields.
+
+::: warning
+Webull's OpenAPI has no paper trading mode, so `webull_paper` is no longer an
+available provider. It also exposes no dividend or transaction history
+endpoints, so profit reporting for Webull holdings covers appreciation only.
+:::

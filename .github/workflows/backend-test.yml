@@ -28,6 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install wheel
           pip install -r requirements.txt
+          pip install --no-deps -r requirements-webull.txt
           pip install -r requirements-test.txt
       - name: Lint with mypy
         working-directory: ./backend

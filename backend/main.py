@@ -1,19 +1,21 @@
 import os
 import sys
-from typing import Annotated, Any, Dict, List, Optional
+from collections.abc import Callable
+from typing import Annotated, Any
 
 import dotenv
 
 dotenv.load_dotenv()
 import asyncio
 import multiprocessing
-import traceback
 import uuid
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import asynccontextmanager
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
 from enum import Enum
 from logging import StreamHandler, getLogger
 from os import environ
@@ -33,7 +35,7 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
 from fastapi.security import OAuth2PasswordBearer
 from py_portfolio_index import (
@@ -41,18 +43,18 @@ from py_portfolio_index import (
     INDEXES,
     STOCK_LISTS,
     AlpacaProvider,
+    ETradeProvider,
     Logger,
     MooMooProvider,
     PaperAlpacaProvider,
     PurchaseStrategy,
     RobinhoodProvider,
     SchwabProvider,
-    WebullPaperProvider,
     WebullProvider,
     generate_composite_order_plan,
 )
 from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
-from py_portfolio_index.enums import ProviderType
+from py_portfolio_index.enums import Currency, ProviderType
 from py_portfolio_index.exceptions import (
     ConfigurationError,
     ExtraAuthenticationStepException,
@@ -70,6 +72,18 @@ from py_portfolio_index.models import (
     RealPortfolioElement,
 )
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
+from py_portfolio_index.portfolio_providers.helpers.etrade import (
+    ETradeAuthContext,
+)
+from py_portfolio_index.portfolio_providers.helpers.etrade import (
+    complete_authorization as etrade_complete_authorization,
+)
+from py_portfolio_index.portfolio_providers.helpers.etrade import (
+    create_login_context as etrade_create_login_context,
+)
+from py_portfolio_index.portfolio_providers.helpers.etrade import (
+    load_cached_token as etrade_load_cached_token,
+)
 from py_portfolio_index.portfolio_providers.helpers.robinhood import (
     login as rh_login,
 )
@@ -78,7 +92,7 @@ from py_portfolio_index.portfolio_providers.helpers.schwab import (
     create_login_context,
     fetch_response,
 )
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 from pytz import UTC
 from starlette.background import BackgroundTask
@@ -109,10 +123,45 @@ class SchwabExtraAuthenticationStepException(Exception):
         self.response = response
 
 
-class SubPortfolioRefreshException(Exception):
-    def __init__(self, provider: ProviderType, error: Exception):
-        self.error = error
-        self.provider = provider
+class ETradeExtraAuthenticationStepException(Exception):
+    def __init__(self, response: ETradeAuthContext, *args):
+        super().__init__(*args)
+        self.response = response
+
+
+def schwab_context_is_live(context: SchwabAuthContext) -> bool:
+    """Whether a pending schwab auth context can still complete.
+
+    A context is only usable while the subprocess holding the callback port is
+    alive; that process is what puts the redirect on the queue fetch_response
+    waits on. Once it is gone the context can never be redeemed.
+    """
+    import psutil
+
+    pid = context.server_pid
+    if pid is None:
+        return False
+    try:
+        return psutil.Process(pid).is_running()
+    except psutil.Error:
+        return False
+
+
+def discard_schwab_context(context: SchwabAuthContext) -> None:
+    """Release a context we are giving up on, freeing the callback port.
+
+    A leaked server keeps listening on the callback port, so it would intercept
+    the redirect meant for whatever context comes next.
+    """
+    import psutil
+
+    IN_APP_CONFIG.pending_schwab_response = None
+    if context.server_pid is None:
+        return
+    try:
+        psutil.Process(context.server_pid).kill()
+    except psutil.Error:
+        pass
 
 
 # Add to the request models section
@@ -198,35 +247,165 @@ class LoginRequest(BaseModel):
     secret: str
     provider: ProviderType
     extra_factor: str | int | None = None
-    device_id: str | None = None
     trading_pin: str | None = None
     proxy_path: str | None = None
     force: bool = False
     wait_for_external_auth: bool = False
     quote_provider: ProviderType | None = None
-    response_json: str | None = None
+    # etrade: target the sandbox environment; arrives as free text from the
+    # login form, so anything truthy-looking counts
+    sandbox: str | bool | None = None
+
+    @property
+    def sandbox_enabled(self) -> bool:
+        if isinstance(self.sandbox, bool):
+            return self.sandbox
+        return str(self.sandbox or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+class ProviderStatus(str, Enum):
+    """Per-provider outcome of a portfolio operation.
+
+    Operations are partial by default: a provider that cannot be reached
+    downgrades to its last known snapshot rather than failing the whole call.
+    """
+
+    # live data was fetched from the provider on this call
+    REFRESHED = "refreshed"
+    # provider was authenticated but deliberately not refreshed this call
+    CACHED = "cached"
+    # no login for this provider; any holdings shown are a stale snapshot
+    UNAUTHENTICATED = "unauthenticated"
+    # login exists but the refresh itself failed
+    ERROR = "error"
+
+
+#: statuses where the data shown is not live
+STALE_STATUSES = {
+    ProviderStatus.CACHED,
+    ProviderStatus.UNAUTHENTICATED,
+    ProviderStatus.ERROR,
+}
+#: statuses that mean the provider cannot participate in orders
+UNUSABLE_STATUSES = {ProviderStatus.UNAUTHENTICATED, ProviderStatus.ERROR}
+
+_CURRENCY_ALIASES = {"USD": "$", "EUR": "€", "GBP": "£"}
+_CURRENCY_VALUES = {c.value for c in Currency}
+
+
+def _coerce_currency(value: Any) -> Any:
+    """Rewrite currency codes into the symbols py-portfolio-index expects.
+
+    Client snapshots are replayed out of long-lived local storage, which has
+    accumulated both ``USD`` and ``$`` spellings over time.
+    """
+    if isinstance(value, dict):
+        out = dict(value)
+        currency = out.get("currency")
+        if isinstance(currency, str) and currency not in _CURRENCY_VALUES:
+            resolved = _CURRENCY_ALIASES.get(currency.upper())
+            if resolved:
+                out["currency"] = resolved
+            else:
+                out.pop("currency")
+        return {k: _coerce_currency(v) for k, v in out.items()}
+    if isinstance(value, list):
+        return [_coerce_currency(v) for v in value]
+    return value
+
+
+class SnapshotHolding(BaseModel):
+    """A holding replayed from a client-held cache.
+
+    Deliberately more forgiving than RealPortfolioElement: this data may have
+    been written by an older version of the app.
+    """
+
+    ticker: str
+    units: Decimal = Decimal(0)
+    value: Money = Field(default_factory=lambda: Money(value=0))
+    weight: Decimal = Decimal(0)
+    unsettled: bool = False
+    dividends: Money = Field(default_factory=lambda: Money(value=0))
+    appreciation: Money = Field(default_factory=lambda: Money(value=0))
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, values):
+        return _coerce_currency(values)
+
+    def to_element(self) -> RealPortfolioElement:
+        return RealPortfolioElement(
+            ticker=self.ticker,
+            units=self.units,
+            value=self.value,
+            weight=self.weight,
+            unsettled=self.unsettled,
+            dividends=self.dividends,
+            appreciation=self.appreciation,
+        )
+
+
+class ProviderSnapshot(BaseModel):
+    """The client's last known state for one provider.
+
+    Sent alongside partial operations so a provider the user has not logged
+    into this session still contributes its holdings to composite totals and
+    to purchase planning.
+    """
+
+    provider: ProviderType
+    holdings: list[SnapshotHolding] = Field(default_factory=list)
+    cash: Money = Field(default_factory=lambda: Money(value=0))
+    profit_or_loss_v2: ProfitModel | None = None
+    refreshed_at: int | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, values):
+        return _coerce_currency(values)
+
+    def to_portfolio(self) -> RealPortfolio:
+        # provider is left unset: an un-authenticated snapshot must never be
+        # picked up as an order destination by generate_composite_order_plan
+        return RealPortfolio(
+            holdings=[h.to_element() for h in self.holdings],
+            cash=self.cash,
+            profit_and_loss=self.profit_or_loss_v2,
+            provider=None,
+        )
 
 
 class RealPortfolioOutput(BaseModel):
     name: str
-    holdings: List[RealPortfolioElement]
+    holdings: list[RealPortfolioElement]
     cash: Money | None
     provider: ProviderType | None
     holding_size: Money | None = None
     profit_or_loss: Money | None = None
     profit_or_loss_v2: ProfitModel | None
+    status: ProviderStatus = ProviderStatus.REFRESHED
+    error: str | None = None
+    refreshed_at: int | None = None
 
 
 class CompositePortfolioOutput(BaseModel):
     name: str
-    holdings: List[RealPortfolioElement]
+    holdings: list[RealPortfolioElement]
     cash: Money
-    components: Dict[str, RealPortfolioOutput]
+    components: dict[str, RealPortfolioOutput]
     target_size: float = 250_000
     refreshed_at: int
     profit_or_loss: Money | None = None
     profit_or_loss_v2: ProfitModel | None
-    refresh_time: Dict[str, timedelta] = Field(default_factory=dict)
+    refresh_time: dict[str, timedelta] = Field(default_factory=dict)
+    #: cash that can actually be spent right now, i.e. held at a provider we
+    #: are authenticated to. `cash` includes un-authenticated providers.
+    investable_cash: Money = Field(default_factory=lambda: Money(value=0))
+    #: true when at least one provider is showing stale or missing data
+    partial: bool = False
+    #: providers that contributed no live data on this refresh
+    degraded_providers: list[ProviderType] = Field(default_factory=list)
 
 
 class OrderStatus(Enum):
@@ -248,7 +427,12 @@ class OrderItem(BaseModel):
 
 
 class PurchaseOrderOutput(BaseModel):
-    to_buy: List[OrderItem]
+    to_buy: list[OrderItem]
+    #: providers whose holdings were counted from a stale snapshot and which
+    #: therefore received no orders
+    skipped_providers: list[ProviderType] = Field(default_factory=list)
+    #: providers that orders will actually be routed to
+    order_providers: list[ProviderType] = Field(default_factory=list)
 
 
 class ListMutation(BaseModel):
@@ -259,7 +443,7 @@ class ListMutation(BaseModel):
 class StockMutation(BaseModel):
     ticker: str
     scale: float | None
-    min_weight: Optional[float] = None
+    min_weight: float | None = None
 
     model_config = ConfigDict(
         alias_generator=to_camel,
@@ -269,7 +453,7 @@ class StockMutation(BaseModel):
 
 
 class ProviderResponse(BaseModel):
-    available: List[ProviderType]
+    available: list[ProviderType]
 
 
 class PortfolioRequest(BaseModel):
@@ -279,16 +463,28 @@ class PortfolioRequest(BaseModel):
 class TargetPortfolioRequest(BaseModel):
     index: str
     reweight: bool = False
-    stock_exclusions: List[str] = Field(default_factory=list)
-    list_exclusions: List[str] = Field(default_factory=list)
-    stock_modifications: List[StockMutation] = Field(default_factory=list)
-    list_modifications: List[ListMutation] = Field(default_factory=list)
+    stock_exclusions: list[str] = Field(default_factory=list)
+    list_exclusions: list[str] = Field(default_factory=list)
+    stock_modifications: list[StockMutation] = Field(default_factory=list)
+    list_modifications: list[ListMutation] = Field(default_factory=list)
     purchase_strategy: PurchaseStrategy = PurchaseStrategy.LARGEST_DIFF_FIRST
     provider: ProviderType | None = None
-    providers: List[ProviderType] = Field(default_factory=list)
+    providers: list[ProviderType] = Field(default_factory=list)
 
 
-class BuyRequest(TargetPortfolioRequest):
+class PartialOperationRequest(BaseModel):
+    """Mixin for operations that tolerate partially authenticated portfolios.
+
+    ``require_all`` restores the old all-or-nothing behaviour for callers that
+    genuinely need every provider present.
+    """
+
+    require_all: bool = False
+    #: client-held snapshots for providers we may not be logged into
+    cached: list[ProviderSnapshot] = Field(default_factory=list)
+
+
+class BuyRequest(TargetPortfolioRequest, PartialOperationRequest):
     to_purchase: float
     target_size: float
 
@@ -301,16 +497,32 @@ class BuyRequestFinal(BaseModel):
 class BuyRequestFinalMultiProvider(BaseModel):
     plan: PurchaseOrderOutput
     providers: list[ProviderType]
+    require_all: bool = False
 
 
 class BuyRequestFinalMultiProviderOutput(BaseModel):
-    orders: List[OrderItem]
+    orders: list[OrderItem]
+    #: providers that were skipped because we are not authenticated to them
+    skipped_providers: list[ProviderType] = Field(default_factory=list)
 
 
-class CompositePortfolioRefreshRequest(BaseModel):
+class CompositePortfolioRefreshRequest(PartialOperationRequest):
     key: str
-    providers: List[ProviderType]
-    providers_to_refresh: List[ProviderType]
+    providers: list[ProviderType]
+    #: providers to fetch live data for. Omit (or send null) to refresh every
+    #: provider we are currently authenticated to - the partial default.
+    providers_to_refresh: list[ProviderType] | None = None
+
+
+class ProviderStatusOutput(BaseModel):
+    provider: ProviderType
+    authenticated: bool
+    has_cached_holdings: bool
+    refreshed_at: int | None = None
+
+
+class ProviderStatusResponse(BaseModel):
+    providers: list[ProviderStatusOutput]
 
 
 ## Shared Functions
@@ -320,13 +532,15 @@ def get_provider_safe(iprovider: ProviderType | None = None) -> BaseProvider:
     _provider = iprovider or IN_APP_CONFIG.default_provider
     try:
         if _provider == ProviderType.ALPACA:
-            provider = IN_APP_CONFIG.provider_cache.get(
-                ProviderType.ALPACA, AlpacaProvider()
-            )
+            # constructed lazily: building a provider we already have cached
+            # re-reads the environment and fails when credentials only ever
+            # arrived through the login endpoint
+            provider = IN_APP_CONFIG.provider_cache.get(ProviderType.ALPACA) or AlpacaProvider()
             IN_APP_CONFIG.provider_cache[ProviderType.ALPACA] = provider
         elif _provider == ProviderType.ALPACA_PAPER:
-            provider = IN_APP_CONFIG.provider_cache.get(
-                ProviderType.ALPACA_PAPER, PaperAlpacaProvider()
+            provider = (
+                IN_APP_CONFIG.provider_cache.get(ProviderType.ALPACA_PAPER)
+                or PaperAlpacaProvider()
             )
             IN_APP_CONFIG.provider_cache[ProviderType.ALPACA_PAPER] = provider
         elif _provider == ProviderType.ROBINHOOD:
@@ -349,17 +563,6 @@ def get_provider_safe(iprovider: ProviderType | None = None) -> BaseProvider:
             else:
                 raise HTTPException(401, "No logged in webull provider found")
 
-        elif _provider == ProviderType.WEBULL_PAPER:
-            wb_paper_provider = IN_APP_CONFIG.provider_cache.get(
-                ProviderType.WEBULL_PAPER, None
-            )
-            if wb_paper_provider:
-                IN_APP_CONFIG.provider_cache[ProviderType.WEBULL_PAPER] = (
-                    wb_paper_provider
-                )
-                provider = wb_paper_provider
-            else:
-                raise HTTPException(401, "No logged in webull provider found")
         elif _provider == ProviderType.SCHWAB:
             schwab_provider = IN_APP_CONFIG.provider_cache.get(
                 ProviderType.SCHWAB, None
@@ -369,6 +572,13 @@ def get_provider_safe(iprovider: ProviderType | None = None) -> BaseProvider:
                 provider = schwab_provider
             else:
                 raise HTTPException(401, "No logged in schwab provider found")
+        elif _provider == ProviderType.ETRADE:
+            etrade_provider = IN_APP_CONFIG.provider_cache.get(ProviderType.ETRADE, None)
+            if etrade_provider:
+                IN_APP_CONFIG.provider_cache[ProviderType.ETRADE] = etrade_provider
+                provider = etrade_provider
+            else:
+                raise HTTPException(401, "No logged in etrade provider found")
         elif _provider == ProviderType.MOOMOO:
             momoo_provider = IN_APP_CONFIG.provider_cache.get(ProviderType.MOOMOO, None)
             if momoo_provider:
@@ -407,85 +617,166 @@ async def logged_in_handler(provider):
     return provider_enum in IN_APP_CONFIG.provider_cache
 
 
-def login(input: LoginRequest) -> bool:
-    if input.provider == ProviderType.ALPACA:
-        environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
-        environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
-        # ensure we can login
-        provider: BaseProvider = AlpacaProvider()
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-    elif input.provider == ProviderType.ALPACA_PAPER:
-        environ[PaperAlpacaProvider.API_KEY_VARIABLE] = input.key
-        environ[PaperAlpacaProvider.API_SECRET_VARIABLE] = input.secret
-        # ensure we can login
-        provider = PaperAlpacaProvider()
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-    elif input.provider == ProviderType.ROBINHOOD:
-        environ["ROBINHOOD_USERNAME"] = input.key
-        environ["ROBINHOOD_PASSWORD"] = input.secret
-        # login using RH helper to handle
-        # two factor auth
-        rh_login(
-            challenge_response=input.extra_factor,
-            prior_response=IN_APP_CONFIG.pending_auth_response,
+@router.get("/provider_status")
+async def provider_status_handler():
+    """Auth and cache state for every provider, in one call.
+
+    Lets the client decide what a partial refresh should target without
+    probing each provider individually.
+    """
+    out = []
+    for provider in AVAILABLE_PROVIDERS:
+        refreshed = IN_APP_CONFIG.holding_refreshed_at.get(provider)
+        out.append(
+            ProviderStatusOutput(
+                provider=provider,
+                authenticated=IN_APP_CONFIG.is_authenticated(provider),
+                has_cached_holdings=provider in IN_APP_CONFIG.holding_cache,
+                refreshed_at=int(refreshed.timestamp()) if refreshed else None,
+            )
         )
-        provider = RobinhoodProvider(external_auth=True)
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-        IN_APP_CONFIG.pending_auth_response = None
-    elif input.provider == ProviderType.WEBULL:
-        assert input.trading_pin is not None
-        assert input.device_id is not None
-        environ[WebullProvider.PASSWORD_ENV] = input.secret
-        environ[WebullProvider.USERNAME_ENV] = input.key
-        environ[WebullProvider.TRADE_TOKEN_ENV] = input.trading_pin
-        environ[WebullProvider.DEVICE_ID_ENV] = input.device_id
-        if input.response_json:
-            provider = WebullProvider(response_json=input.response_json)
-        else:
-            provider = WebullProvider()
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-    elif input.provider == ProviderType.WEBULL_PAPER:
-        assert input.trading_pin is not None
-        assert input.device_id is not None
-        environ[WebullPaperProvider.PASSWORD_ENV] = input.secret
-        environ[WebullPaperProvider.USERNAME_ENV] = input.key
-        environ[WebullPaperProvider.TRADE_TOKEN_ENV] = input.trading_pin
-        environ[WebullPaperProvider.DEVICE_ID_ENV] = input.device_id
-        provider = WebullPaperProvider()
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-    elif input.provider == ProviderType.SCHWAB:
-        environ[SchwabProvider.API_KEY_ENV] = input.key
-        environ[SchwabProvider.APP_SECRET_ENV] = input.secret
-        if IN_APP_CONFIG.pending_schwab_response and input.wait_for_external_auth:
-            fetch_response(IN_APP_CONFIG.pending_schwab_response)
-        lc = create_login_context(api_key=input.key, app_secret=input.secret)
-        if lc:
-            raise SchwabExtraAuthenticationStepException(response=lc)
+    return ProviderStatusResponse(providers=out)
 
-        provider = SchwabProvider(external_auth=True)
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-        IN_APP_CONFIG.pending_schwab_response = None
-    elif input.provider == ProviderType.MOOMOO:
 
-        environ[MooMooProvider.ACCOUNT_ENV] = input.key
-        environ[MooMooProvider.PASSWORD_ENV] = input.secret
-        if input.trading_pin:
-            environ[MooMooProvider.TRADE_TOKEN_ENV] = input.trading_pin
-        if input.proxy_path:
-            environ[MooMooProvider.OPEND_ENV] = input.proxy_path
+def _login_alpaca(input: LoginRequest) -> BaseProvider:
+    environ[AlpacaProvider.API_KEY_VARIABLE] = input.key
+    environ[AlpacaProvider.API_SECRET_VARIABLE] = input.secret
+    # constructing the provider is what proves the credentials work
+    return AlpacaProvider()
 
-        extra_kwargs = {}
-        if input.quote_provider:
-            extra_kwargs["quote_provider"] = IN_APP_CONFIG.provider_cache[
-                input.quote_provider
-            ]
-        else:
-            raise HTTPException(400, "No quote provider specified")
-        provider = MooMooProvider(proxy=MooMooProvider.Proxy(opend_path=input.proxy_path), **extra_kwargs)  # type: ignore
-        IN_APP_CONFIG.provider_cache[input.provider] = provider
-        IN_APP_CONFIG.pending_momoo_response = None
+
+def _login_alpaca_paper(input: LoginRequest) -> BaseProvider:
+    environ[PaperAlpacaProvider.API_KEY_VARIABLE] = input.key
+    environ[PaperAlpacaProvider.API_SECRET_VARIABLE] = input.secret
+    # constructing the provider is what proves the credentials work
+    return PaperAlpacaProvider()
+
+
+def _login_robinhood(input: LoginRequest) -> BaseProvider:
+    environ["ROBINHOOD_USERNAME"] = input.key
+    environ["ROBINHOOD_PASSWORD"] = input.secret
+    # login using RH helper to handle
+    # two factor auth
+    rh_login(
+        challenge_response=input.extra_factor,
+        prior_response=IN_APP_CONFIG.pending_auth_response,
+    )
+    provider = RobinhoodProvider(external_auth=True)
+    IN_APP_CONFIG.pending_auth_response = None
+    return provider
+
+
+def _login_webull(input: LoginRequest) -> BaseProvider:
+    # the official OpenAPI SDK authenticates with an app key/secret pair
+    # generated in the Webull developer portal
+    environ[WebullProvider.API_KEY_ENV] = input.key
+    environ[WebullProvider.API_SECRET_ENV] = input.secret
+    return WebullProvider()
+
+
+def _login_schwab(input: LoginRequest) -> BaseProvider:
+    environ[SchwabProvider.API_KEY_ENV] = input.key
+    environ[SchwabProvider.APP_SECRET_ENV] = input.secret
+    pending = IN_APP_CONFIG.pending_schwab_response
+    if pending and not schwab_context_is_live(pending):
+        # its callback server died; the URL it handed out is worthless
+        discard_schwab_context(pending)
+        pending = None
+    if pending and input.wait_for_external_auth:
+        # the user has finished the external login - redeem the code that
+        # this context's own callback server captured
+        fetch_response(pending)
+    elif pending:
+        # a flow is already in flight. Its redirect server owns the callback
+        # port, so minting a second context here would hand back a URL whose
+        # redirect that context can never collect - the source of a hang
+        # that only ends at callback_timeout. Re-offer the live one instead.
+        raise SchwabExtraAuthenticationStepException(response=pending)
     else:
+        context = create_login_context(api_key=input.key, app_secret=input.secret)
+        if context:
+            raise SchwabExtraAuthenticationStepException(response=context)
+
+    provider = SchwabProvider(external_auth=True)
+    IN_APP_CONFIG.pending_schwab_response = None
+    return provider
+
+
+def _login_etrade(input: LoginRequest) -> BaseProvider:
+    environ[ETradeProvider.API_KEY_ENV] = input.key
+    environ[ETradeProvider.API_SECRET_ENV] = input.secret
+    sandbox = input.sandbox_enabled
+    environ[ETradeProvider.SANDBOX_ENV] = "true" if sandbox else "false"
+    pending = IN_APP_CONFIG.pending_etrade_response
+    if pending and input.extra_factor:
+        # the user pasted the verification code from the oob page
+        etrade_complete_authorization(pending, str(input.extra_factor))
+        IN_APP_CONFIG.pending_etrade_response = None
+    elif pending:
+        # a flow is in flight with no code supplied; the /public/etrade/callback
+        # endpoint may have finished it for us (registered-callback mode)
+        if not etrade_load_cached_token(sandbox):
+            raise ETradeExtraAuthenticationStepException(response=pending)
+        IN_APP_CONFIG.pending_etrade_response = None
+    else:
+        # reuses/renews a cached token when possible; otherwise hands back
+        # an authorization URL for the user to visit
+        context = etrade_create_login_context(input.key, input.secret, sandbox=sandbox)
+        if context:
+            raise ETradeExtraAuthenticationStepException(response=context)
+    provider = ETradeProvider(external_auth=True, sandbox=sandbox)
+    IN_APP_CONFIG.pending_etrade_response = None
+    return provider
+
+
+def _login_moomoo(input: LoginRequest) -> BaseProvider:
+    environ[MooMooProvider.ACCOUNT_ENV] = input.key
+    environ[MooMooProvider.PASSWORD_ENV] = input.secret
+    if input.trading_pin:
+        environ[MooMooProvider.TRADE_TOKEN_ENV] = input.trading_pin
+    if input.proxy_path:
+        environ[MooMooProvider.OPEND_ENV] = input.proxy_path
+
+    # moomoo bills for quotes, so they are sourced from another logged in provider
+    if not input.quote_provider:
+        raise HTTPException(400, "No quote provider specified")
+    quote_provider = IN_APP_CONFIG.provider_cache.get(input.quote_provider)
+    if quote_provider is None:
+        raise HTTPException(
+            400, f"Quote provider {input.quote_provider.value} is not logged in"
+        )
+    provider = MooMooProvider(  # type: ignore
+        proxy=MooMooProvider.Proxy(opend_path=input.proxy_path),
+        quote_provider=quote_provider,
+    )
+    IN_APP_CONFIG.pending_momoo_response = None
+    return provider
+
+
+#: how each provider turns a LoginRequest into a live provider.
+#:
+#: Each entry owns only what is specific to that provider - the environment it
+#: needs, its handshake, and clearing its own in-flight auth state. What every
+#: successful login has in common lives in login() instead of being repeated
+#: seven times, and the per-provider locals no longer share one scope.
+PROVIDER_LOGINS: dict[ProviderType, Callable[[LoginRequest], BaseProvider]] = {
+    ProviderType.ALPACA: _login_alpaca,
+    ProviderType.ALPACA_PAPER: _login_alpaca_paper,
+    ProviderType.ROBINHOOD: _login_robinhood,
+    ProviderType.WEBULL: _login_webull,
+    ProviderType.SCHWAB: _login_schwab,
+    ProviderType.ETRADE: _login_etrade,
+    ProviderType.MOOMOO: _login_moomoo,
+}
+
+
+def login(input: LoginRequest) -> bool:
+    provider_login = PROVIDER_LOGINS.get(input.provider)
+    if provider_login is None:
         raise HTTPException(404, "Selected provider not supported yet")
+    # only reached when the handshake succeeded; a provider that needs another
+    # step raises out of here rather than returning
+    IN_APP_CONFIG.provider_cache[input.provider] = provider_login(input)
     IN_APP_CONFIG.logged_in = input.provider.value
     return True
 
@@ -500,14 +791,17 @@ def login_handler(input: LoginRequest):
     except SchwabExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_schwab_response = e.response
         raise HTTPException(303, e.response.authorization_url)
+    except ETradeExtraAuthenticationStepException as e:
+        IN_APP_CONFIG.pending_etrade_response = e.response
+        raise HTTPException(303, e.response.authorization_url)
     except ExtraAuthenticationStepException as e:
         IN_APP_CONFIG.pending_auth_response = e.response
         raise HTTPException(412, f"Additional authentication required: {e}")
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         IN_APP_CONFIG.pending_auth_response = None
-        raise HTTPException(400, f"Error logging in: {e}")
+        raise HTTPException(400, f"Error logging in: {e}") from e
 
 
 @router.get("/portfolio/")
@@ -526,92 +820,213 @@ async def get_portfolio(_provider: ProviderType):
     return provider.get_holdings()
 
 
+@dataclass
+class SubPortfolioResult:
+    """Outcome of touching one provider during a composite operation."""
+
+    provider: ProviderType
+    status: ProviderStatus
+    duration: timedelta
+    portfolio: RealPortfolio | None = None
+    error: str | None = None
+    refreshed_at: datetime | None = None
+
+
+def seed_holding_cache(snapshots: list[ProviderSnapshot]) -> None:
+    """Prime the holding cache from the client's own copy.
+
+    The backend cache lives for one app session; the client keeps holdings on
+    disk indefinitely. Replaying the client's copy is what lets a provider the
+    user never logged into this session still count toward composite totals
+    and purchase planning. Live data always wins - we only fill gaps.
+    """
+    for snapshot in snapshots:
+        if snapshot.provider in IN_APP_CONFIG.holding_cache:
+            continue
+        IN_APP_CONFIG.holding_cache[snapshot.provider] = snapshot.to_portfolio()
+        if snapshot.refreshed_at:
+            IN_APP_CONFIG.holding_refreshed_at[snapshot.provider] = datetime.fromtimestamp(
+                snapshot.refreshed_at, tz=UTC
+            )
+
+
+def cached_snapshot(key: ProviderType) -> RealPortfolio | None:
+    """The last known holdings for a provider, detached from any live login.
+
+    Detaching matters: a RealPortfolio still carrying a provider object is
+    treated as an order destination by generate_composite_order_plan, and a
+    provider whose login has since been dropped must not receive orders.
+    """
+    port = IN_APP_CONFIG.holding_cache.get(key)
+    if port is None:
+        return None
+    if port.provider is not None and IN_APP_CONFIG.is_authenticated(key):
+        return port
+    return RealPortfolio(
+        holdings=port.holdings,
+        cash=port.cash,
+        profit_and_loss=port.profit_and_loss,
+        provider=None,
+    )
+
+
 def refresh_sub_portfolio(
     key: ProviderType, providers_to_refresh: list[ProviderType]
-) -> tuple[timedelta, RealPortfolio]:
+) -> SubPortfolioResult:
+    """Fetch or recover one provider's holdings, never raising.
+
+    Every failure mode degrades to the last known snapshot so that one
+    unavailable provider cannot block an operation on the others.
+    """
+    start = datetime.now(UTC)
     item: BaseProvider | None = IN_APP_CONFIG.provider_cache.get(key, None)
-    start = datetime.now()
-    if not item:
-        raise HTTPException(
-            401, f"Must log into {key} to refresh any element in this portfolio."
+
+    def elapsed() -> timedelta:
+        return datetime.now(UTC) - start
+
+    def fallback(status: ProviderStatus, error: str | None) -> SubPortfolioResult:
+        return SubPortfolioResult(
+            provider=key,
+            status=status,
+            duration=elapsed(),
+            portfolio=cached_snapshot(key),
+            error=error,
+            refreshed_at=IN_APP_CONFIG.holding_refreshed_at.get(key),
         )
-    if key in providers_to_refresh:
-        try:
-            item.clear_cache(skip_clearing=["instrument_to_symbol_map"])
-            rport = item.get_holdings()
-            rport.profit_and_loss = item.get_profit_or_loss()
-        except ConfigurationError:
-            del IN_APP_CONFIG.provider_cache[key]
-            raise
-        except Exception as e:
-            raise SubPortfolioRefreshException(error=e, provider=key)
-        IN_APP_CONFIG.holding_cache[key] = rport
-    else:
-        rport = IN_APP_CONFIG.holding_cache[key]
-    return datetime.now() - start, rport
+
+    if not item:
+        return fallback(
+            ProviderStatus.UNAUTHENTICATED,
+            f"Not authenticated to {key.value}; showing last known holdings.",
+        )
+    if key not in providers_to_refresh:
+        return fallback(ProviderStatus.CACHED, None)
+
+    try:
+        item.clear_cache(skip_clearing=["instrument_to_symbol_map"])
+        rport = item.get_holdings()
+        rport.profit_and_loss = item.get_profit_or_loss()
+    except ConfigurationError as e:
+        logger.exception(f"Auth error refreshing {key}, dropping login")
+        IN_APP_CONFIG.drop_login(key)
+        return fallback(ProviderStatus.UNAUTHENTICATED, str(e))
+    except Exception as e:
+        # exception() attaches the traceback, so it need not be formatted in
+        logger.exception(f"Error refreshing {key}")
+        return fallback(ProviderStatus.ERROR, str(e))
+
+    now = datetime.now(tz=UTC)
+    IN_APP_CONFIG.holding_cache[key] = rport
+    IN_APP_CONFIG.holding_refreshed_at[key] = now
+    return SubPortfolioResult(
+        provider=key,
+        status=ProviderStatus.REFRESHED,
+        duration=elapsed(),
+        portfolio=rport,
+        refreshed_at=now,
+    )
 
 
-def sum_holdings(holdings: List[RealPortfolioElement]) -> Money:
+def sum_holdings(holdings: list[RealPortfolioElement]) -> Money:
     return Money(value=sum([x.value for x in holdings]))
+
+
+def resolve_refresh_targets(
+    input: CompositePortfolioRefreshRequest,
+) -> list[ProviderType]:
+    """Which providers to fetch live data for.
+
+    Defaulting to "every provider we can actually reach" is what makes a
+    partial refresh the no-argument behaviour.
+    """
+    if input.providers_to_refresh is None:
+        return IN_APP_CONFIG.authenticated_subset(input.providers)
+    return [p for p in input.providers_to_refresh if p in input.providers]
 
 
 @router.post("/composite_portfolio/refresh")
 def refresh_composite_portfolio(input: CompositePortfolioRefreshRequest):
-    active: Dict[str, RealPortfolioOutput] = {}
-    raw = []
-    profit_and_loss = ProfitModel(
-        appreciation=Money(value=0.0), dividends=Money(value=0.0)
-    )
-    durations: Dict[str, timedelta] = {}
+    seed_holding_cache(input.cached)
+    targets = resolve_refresh_targets(input)
+
+    results: list[SubPortfolioResult] = []
     with ThreadPoolExecutor(max_workers=10) as executor:
         portfolios = {
-            executor.submit(refresh_sub_portfolio, key, input.providers_to_refresh)
+            executor.submit(refresh_sub_portfolio, key, targets)
             for key in input.providers
         }
         for future in as_completed(portfolios):
-            try:
-                duration, rport = future.result()
-                if not rport.provider:
-                    continue
-                key = rport.provider.PROVIDER
-                durations[key] = duration
-                active[key] = RealPortfolioOutput(
-                    name=f"{key.name}",
-                    holdings=rport.holdings,
-                    holding_size=sum_holdings(rport.holdings),
-                    cash=rport.cash,
-                    provider=key,
-                    profit_or_loss_v2=rport.profit_and_loss,
-                    profit_or_loss=(
-                        rport.profit_and_loss.total if rport.profit_and_loss else None
-                    ),
-                )
-                if rport.profit_and_loss:
-                    profit_and_loss += rport.profit_and_loss
-                raw.append(rport)
-            except ConfigurationError:
-                raise
-            except HTTPException:
-                raise
-            except SubPortfolioRefreshException as e:
-                raise HTTPException(
-                    422, f"Error refreshing {e.provider}: {str(e.error)}"
-                )
-            except Exception as e:
-                raise HTTPException(422, f"Error refreshing: {str(e)}")
+            results.append(future.result())
+
+    if input.require_all:
+        unauthenticated = [
+            r.provider for r in results if r.status == ProviderStatus.UNAUTHENTICATED
+        ]
+        if unauthenticated:
+            raise HTTPException(
+                401,
+                "Must log into "
+                + ", ".join(p.value for p in unauthenticated)
+                + " to refresh any element in this portfolio.",
+            )
+        failed = [r for r in results if r.status == ProviderStatus.ERROR]
+        if failed:
+            raise HTTPException(
+                422, f"Error refreshing {failed[0].provider}: {failed[0].error}"
+            )
+
+    active: dict[str, RealPortfolioOutput] = {}
+    raw: list[RealPortfolio] = []
+    durations: dict[str, timedelta] = {}
+    profit_and_loss = ProfitModel(
+        appreciation=Money(value=0.0), dividends=Money(value=0.0)
+    )
+    investable = Money(value=0.0)
+
+    for result in results:
+        key = result.provider
+        rport = result.portfolio
+        durations[key] = result.duration
+        holdings = rport.holdings if rport else []
+        cash = rport.cash if rport else Money(value=0.0)
+        pnl = rport.profit_and_loss if rport else None
+        active[key] = RealPortfolioOutput(
+            name=f"{key.name}",
+            holdings=holdings,
+            holding_size=sum_holdings(holdings),
+            cash=cash,
+            provider=key,
+            profit_or_loss_v2=pnl,
+            profit_or_loss=pnl.total if pnl else None,
+            status=result.status,
+            error=result.error,
+            refreshed_at=(
+                int(result.refreshed_at.timestamp()) if result.refreshed_at else None
+            ),
+        )
+        if pnl:
+            profit_and_loss += pnl
+        if rport:
+            raw.append(rport)
+            if result.status not in UNUSABLE_STATUSES and cash:
+                investable += max(cash, Money(value=0.0))
 
     active = {k: active[k] for k in sorted(active.keys(), key=lambda x: active[x].holding_size.value if active[x].holding_size is not None else 0.0, reverse=True)}  # type: ignore
     internal = CompositePortfolio(raw)
+    degraded = [r.provider for r in results if r.status in UNUSABLE_STATUSES]
 
     return CompositePortfolioOutput(
         name=input.key,
         holdings=internal.holdings,
         cash=internal.cash,
+        investable_cash=investable,
         refresh_time=durations,
         components=active,
         refreshed_at=int(datetime.now(tz=UTC).timestamp()),
         profit_or_loss_v2=profit_and_loss,
         profit_or_loss=profit_and_loss.total,
+        partial=bool(degraded),
+        degraded_providers=degraded,
     )
 
 
@@ -696,25 +1111,61 @@ async def get_background_task(guid):
 
 
 def _plan_composite_purchase(input: BuyRequest):
-    children = []
-    buy_orders = {}
+    seed_holding_cache(input.cached)
+    children: list[RealPortfolio] = []
+    buy_orders: dict[ProviderType, PurchaseStrategy] = {}
+    skipped: list[ProviderType] = []
+
     for provider in input.providers:
+        if not IN_APP_CONFIG.is_authenticated(provider):
+            # holdings still shape the plan - they are part of the portfolio we
+            # are trying to reach the target allocation for - but no orders can
+            # be routed here, so the provider stays out of buy_orders.
+            snapshot = cached_snapshot(provider)
+            if snapshot:
+                children.append(snapshot)
+            skipped.append(provider)
+            continue
         try:
             iprovider = get_provider_safe(provider)
-            sub_port = sub_port = IN_APP_CONFIG.holding_cache.get(
-                provider, iprovider.get_holdings()
-            )
+            sub_port = IN_APP_CONFIG.holding_cache.get(provider)
+            if sub_port is None or sub_port.provider is None:
+                # a snapshot seeded from the client has no live provider
+                # attached, so it cannot be used as an order destination
+                sub_port = iprovider.get_holdings()
+                IN_APP_CONFIG.holding_cache[provider] = sub_port
+                IN_APP_CONFIG.holding_refreshed_at[provider] = datetime.now(tz=UTC)
             buy_orders[provider] = input.purchase_strategy
             children.append(sub_port)
-        except ConfigurationError as e:
-            del IN_APP_CONFIG.provider_cache[provider]
-            raise e
+        except ConfigurationError:
+            IN_APP_CONFIG.drop_login(provider)
+            if input.require_all:
+                raise
+            snapshot = cached_snapshot(provider)
+            if snapshot:
+                children.append(snapshot)
+            skipped.append(provider)
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(
                 500, f"Error planning composite purchase: {e} on provider {provider}"
-            )
+            ) from e
+
+    if skipped and input.require_all:
+        raise HTTPException(
+            401,
+            "Not authenticated to " + ", ".join(p.value for p in skipped),
+        )
+    if not buy_orders:
+        raise HTTPException(
+            401,
+            "Authenticate to at least one provider in this portfolio to plan a purchase.",
+        )
+    if input.provider and input.provider not in buy_orders:
+        # reweighting needs a provider to price against; prefer one we can reach
+        input = input.model_copy(update={"provider": None})
+
     real_port = CompositePortfolio(children)
     ideal_port = index_to_processed_index(input)
     plan = generate_composite_order_plan(
@@ -738,20 +1189,23 @@ def _plan_composite_purchase(input: BuyRequest):
                     message=None,
                 )
             )
-    output = PurchaseOrderOutput(to_buy=final)
-    return output
+    return PurchaseOrderOutput(
+        to_buy=final,
+        skipped_providers=skipped,
+        order_providers=list(buy_orders.keys()),
+    )
 
 
 @router.post("/plan_composite_purchase")
 def plan_composite_purchase(input: BuyRequest):
     try:
         return _plan_composite_purchase(input)
-    except ConfigurationError as e:
-        raise e
-    except HTTPException as e:
-        raise e
+    except ConfigurationError:
+        raise
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(500, f"Error planning composite purchase: {e}")
+        raise HTTPException(500, f"Error planning composite purchase: {e}") from e
 
 
 @router.get("/force_terminate")
@@ -789,7 +1243,7 @@ def buy_index_from_plan(input: BuyRequestFinal):
 
 
 def place_orders(
-    orders: List[OrderItem], provider: BaseProvider, stale_providers: set[ProviderType]
+    orders: list[OrderItem], provider: BaseProvider, stale_providers: set[ProviderType]
 ):
     output = []
     for order in orders:
@@ -819,6 +1273,7 @@ def place_orders(
             order.message = str(e)
             output.append(order)
         except Exception as e:
+            logger.exception(f"Unexpected failure placing order for {order.ticker}")
             order.status = OrderStatus.FAILED
             order.message = str(e)
             output.append(order)
@@ -827,29 +1282,47 @@ def place_orders(
 
 @router.post("/buy_index_from_plan_multi_provider")
 def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
-    providers: Dict[ProviderType, BaseProvider] = {
-        p: IN_APP_CONFIG.provider_cache.get(p) for p in input.providers  # type: ignore
-    }
-    if not all(providers.values()):
-        raise HTTPException(401, "Not all providers are logged in")
-    # check each of our p
-    output: List[OrderItem] = []
+    output: list[OrderItem] = []
     stale_providers: set[ProviderType] = set()
     grouped = defaultdict(list)
     for order in input.plan.to_buy:
         grouped[order.provider].append(order)
 
+    missing = [key for key in grouped if not IN_APP_CONFIG.is_authenticated(key)]
+    if missing and input.require_all:
+        raise HTTPException(
+            401,
+            "Not logged in to " + ", ".join(p.value for p in missing),
+        )
+    if missing and len(missing) == len(grouped):
+        raise HTTPException(
+            401,
+            "Not logged in to any provider with orders to place: "
+            + ", ".join(p.value for p in missing),
+        )
+    # orders bound for a provider we cannot reach fail individually; the rest
+    # of the plan still executes
+    for key in missing:
+        for order in grouped.pop(key):
+            order.status = OrderStatus.FAILED
+            order.message = f"Not authenticated to {key.value}; order skipped."
+            output.append(order)
+
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {
-            executor.submit(place_orders, orders, providers[key], stale_providers)
+            executor.submit(
+                place_orders,
+                orders,
+                IN_APP_CONFIG.provider_cache[key],
+                stale_providers,
+            )
             for key, orders in grouped.items()
         }
         for future in as_completed(futures):
             output += future.result()
     for provider in stale_providers:
-        if provider in IN_APP_CONFIG.provider_cache:
-            del IN_APP_CONFIG.provider_cache[provider]
-    return BuyRequestFinalMultiProviderOutput(orders=output)
+        IN_APP_CONFIG.drop_login(provider)
+    return BuyRequestFinalMultiProviderOutput(orders=output, skipped_providers=missing)
 
 
 # Add the endpoint to the router
@@ -861,10 +1334,10 @@ def export_portfolio_database(input: DatabaseExportRequest):
     """
     try:
         return export_portfolio_to_database(input, IN_APP_CONFIG)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(500, f"Error exporting portfolio database: {e}")
+        raise HTTPException(500, f"Error exporting portfolio database: {e}") from e
 
 
 # Add endpoint to get database info
@@ -896,7 +1369,7 @@ def get_database_info(portfolio_name: str):
             "file_size_mb": db_path.stat().st_size / (1024 * 1024),
         }
     except Exception as e:
-        raise HTTPException(500, f"Error reading database info: {e}")
+        raise HTTPException(500, f"Error reading database info: {e}") from e
     finally:
         if db:
             db.close()
@@ -935,7 +1408,7 @@ def download_database(portfolio_name: str):
             },
         )
     except Exception as e:
-        raise HTTPException(500, f"Error downloading database: {e}")
+        raise HTTPException(500, f"Error downloading database: {e}") from e
     finally:
         if db:
             db.close()
@@ -954,7 +1427,7 @@ def delete_database(portfolio_name: str):
         db_path.unlink()
         return {"deleted": True, "portfolio_name": portfolio_name}
     except Exception as e:
-        raise HTTPException(500, f"Error deleting database: {e}")
+        raise HTTPException(500, f"Error deleting database: {e}") from e
 
 
 @router.get("/trilogy_model")
@@ -977,20 +1450,13 @@ def long_sleep(sleep: SleepRequest):
     return {"slept": sleep.sleep}
 
 
-def _get_last_exc():
-    exc_type, exc_value, exc_traceback = sys.exc_info()
-    sTB = "\n".join(traceback.format_tb(exc_traceback))
-    return f"{exc_type}\n - msg: {exc_value}\n stack: {sTB}"
-
-
 async def exit_app():
     for task in asyncio.all_tasks():
         print(f"cancelling task: {task}")
         try:
             task.cancel()
         except Exception:
-            print(f"Task kill failed: {_get_last_exc()}")
-            pass
+            logger.exception(f"Failed to cancel task {task}")
     asyncio.gather(*asyncio.all_tasks())
     loop = asyncio.get_running_loop()
     loop.stop()
@@ -1009,10 +1475,10 @@ for path in router_routes:
 
             async def dynamic_route_handler(
                 background_tasks: BackgroundTasks,
-                arg: Any = Body(None),
+                arg: Annotated[Any, Body()] = None,
             ):
                 guid = str(uuid.uuid4())
-                arg_model: BaseModel = list(args.values())[0]
+                arg_model: BaseModel = next(iter(args.values()))
                 parsed_arg = arg_model.model_validate(arg)
                 background_tasks.add_task(
                     run_task, IN_APP_CONFIG, guid, endpoint, parsed_arg
@@ -1044,6 +1510,57 @@ async def provider_auth_handler(request: Request, exc: ConfigurationError):
 
 app.include_router(router)
 
+## Public (unauthenticated) endpoints, mounted as a sub-app so they bypass the
+## bearer-token dependency. OAuth redirect callbacks arrive from the user's
+## browser, which does not carry our auth header.
+public_app = FastAPI()
+
+
+def _callback_page(message: str, detail: str, status_code: int = 200) -> HTMLResponse:
+    return HTMLResponse(
+        f"<html><body><h3>{message}</h3><p>{detail}</p></body></html>",
+        status_code=status_code,
+    )
+
+
+@public_app.get("/etrade/callback")
+async def etrade_oauth_callback(oauth_verifier: str = "", oauth_token: str = ""):
+    """Complete a pending E*TRADE authorization from a callback redirect.
+
+    E*TRADE only redirects here once their API support team has registered
+    this URL (http://localhost:3042/public/etrade/callback) for the consumer
+    key. Until then, the oob flow applies: the user pastes the verification
+    code into the login form as the extra factor instead.
+    """
+    pending = IN_APP_CONFIG.pending_etrade_response
+    if not pending:
+        return _callback_page(
+            "No E*TRADE authorization is in progress.",
+            "Start a login from Fundiverse first.",
+            status_code=404,
+        )
+    if not oauth_verifier:
+        return _callback_page(
+            "E*TRADE did not supply a verification code.",
+            "The redirect was missing the oauth_verifier parameter.",
+            status_code=400,
+        )
+    try:
+        etrade_complete_authorization(pending, oauth_verifier)
+    except Exception as e:
+        logger.exception("E*TRADE callback failed")
+        return _callback_page(
+            "E*TRADE authorization failed.", str(e), status_code=400
+        )
+    IN_APP_CONFIG.pending_etrade_response = None
+    return _callback_page(
+        "E*TRADE authorization complete.",
+        "You may close this window, return to Fundiverse, and click Authenticate again.",
+    )
+
+
+app.mount("/public", public_app)
+
 
 def run():
     LOGGING_CONFIG["disable_existing_loggers"] = True
@@ -1057,28 +1574,37 @@ def run():
                 ProviderType.ROBINHOOD,
                 ProviderType.WEBULL,
                 ProviderType.SCHWAB,
+                ProviderType.ETRADE,
                 ProviderType.ALPACA,
                 ProviderType.ALPACA_PAPER,
-                ProviderType.WEBULL_PAPER,
             ]
         )
         print("Running in a unit test, exiting")
         sys.exit(0)
     elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         print("running in a PyInstaller bundle, sending stdout to devnull")
-        f = open(os.devnull, "w")
-        sys.stdout = f
-        run = uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=SERVE_PORT,
-            log_level="info",
-            log_config=LOGGING_CONFIG,
-        )
+
+        def serve():
+            # the devnull handle lives exactly as long as the server it
+            # silences; stdout is put back before it closes so that the
+            # shutdown handlers below still have somewhere to print
+            original_stdout = sys.stdout
+            with open(os.devnull, "w") as devnull:
+                sys.stdout = devnull
+                try:
+                    return uvicorn.run(
+                        app,
+                        host="0.0.0.0",
+                        port=SERVE_PORT,
+                        log_level="info",
+                        log_config=LOGGING_CONFIG,
+                    )
+                finally:
+                    sys.stdout = original_stdout
     else:
         print("Running in a normal Python process, assuming dev")
 
-        def run():
+        def serve():
             return uvicorn.run(
                 "main:app",
                 host="0.0.0.0",
@@ -1089,12 +1615,12 @@ def run():
             )
 
     try:
-        run()
+        serve()
     except ShutdownException:
         print("Server is shutting down due to excepted shutdown call")
         sys.exit(0)
-    except Exception as e:
-        print(f"Server is shutting down due to {e}")
+    except Exception:
+        logger.exception("Server is shutting down due to an unhandled error")
         sys.exit(1)
 
 
