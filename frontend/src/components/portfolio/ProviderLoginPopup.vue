@@ -50,8 +50,9 @@
 
         <v-divider></v-divider>
         <v-alert class="mx-auto square-corners" color="info" v-if="externalLoginURL">
-          External login required, click <a target="_blank" :href="externalLoginURL">here</a> to complete login flow in
-          a popup window.
+          External login required, click <a target="_blank" :href="externalLoginURL"
+            @click="externalLogin($event)">here</a> to complete login flow in
+          {{ opensInSystemBrowser ? "your browser" : "a popup window" }}.
           After you have completed it, click the authenticate button again to complete authentication.
         </v-alert>
         <v-alert class="mx-auto square-corners" color="warning" v-if="error">{{
@@ -148,9 +149,12 @@ export default {
       // flow; with a registered callback the backend completes auth itself
       return this.selectedProvider == "etrade" ? [] : [this.required];
     },
+    opensInSystemBrowser() {
+      return this.selectedProvider == "etrade";
+    },
     extraFactorLabel() {
       return this.selectedProvider == "etrade"
-        ? "Verification Code (from E*TRADE popup)"
+        ? "Verification Code (from E*TRADE browser window)"
         : "Extra Factor";
     },
   },
@@ -162,8 +166,21 @@ export default {
       "refreshCompositePortfolio",
       "pushEmptyProvider",
     ]),
-    externalLogin() {
-      window.open(this.externalLoginURL, "_blank");
+    externalLogin(event) {
+      if (!this.opensInSystemBrowser) {
+        // the anchor's target="_blank" already opens a popup window
+        return;
+      }
+      // etrade's login sits behind bot protection that rejects an Electron
+      // child window ("Access Denied" on the login POST), so hand the URL to
+      // the system browser; the verification code is pasted back either way
+      try {
+        const { shell } = require("electron");
+        shell.openExternal(this.externalLoginURL);
+        event.preventDefault();
+      } catch (e) {
+        // not running under electron; leave the default anchor behavior
+      }
     },
     required(v) {
       return !!v || "Field is required";
