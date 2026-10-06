@@ -14,7 +14,7 @@ Add E*TRADE as a provider in Fundiverse and enter your API key (consumer key) an
 
 E*TRADE uses OAuth 1.0a, which requires a browser authorization on first login:
 
-1. Submit the login form. A link to E*TRADE will appear - open it and sign in to authorize Fundiverse.
+1. Submit the login form. A link to E*TRADE will appear - open it and sign in to authorize Fundiverse. The link opens in your default browser, because E*TRADE's bot protection rejects sign-ins from an in-app window.
 2. E*TRADE will display a short verification code. Paste it into the Verification Code field and click Authenticate again.
 
 E*TRADE access tokens expire at midnight US Eastern, so expect to repeat the authorization once per day. Within the same day, Fundiverse renews the token automatically.
