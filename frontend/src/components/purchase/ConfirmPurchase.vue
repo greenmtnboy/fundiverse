@@ -58,17 +58,6 @@
             </v-chip-group>
           </v-col>
         </v-row>
-        <v-row v-if="orderExclusions.length > 0">
-          <v-col width="12" justify="center">
-            Skipped This Order
-            <v-chip-group>
-              <v-chip v-for="ticker in orderExclusions" :key="ticker" :disabled="loading || initialLoading"
-                :label="true" closable data-testid="order-exclusion" @click:close="restoreOrder(ticker)">
-                <TickerDisplay :ticker="ticker" />
-              </v-chip>
-            </v-chip-group>
-          </v-col>
-        </v-row>
         <v-row v-if="skippedProviders.length > 0">
           <v-col cols="12">
             <v-alert type="info" density="compact" data-testid="skipped-providers-alert">
@@ -209,9 +198,6 @@ export default {
     selectedMode: 2,
     batchSize: 10,
     localExclusions: [],
-    // skipped for this order only; unlike localExclusions they stay in the
-    // target allocation, so their share of cash goes to other stocks
-    orderExclusions: [],
     // the post-submit holdings refresh; replans must wait for it or they
     // would plan against pre-order cash and re-buy what just succeeded
     pendingRefresh: null,
@@ -330,13 +316,12 @@ export default {
       // this.localExclusions = [];
     },
     clickPurchaseButton() {
-      this.orderExclusions = [];
       this.setDefaultPurchaseSize();
       this.planPurchase();
     },
     async replanWithoutFailed() {
-      this.orderExclusions = [
-        ...new Set([...this.orderExclusions, ...this.failedTickers]),
+      this.localExclusions = [
+        ...new Set([...this.localExclusions, ...this.failedTickers]),
       ];
       this.loading = true;
       try {
@@ -348,10 +333,6 @@ export default {
       }
       this.placedOrders = [];
       return this.planPurchase();
-    },
-    restoreOrder(ticker) {
-      this.orderExclusions = this.orderExclusions.filter((t) => t !== ticker);
-      this.hasChangedBlock = true;
     },
     setDefaultPurchaseSize() {
       let defaultPurchase = roundToNearestTen(this.cash.value);
@@ -395,7 +376,6 @@ export default {
             this.customizations.excludedTickers,
           ).concat(this.localExclusions),
           list_exclusions: Array.from(this.customizations.excludedLists),
-          order_exclusions: this.orderExclusions,
           stock_modifications: this.customizations.stockModifications,
           list_modifications: this.customizations.listModifications,
           reweight: this.customizations.reweightIndex,

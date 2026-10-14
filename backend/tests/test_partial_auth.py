@@ -349,7 +349,7 @@ def test_plan_counts_cached_holdings_toward_target(test_client, config):
     assert value_of(with_cache, top_ticker) < value_of(baseline, top_ticker)
 
 
-def test_plan_order_exclusions_skip_tickers_but_keep_spending(test_client, config):
+def test_replan_excluding_failed_tickers_keeps_spending(test_client, config):
     """Replanning around failed orders routes their money to other tickers."""
     login(config, ProviderType.ALPACA, holdings=[], cash=500)
 
@@ -359,7 +359,7 @@ def test_plan_order_exclusions_skip_tickers_but_keep_spending(test_client, confi
     baseline = plan(test_client).json()["to_buy"]
     failed = {o["ticker"] for o in baseline[:2]}
 
-    replanned = plan(test_client, order_exclusions=sorted(failed)).json()["to_buy"]
+    replanned = plan(test_client, stock_exclusions=sorted(failed)).json()["to_buy"]
 
     assert replanned, "expected the replan to still place orders"
     assert not failed & {o["ticker"] for o in replanned}

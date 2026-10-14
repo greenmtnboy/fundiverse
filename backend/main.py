@@ -487,9 +487,6 @@ class PartialOperationRequest(BaseModel):
 class BuyRequest(TargetPortfolioRequest, PartialOperationRequest):
     to_purchase: float
     target_size: float
-    #: tickers to place no orders for this time around, while still counting
-    #: them in the target allocation (unlike stock_exclusions)
-    order_exclusions: list[str] = Field(default_factory=list)
 
 
 class BuyRequestFinal(BaseModel):
@@ -1177,7 +1174,6 @@ def _plan_composite_purchase(input: BuyRequest):
         target_size=input.target_size,
         purchase_order_maps=buy_orders,
         target_order_size=Money(value=input.to_purchase or 0.0),
-        skip_tickers=set(input.order_exclusions),
     )
     final = []
     for key, order_items in plan.items():
