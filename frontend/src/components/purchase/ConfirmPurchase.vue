@@ -58,6 +58,17 @@
             </v-chip-group>
           </v-col>
         </v-row>
+        <v-row v-if="orderExclusions.length > 0">
+          <v-col width="12" justify="center">
+            Skipped This Order
+            <v-chip-group>
+              <v-chip v-for="ticker in orderExclusions" :key="ticker" :disabled="loading || initialLoading"
+                :label="true" closable data-testid="order-exclusion" @click:close="restoreOrder(ticker)">
+                <TickerDisplay :ticker="ticker" />
+              </v-chip>
+            </v-chip-group>
+          </v-col>
+        </v-row>
         <v-row v-if="skippedProviders.length > 0">
           <v-col cols="12">
             <v-alert type="info" density="compact" data-testid="skipped-providers-alert">
@@ -138,6 +149,11 @@
         <v-btn class="flex-grow-1 text-none" variant="plain" @click="dialog = false">
           Exit
         </v-btn>
+        <v-btn v-if="placedOrders.length > 0 && failedTickers.length > 0" :loading="loading" key="replan-failed"
+          class="flex-grow-1 text-none" color="primary" variant="outlined" data-testid="replan-without-failed"
+          @click="replanWithoutFailed()">
+          Replan Without Failed Stocks
+        </v-btn>
         <v-btn v-if="placedOrders.length > 0" :loading="loading" key="return" class="text-white flex-grow-1 text-none"
           color="primary" variant="flat" @click="completeOrders()">
           Done Reviewing Results
@@ -193,6 +209,12 @@ export default {
     selectedMode: 2,
     batchSize: 10,
     localExclusions: [],
+    // skipped for this order only; unlike localExclusions they stay in the
+    // target allocation, so their share of cash goes to other stocks
+    orderExclusions: [],
+    // the post-submit holdings refresh; replans must wait for it or they
+    // would plan against pre-order cash and re-buy what just succeeded
+    pendingRefresh: null,
     hasChangedBlock: false,
     modes: [
       { name: "Smallest Diff First", id: 1 },
@@ -261,6 +283,15 @@ export default {
     displayPlacedBatch() {
       return this.placedBatches[this.placedPage - 1];
     },
+    failedTickers() {
+      return [
+        ...new Set(
+          this.placedOrders
+            .filter((order) => order.status === "failed")
+            .map((order) => order.ticker),
+        ),
+      ];
+    },
     orderBatches() {
       return divideArrayIntoBatches(this.plan["to_buy"], this.batchSize);
     },
@@ -299,8 +330,28 @@ export default {
       // this.localExclusions = [];
     },
     clickPurchaseButton() {
+      this.orderExclusions = [];
       this.setDefaultPurchaseSize();
       this.planPurchase();
+    },
+    async replanWithoutFailed() {
+      this.orderExclusions = [
+        ...new Set([...this.orderExclusions, ...this.failedTickers]),
+      ];
+      this.loading = true;
+      try {
+        await this.pendingRefresh;
+      } catch {
+        // the refresh surfaces its own errors; plan with what we have
+      } finally {
+        this.loading = false;
+      }
+      this.placedOrders = [];
+      return this.planPurchase();
+    },
+    restoreOrder(ticker) {
+      this.orderExclusions = this.orderExclusions.filter((t) => t !== ticker);
+      this.hasChangedBlock = true;
     },
     setDefaultPurchaseSize() {
       let defaultPurchase = roundToNearestTen(this.cash.value);
@@ -344,6 +395,7 @@ export default {
             this.customizations.excludedTickers,
           ).concat(this.localExclusions),
           list_exclusions: Array.from(this.customizations.excludedLists),
+          order_exclusions: this.orderExclusions,
           stock_modifications: this.customizations.stockModifications,
           list_modifications: this.customizations.listModifications,
           reweight: this.customizations.reweightIndex,
@@ -385,7 +437,7 @@ export default {
           // only the providers we actually traded on have changed
           const touched = this.orderProviders;
           this.plan = { to_buy: [], to_sell: [] };
-          this.refreshCompositePortfolio({
+          this.pendingRefresh = this.refreshCompositePortfolio({
             portfolioName: this.portfolioName,
             keys: this.providers,
             providersToRefresh: touched.length ? touched : null,
