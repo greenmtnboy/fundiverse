@@ -366,6 +366,16 @@ def test_replan_excluding_failed_tickers_keeps_spending(test_client, config):
     assert total(replanned) == pytest.approx(total(baseline), rel=0.05)
 
 
+def test_planned_orders_carry_their_price(test_client, config):
+    """Whole-share orders have no value, so the client prices them from this."""
+    login(config, ProviderType.ALPACA, holdings=[], cash=500)
+
+    orders = plan(test_client).json()["to_buy"]
+
+    assert orders
+    assert {float(o["price"]["value"]) for o in orders} == {10.0}
+
+
 def test_plan_requires_at_least_one_authenticated_provider(test_client, config):
     response = plan(test_client)
     assert response.status_code == 401

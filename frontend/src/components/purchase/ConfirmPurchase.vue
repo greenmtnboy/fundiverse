@@ -85,6 +85,10 @@
               <OrderResult :element="element" />
             </template>
             <v-pagination v-model="placedPage" class="my-4" :length="placedLength"></v-pagination>
+            <v-btn v-if="failedTickers.length > 0" :loading="loading" block class="text-none" color="primary"
+              variant="outlined" data-testid="replan-without-failed" @click="replanWithoutFailed()">
+              Replan Without {{ failedTickers.length }} Failed
+            </v-btn>
           </v-col>
           <v-col v-else> </v-col>
         </v-row>
@@ -137,11 +141,6 @@
       <v-card-actions class="justify-center px-6 py-3">
         <v-btn class="flex-grow-1 text-none" variant="plain" @click="dialog = false">
           Exit
-        </v-btn>
-        <v-btn v-if="placedOrders.length > 0 && failedTickers.length > 0" :loading="loading" key="replan-failed"
-          class="flex-grow-1 text-none" color="primary" variant="outlined" data-testid="replan-without-failed"
-          @click="replanWithoutFailed()">
-          Replan Without Failed Stocks
         </v-btn>
         <v-btn v-if="placedOrders.length > 0" :loading="loading" key="return" class="text-white flex-grow-1 text-none"
           color="primary" variant="flat" @click="completeOrders()">
@@ -269,6 +268,19 @@ export default {
     displayPlacedBatch() {
       return this.placedBatches[this.placedPage - 1];
     },
+    successfulSpend() {
+      return this.placedOrders
+        .filter((order) => order.status === "placed" || order.status === "filled")
+        .reduce((total, order) => {
+          if (order.value) {
+            return total + Number(order.value.value);
+          }
+          if (order.qty && order.price) {
+            return total + Number(order.qty) * Number(order.price.value);
+          }
+          return total;
+        }, 0);
+    },
     failedTickers() {
       return [
         ...new Set(
@@ -323,6 +335,7 @@ export default {
       this.localExclusions = [
         ...new Set([...this.localExclusions, ...this.failedTickers]),
       ];
+      const remaining = this.toPurchase - this.successfulSpend;
       this.loading = true;
       try {
         await this.pendingRefresh;
@@ -331,6 +344,14 @@ export default {
       } finally {
         this.loading = false;
       }
+      // some brokers only debit cash once an order fills, so subtract what
+      // just went through ourselves, but never plan past the refreshed cash
+      const nextAmount = Math.max(
+        0,
+        Math.floor(Math.min(remaining, this.cash.value)),
+      );
+      this.toPurchase = nextAmount;
+      this.toPurchaseInternal = nextAmount;
       this.placedOrders = [];
       return this.planPurchase();
     },
