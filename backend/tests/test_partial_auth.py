@@ -349,6 +349,33 @@ def test_plan_counts_cached_holdings_toward_target(test_client, config):
     assert value_of(with_cache, top_ticker) < value_of(baseline, top_ticker)
 
 
+def test_replan_excluding_failed_tickers_keeps_spending(test_client, config):
+    """Replanning around failed orders routes their money to other tickers."""
+    login(config, ProviderType.ALPACA, holdings=[], cash=500)
+
+    def total(orders):
+        return sum(float(o["value"]["value"]) for o in orders)
+
+    baseline = plan(test_client).json()["to_buy"]
+    failed = {o["ticker"] for o in baseline[:2]}
+
+    replanned = plan(test_client, stock_exclusions=sorted(failed)).json()["to_buy"]
+
+    assert replanned, "expected the replan to still place orders"
+    assert not failed & {o["ticker"] for o in replanned}
+    assert total(replanned) == pytest.approx(total(baseline), rel=0.05)
+
+
+def test_planned_orders_carry_their_price(test_client, config):
+    """Whole-share orders have no value, so the client prices them from this."""
+    login(config, ProviderType.ALPACA, holdings=[], cash=500)
+
+    orders = plan(test_client).json()["to_buy"]
+
+    assert orders
+    assert {float(o["price"]["value"]) for o in orders} == {10.0}
+
+
 def test_plan_requires_at_least_one_authenticated_provider(test_client, config):
     response = plan(test_client)
     assert response.status_code == 401
