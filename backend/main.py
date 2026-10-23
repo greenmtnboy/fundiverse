@@ -424,6 +424,9 @@ class OrderItem(BaseModel):
     provider: ProviderType
     status: OrderStatus | None
     message: str | None
+    #: the quote the plan was sized with; whole-share orders carry only a qty,
+    #: so this is what lets the client work out what they spent
+    price: Money | None = None
 
 
 class PurchaseOrderOutput(BaseModel):
@@ -1184,6 +1187,7 @@ def _plan_composite_purchase(input: BuyRequest):
                     order_type=order.order_type,
                     value=order.value,
                     qty=order.qty,
+                    price=order.price,
                     provider=key,
                     status=OrderStatus.REQUESTED,
                     message=None,

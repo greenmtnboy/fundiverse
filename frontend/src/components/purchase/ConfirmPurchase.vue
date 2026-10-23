@@ -85,6 +85,10 @@
               <OrderResult :element="element" />
             </template>
             <v-pagination v-model="placedPage" class="my-4" :length="placedLength"></v-pagination>
+            <v-btn v-if="failedTickers.length > 0" :loading="loading" block class="text-none" color="primary"
+              variant="outlined" data-testid="replan-without-failed" @click="replanWithoutFailed()">
+              Replan Without {{ failedTickers.length }} Failed
+            </v-btn>
           </v-col>
           <v-col v-else> </v-col>
         </v-row>
@@ -193,6 +197,9 @@ export default {
     selectedMode: 2,
     batchSize: 10,
     localExclusions: [],
+    // the post-submit holdings refresh; replans must wait for it or they
+    // would plan against pre-order cash and re-buy what just succeeded
+    pendingRefresh: null,
     hasChangedBlock: false,
     modes: [
       { name: "Smallest Diff First", id: 1 },
@@ -261,6 +268,28 @@ export default {
     displayPlacedBatch() {
       return this.placedBatches[this.placedPage - 1];
     },
+    successfulSpend() {
+      return this.placedOrders
+        .filter((order) => order.status === "placed" || order.status === "filled")
+        .reduce((total, order) => {
+          if (order.value) {
+            return total + Number(order.value.value);
+          }
+          if (order.qty && order.price) {
+            return total + Number(order.qty) * Number(order.price.value);
+          }
+          return total;
+        }, 0);
+    },
+    failedTickers() {
+      return [
+        ...new Set(
+          this.placedOrders
+            .filter((order) => order.status === "failed")
+            .map((order) => order.ticker),
+        ),
+      ];
+    },
     orderBatches() {
       return divideArrayIntoBatches(this.plan["to_buy"], this.batchSize);
     },
@@ -301,6 +330,30 @@ export default {
     clickPurchaseButton() {
       this.setDefaultPurchaseSize();
       this.planPurchase();
+    },
+    async replanWithoutFailed() {
+      this.localExclusions = [
+        ...new Set([...this.localExclusions, ...this.failedTickers]),
+      ];
+      const remaining = this.toPurchase - this.successfulSpend;
+      this.loading = true;
+      try {
+        await this.pendingRefresh;
+      } catch {
+        // the refresh surfaces its own errors; plan with what we have
+      } finally {
+        this.loading = false;
+      }
+      // some brokers only debit cash once an order fills, so subtract what
+      // just went through ourselves, but never plan past the refreshed cash
+      const nextAmount = Math.max(
+        0,
+        Math.floor(Math.min(remaining, this.cash.value)),
+      );
+      this.toPurchase = nextAmount;
+      this.toPurchaseInternal = nextAmount;
+      this.placedOrders = [];
+      return this.planPurchase();
     },
     setDefaultPurchaseSize() {
       let defaultPurchase = roundToNearestTen(this.cash.value);
@@ -385,7 +438,7 @@ export default {
           // only the providers we actually traded on have changed
           const touched = this.orderProviders;
           this.plan = { to_buy: [], to_sell: [] };
-          this.refreshCompositePortfolio({
+          this.pendingRefresh = this.refreshCompositePortfolio({
             portfolioName: this.portfolioName,
             keys: this.providers,
             providersToRefresh: touched.length ? touched : null,
