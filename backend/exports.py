@@ -79,7 +79,7 @@ def export_portfolio_to_database(
                 holdings = provider.get_holdings()
 
 
-            # Persist holdings
+            # Persist holdings; each call replaces the provider's previous snapshot
             db.persist_holding_data(holdings.holdings, provider_type)
             total_holdings += len(holdings.holdings)
 

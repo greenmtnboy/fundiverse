@@ -5,6 +5,7 @@ import {
 } from '@trilogy-data/trilogy-studio-components/stores'
 import { DuckDBConnection } from '@trilogy-data/trilogy-studio-components/connections'
 import instance from '/src/api/instance'
+import { requestDatabaseExport } from './exportDatabase'
 
 export async function loadTrilogyModels(
     modelStore: ReturnType<typeof useModelConfigStore>,
@@ -51,10 +52,12 @@ export async function exportPortfolioDatabase(
     onProgress('Exporting portfolio database from backend...')
 
     try {
-        await instance.post(`database/export_portfolio_database`, {
-            portfolio_name: portfolioName,
-        })
-        onProgress('Portfolio database exported successfully!')
+        const result = await requestDatabaseExport(portfolioName)
+        onProgress(
+            result.providers_skipped.length > 0
+                ? `Portfolio database exported without ${result.providers_skipped.join(', ')} (not logged in)`
+                : 'Portfolio database exported successfully!'
+        )
     } catch (error: any) {
         console.error('Export failed:', error)
         throw new Error(error.response?.data?.detail || error.message || 'Failed to export portfolio database')

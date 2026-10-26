@@ -70,7 +70,13 @@
               </v-btn>
             </v-col>
             <v-col
-              cols="8"
+              cols="4"
+              class="d-flex justify-center align-center px-2 py-0"
+            >
+              <ExportDatabaseButton :portfolioName="portfolioName" />
+            </v-col>
+            <v-col
+              cols="4"
               class="d-flex justify-center align-center px-2 py-0"
             >
               <v-btn
@@ -183,6 +189,7 @@ import PortfolioView from "./portfolio/PortfolioView.vue";
 import TargetPortfolioView from "./target_portfolio/TargetPortfolioView.vue";
 import TailorComponent from "./tailor/TailorComponent.vue";
 import IconTooltip from "./generic/IconTooltip.vue";
+import ExportDatabaseButton from "./portfolio/ExportDatabaseButton.vue";
 
 // Models
 import PortfolioElementModel from "../models/PortfolioElementModel";
@@ -205,6 +212,7 @@ export default {
     TargetPortfolioView,
     TailorComponent,
     IconTooltip,
+    ExportDatabaseButton,
     // ConfirmPurchase
   },
   props: {

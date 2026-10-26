@@ -109,6 +109,8 @@
       <v-btn :disabled="portfolio.keys.length === 0 || portfolio.loading" @click="refresh">
         Refresh
       </v-btn>
+      <ExportDatabaseButton :portfolioName="portfolio.name"
+        :disabled="portfolio.keys.length === 0 || portfolio.loading" />
       <ConfirmationButton :dataTestId="`btn-del-${portfolio.name}`" :onClick="remove" text="Delete" />
       <!-- <v-btn :disabled="portfolio.loading" @click="remove"  color="red" prependIcon="mdi-cancel">
                 Delete
@@ -124,6 +126,7 @@ import SubPortfolio from "./SubPortfolio.vue";
 import CurrencyItem from "../generic/CurrencyItem.vue";
 import ConfirmPurchase from "../purchase/ConfirmPurchase.vue";
 import ConfirmationButton from "../generic/ConfirmationButton.vue";
+import ExportDatabaseButton from "./ExportDatabaseButton.vue";
 import { mapActions, mapGetters } from "vuex";
 export default {
   name: "CompositePortfolioView",
@@ -133,6 +136,7 @@ export default {
     CurrencyItem,
     ConfirmPurchase,
     ConfirmationButton,
+    ExportDatabaseButton,
   },
   data() {
     return {
