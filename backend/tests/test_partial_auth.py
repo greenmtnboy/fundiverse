@@ -536,6 +536,29 @@ def order_payload(provider: str, ticker: str):
     }
 
 
+def test_orders_never_sell(test_client, config):
+    """Purchasing is buy-only: a sell in the plan is refused, not placed."""
+    alpaca = login(config, ProviderType.ALPACA, holdings=[], cash=500)
+
+    response = test_client.post(
+        "/buy_index_from_plan_multi_provider",
+        json={
+            "providers": ["alpaca"],
+            "plan": {
+                "to_buy": [
+                    order_payload("alpaca", "AAPL"),
+                    {**order_payload("alpaca", "MSFT"), "order_type": "SELL"},
+                ]
+            },
+        },
+    )
+    assert response.status_code == 200
+    by_ticker = {order["ticker"]: order for order in response.json()["orders"]}
+    assert by_ticker["AAPL"]["status"] == "placed"
+    assert by_ticker["MSFT"]["status"] == "failed"
+    assert [order.ticker for order in alpaca.orders] == ["AAPL"]
+
+
 def test_orders_require_all_rejects_partial(test_client, config):
     login(config, ProviderType.ALPACA, holdings=[], cash=500)
 

@@ -1256,6 +1256,12 @@ def place_orders(
             order.message = "Provider had a login error on an earlier order"
             output.append(order)
             continue
+        # purchasing is buy-only; selling must stay behind an explicit opt-in
+        if order.order_type != OrderType.BUY:
+            order.status = OrderStatus.FAILED
+            order.message = "Sell orders are not enabled; order skipped."
+            output.append(order)
+            continue
         try:
             transformed_order = OrderElement(
                 ticker=order.ticker,
