@@ -106,3 +106,44 @@ def test_export_closes_the_database_on_failure(test_client, export_env):
     _, created = export_env
     export(test_client)
     assert created and all(db.closed for db in created)
+
+
+@pytest.mark.parametrize("provider", [ProviderType.SCHWAB, ProviderType.ETRADE])
+def test_repeat_export_with_unknown_ticker(
+    test_client: TestClient, tmp_path, monkeypatch, provider: ProviderType
+):
+    """Unrecognized tickers pool into one '???' row per provider; exporting
+    twice must replace that row rather than collide on the primary key, and
+    positions sold between exports must not linger."""
+    monkeypatch.setattr(
+        exports, "get_database_path", lambda name: tmp_path / f"{name}.db"
+    )
+    active = test_client.app.in_app_config  # type: ignore
+    active.provider_cache.clear()
+    active.holding_cache.clear()
+    active.provider_cache[provider] = FakeProvider(
+        provider,
+        holdings=[holding("AAPL", 100), holding("NOTAREALTICKERX", 50)],
+    )
+    try:
+        body = {"portfolio_name": "dup-port", "providers": [provider.value]}
+        first = test_client.post("/database/export_portfolio_database", json=body)
+        assert first.status_code == 200, first.text
+
+        active.provider_cache[provider] = FakeProvider(
+            provider, holdings=[holding("NOTAREALTICKERX", 75)]
+        )
+        second = test_client.post("/database/export_portfolio_database", json=body)
+        assert second.status_code == 200, second.text
+
+        db = exports.DuckDBDatastore(str(tmp_path / "dup-port.db"))
+        try:
+            rows = db.executor.execute_raw_sql(
+                "SELECT symbol, value FROM ticker_holdings ORDER BY symbol;"
+            ).fetchall()
+        finally:
+            db.close()
+        assert rows == [(-1, 75.0)]
+    finally:
+        active.provider_cache.clear()
+        active.holding_cache.clear()

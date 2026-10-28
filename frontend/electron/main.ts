@@ -1,4 +1,5 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import Store from "electron-store";
 import Os from "os";
@@ -305,6 +306,29 @@ function createWindow() {
 // app.on('window-all-closed', () => {
 //   // win = null
 // })
+
+// let the user pick where an exported file lands; resolves to the saved
+// path, or null if they cancelled the dialog
+ipcMain.handle(
+  "save-file",
+  async (_event, defaultName: string, data: ArrayBuffer) => {
+    const options = {
+      defaultPath: path.join(app.getPath("downloads"), defaultName),
+      filters: [
+        { name: "DuckDB Database", extensions: ["db", "duckdb"] },
+        { name: "All Files", extensions: ["*"] },
+      ],
+    };
+    const result = win
+      ? await dialog.showSaveDialog(win, options)
+      : await dialog.showSaveDialog(options);
+    if (result.canceled || !result.filePath) {
+      return null;
+    }
+    await writeFile(result.filePath, Buffer.from(data));
+    return result.filePath;
+  },
+);
 
 
 app.on("window-all-closed", () => {
