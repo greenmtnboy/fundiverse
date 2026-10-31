@@ -94,6 +94,19 @@
         </v-row>
         <v-row v-else>
           <v-col v-if="displayBatch" cols="12">
+            <v-alert :type="isUnderSpent ? 'warning' : 'info'" density="compact" class="mb-2"
+              data-testid="planned-spend-summary">
+              Planned spend: <b>~<CurrencyItem :value="{ value: plannedSpend, currency: cash.currency }" /></b>
+              of <CurrencyItem :value="{ value: toPurchase, currency: cash.currency }" /> requested
+              across {{ plan.to_buy.length }} orders
+              <template v-if="isUnderSpent">
+                — about <CurrencyItem :value="{ value: toPurchase - plannedSpend, currency: cash.currency }" />
+                won't be invested, likely because there aren't enough under-target stocks to fill the order.
+              </template>
+              <template v-if="unpricedOrderCount > 0">
+                ({{ unpricedOrderCount }} unit orders have no price and aren't counted.)
+              </template>
+            </v-alert>
             <template v-for="element in displayBatch" :key="element.ticker + element.provider">
               <v-list-item>
                 <v-chip :color="element.order_type === 'BUY' ? 'green' : 'red'" small outlined>{{ element.order_type
@@ -103,6 +116,9 @@
                   units </span> of
                 <TickerDisplay :ticker="element.ticker" /> on
                 {{ element.provider }}
+                <span v-if="element.qty && orderValue(element)" class="text-medium-emphasis">
+                  (~<CurrencyItem :value="orderValue(element)" />)
+                </span>
                 <template v-slot:append>
                   <v-tooltip>
                     <template v-slot:activator="{ props }">
@@ -165,6 +181,7 @@ import OrderResult from "./OrderResult.vue";
 import CurrencyItem from "../generic/CurrencyItem.vue";
 import TickerDisplay from "../generic/TickerDisplay.vue";
 import debounce from "../../helpers/debounce";
+import { orderValue, totalOrderValue } from "../../helpers/orderValue";
 function roundToNearestTen(number) {
   return Math.floor(number / 10) * 10;
 }
@@ -269,17 +286,22 @@ export default {
       return this.placedBatches[this.placedPage - 1];
     },
     successfulSpend() {
-      return this.placedOrders
-        .filter((order) => order.status === "placed" || order.status === "filled")
-        .reduce((total, order) => {
-          if (order.value) {
-            return total + Number(order.value.value);
-          }
-          if (order.qty && order.price) {
-            return total + Number(order.qty) * Number(order.price.value);
-          }
-          return total;
-        }, 0);
+      return totalOrderValue(
+        this.placedOrders.filter(
+          (order) => order.status === "placed" || order.status === "filled",
+        ),
+      );
+    },
+    plannedSpend() {
+      return totalOrderValue(this.plan.to_buy);
+    },
+    unpricedOrderCount() {
+      return this.plan.to_buy.filter((order) => !orderValue(order)).length;
+    },
+    isUnderSpent() {
+      // whole-share rounding leaves a few dollars behind; flag real gaps only
+      const shortfall = this.toPurchase - this.plannedSpend;
+      return shortfall > Math.max(5, this.toPurchase * 0.02);
     },
     failedTickers() {
       return [
@@ -321,6 +343,7 @@ export default {
     this.setDefaultPurchaseSize();
   },
   methods: {
+    orderValue,
     ...mapActions(["excludeList", "modifyList", "refreshCompositePortfolio", "excludeStock"]),
     completeOrders() {
       this.placedOrders = [];

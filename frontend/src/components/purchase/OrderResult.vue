@@ -8,6 +8,9 @@
     >
     <CurrencyItem v-if="element.value" :value="element.value" /> <span v-if="element.qty">{{element.qty}} units </span> of
     <TickerDisplay :ticker="element.ticker" /> on {{ element.provider }}
+    <span v-if="element.qty && orderValue(element)" class="text-medium-emphasis">
+      (~<CurrencyItem :value="orderValue(element)!" />)
+    </span>
     <template v-slot:append v-if="element.message">
       <v-tooltip>
         <template v-slot:activator="{ props }">
@@ -24,6 +27,7 @@
 <script lang="ts">
 import CurrencyItem from "../generic/CurrencyItem.vue";
 import TickerDisplay from "../generic/TickerDisplay.vue";
+import { orderValue } from "../../helpers/orderValue";
 export default {
   name: "TailorComponentStockItem",
   data() {
@@ -37,6 +41,6 @@ export default {
     },
   },
   computed: {},
-  methods: {},
+  methods: { orderValue },
 };
 </script>

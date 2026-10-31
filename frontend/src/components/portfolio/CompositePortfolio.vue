@@ -54,6 +54,8 @@
         </v-progress-linear>
         <v-progress-linear indeterminate reverse color="blue-lighten-3" height="20">
         </v-progress-linear>
+        <v-progress-linear v-if="selectedIndex" indeterminate color="orange-lighten-3" height="20">
+        </v-progress-linear>
       </template>
       <template v-else>
         <v-progress-linear color="green-lighten-3" v-model="portfolioInTargetPercent" height="20">
@@ -68,6 +70,24 @@
       portfolioPercentOfTarget }}% of target including all stocks
           </p>
         </v-progress-linear>
+        <template v-if="selectedIndex">
+          <v-progress-linear v-if="targetLoading || targetHoldings === null" :indeterminate="!targetError" color="orange-lighten-3"
+            height="20" data-testid="target-shortfall-bar">
+            <p class="text-high-emphasis font-weight-black">
+              {{ targetError ? "Couldn't load target index" : "Calculating shortfall to target" }}
+            </p>
+          </v-progress-linear>
+          <v-progress-linear v-else color="orange-lighten-3" v-model="targetCompletePercent" height="20"
+            data-testid="target-shortfall-bar">
+            <p class="text-high-emphasis font-weight-black">
+              <CurrencyItem :value="{ currency: '$', value: targetShortfall }" /> short of target in every index stock
+              <template v-if="targetShortfall > 0 && availableCash > 0">
+                (<CurrencyItem :value="{ currency: '$', value: Math.max(0, targetShortfall - availableCash) }" />
+                beyond available cash)
+              </template>
+            </p>
+          </v-progress-linear>
+        </template>
       </template>
     </v-card-text>
     <v-card-text class="pt-0">
@@ -127,6 +147,7 @@ import CurrencyItem from "../generic/CurrencyItem.vue";
 import ConfirmPurchase from "../purchase/ConfirmPurchase.vue";
 import ConfirmationButton from "../generic/ConfirmationButton.vue";
 import ExportDatabaseButton from "./ExportDatabaseButton.vue";
+import instance from "../../api/instance";
 import { mapActions, mapGetters } from "vuex";
 export default {
   name: "CompositePortfolioView",
@@ -143,6 +164,11 @@ export default {
       saving: false,
       showSaveSuccess: false,
       showLoadSuccess: false,
+      // customized target weights, fetched here since the store only has
+      // them after visiting the configure page
+      targetHoldings: null,
+      targetLoading: false,
+      targetError: null,
     };
   },
   computed: {
@@ -248,6 +274,53 @@ export default {
     portfolioPercentOfTarget() {
       return Math.round((this.portfolioSum / this.portfolio.target_size) * 100);
     },
+    targetRequest() {
+      if (!this.selectedIndex || !this.customizations) {
+        return null;
+      }
+      return {
+        index: this.selectedIndex,
+        stock_exclusions: Array.from(this.customizations.excludedTickers),
+        list_exclusions: Array.from(this.customizations.excludedLists),
+        stock_modifications: this.customizations.stockModifications,
+        list_modifications: this.customizations.listModifications,
+        reweight: this.customizations.reweightIndex,
+      };
+    },
+    targetRequestKey() {
+      return JSON.stringify(this.targetRequest);
+    },
+    /**
+     * Cash needed to bring every under-target index stock up to its target
+     * value. Overweight holdings don't offset this, since we never sell.
+     */
+    targetShortfall() {
+      if (!this.targetHoldings) {
+        return 0;
+      }
+      const held = new Map();
+      for (const holding of this.portfolio.holdings) {
+        held.set(
+          holding.ticker,
+          (held.get(holding.ticker) || 0) + Number(holding.value.value),
+        );
+      }
+      return this.targetHoldings.reduce((total, target) => {
+        const targetValue = Number(target.weight) * this.portfolio.target_size;
+        return total + Math.max(0, targetValue - (held.get(target.ticker) || 0));
+      }, 0);
+    },
+    targetCompletePercent() {
+      if (!this.portfolio.target_size) {
+        return 0;
+      }
+      return Math.round(
+        (1 - this.targetShortfall / this.portfolio.target_size) * 100,
+      );
+    },
+    availableCash() {
+      return Number(this.portfolio.investable_cash?.value || 0);
+    },
 
     // selectedIndex() {
     //     return this.$store.getters.selectedIndex;
@@ -259,7 +332,40 @@ export default {
       required: true,
     },
   },
+  watch: {
+    targetRequestKey: {
+      handler() {
+        this.fetchTargetHoldings();
+      },
+      immediate: true,
+    },
+  },
   methods: {
+    async fetchTargetHoldings() {
+      const request = this.targetRequest;
+      const key = this.targetRequestKey;
+      if (!request) {
+        this.targetHoldings = null;
+        return;
+      }
+      this.targetLoading = true;
+      this.targetError = null;
+      try {
+        const response = await instance.makeAsyncRequest("generate_index", request);
+        // a newer customization may have started its own fetch meanwhile
+        if (key === this.targetRequestKey) {
+          this.targetHoldings = response.data.holdings;
+        }
+      } catch (e) {
+        if (key === this.targetRequestKey) {
+          this.targetError = e;
+        }
+      } finally {
+        if (key === this.targetRequestKey) {
+          this.targetLoading = false;
+        }
+      }
+    },
     ...mapActions([
       "refreshCompositePortfolio",
       "saveCompositePortfolios",
