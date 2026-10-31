@@ -101,7 +101,9 @@ from uvicorn.config import LOGGING_CONFIG
 from config import ActiveConfig, BackgroundStatus, run_task
 from exports import (
     DatabaseExportRequest,
+    PortfolioComposition,
     export_portfolio_to_database,
+    get_composition_path,
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
@@ -1335,6 +1337,25 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
     return BuyRequestFinalMultiProviderOutput(orders=output, skipped_providers=missing)
 
 
+def resolve_composition_target(
+    composition: PortfolioComposition,
+) -> list[tuple[str, float]]:
+    """The customized target weights, exactly as planning would compute them"""
+    request = TargetPortfolioRequest.model_validate(composition.model_dump())
+    ideal = index_to_processed_index(request)
+    return [(h.ticker, float(h.weight)) for h in ideal.holdings]
+
+
+def read_checkpointed_database(db_path: Path) -> bytes:
+    """Flush the WAL into the main file so the bytes we hand out are complete"""
+    db = DuckDBDatastore(str(db_path))
+    try:
+        db.executor.execute_raw_sql("CHECKPOINT;")
+    finally:
+        db.close()
+    return db_path.read_bytes()
+
+
 # Add the endpoint to the router
 @router.post("/database/export_portfolio_database")
 def export_portfolio_database(input: DatabaseExportRequest):
@@ -1343,7 +1364,9 @@ def export_portfolio_database(input: DatabaseExportRequest):
     Database will be stored at ~/.fundiverse/databases/{portfolio_name}.db
     """
     try:
-        return export_portfolio_to_database(input, IN_APP_CONFIG)
+        return export_portfolio_to_database(
+            input, IN_APP_CONFIG, resolve_target=resolve_composition_target
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -1393,19 +1416,8 @@ def download_database(portfolio_name: str):
 
     if not db_path.exists():
         raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
-    db = None
     try:
-        # Open connection, checkpoint, and close
-        db = DuckDBDatastore(str(db_path))
-        db.executor.execute_raw_sql(
-            "CHECKPOINT;"
-        )  # This writes all WAL data to the main file
-        db.close()
-        db = None
-
-        # Small delay to ensure file system sync
-        # Read entire file into memory
-        file_content = db_path.read_bytes()
+        file_content = read_checkpointed_database(db_path)
 
         from fastapi.responses import Response
 
@@ -1419,9 +1431,37 @@ def download_database(portfolio_name: str):
         )
     except Exception as e:
         raise HTTPException(500, f"Error downloading database: {e}") from e
-    finally:
-        if db:
-            db.close()
+
+
+@router.get("/database/download_bundle/{portfolio_name}")
+def download_database_bundle(portfolio_name: str):
+    """Zip the portfolio database with its target composition, for analysis
+    outside the app"""
+    import io
+    import zipfile
+
+    from fastapi.responses import Response
+
+    db_path = get_database_path(portfolio_name)
+    if not db_path.exists():
+        raise HTTPException(404, f"No database found for portfolio '{portfolio_name}'")
+    try:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as bundle:
+            bundle.writestr(f"{portfolio_name}.db", read_checkpointed_database(db_path))
+            composition_path = get_composition_path(portfolio_name)
+            if composition_path.exists():
+                bundle.write(composition_path, "composition.json")
+    except Exception as e:
+        raise HTTPException(500, f"Error bundling database: {e}") from e
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{portfolio_name}.zip"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 
 # Add endpoint to delete a database
