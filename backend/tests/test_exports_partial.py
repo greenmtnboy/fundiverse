@@ -7,6 +7,7 @@ anything until every provider in the portfolio is reachable.
 import pytest
 from fastapi.testclient import TestClient
 from py_portfolio_index.enums import ProviderType
+from py_portfolio_index.exceptions import ConfigurationError
 from test_partial_auth import FakeProvider, holding
 
 import exports
@@ -144,6 +145,91 @@ def test_repeat_export_with_unknown_ticker(
         finally:
             db.close()
         assert rows == [(-1, 75.0)]
+    finally:
+        active.provider_cache.clear()
+        active.holding_cache.clear()
+
+
+class ExpiredDividendsProvider(FakeProvider):
+    """Holdings come from the cache; the dividend fetch finds the login gone,
+    as E*TRADE does once its daily token lapses."""
+
+    def get_dividend_details(self, start=None):
+        raise ConfigurationError("E*TRADE API returned 401: token_rejected")
+
+
+def test_export_survives_a_login_expiring_mid_export(test_client, export_env):
+    config, created = export_env
+    config.provider_cache[ProviderType.ALPACA] = FakeProvider(
+        ProviderType.ALPACA, holdings=[holding("AAPL", 100)]
+    )
+    config.provider_cache[ProviderType.ETRADE] = ExpiredDividendsProvider(
+        ProviderType.ETRADE, holdings=[holding("MSFT", 50)]
+    )
+
+    response = export(test_client, providers=["alpaca", "etrade"])
+    assert response.status_code == 200, response.text
+    data = response.json()
+    # holdings already written for etrade are kept; its login is forgotten
+    assert data["providers_processed"] == ["alpaca", "etrade"]
+    assert "token_rejected" in data["provider_errors"]["etrade"]
+    assert ProviderType.ETRADE not in config.provider_cache
+    assert ProviderType.ETRADE in created[0].holdings_by_provider
+
+
+def test_export_bundles_the_target_composition(
+    test_client: TestClient, tmp_path, monkeypatch
+):
+    import io
+    import json
+    import zipfile
+
+    import main
+
+    monkeypatch.setattr(
+        exports, "get_database_path", lambda name: tmp_path / f"{name}.db"
+    )
+    monkeypatch.setattr(main, "get_database_path", lambda name: tmp_path / f"{name}.db")
+    active = test_client.app.in_app_config  # type: ignore
+    active.provider_cache.clear()
+    active.holding_cache.clear()
+    active.provider_cache[ProviderType.ALPACA] = FakeProvider(
+        ProviderType.ALPACA, holdings=[holding("AAPL", 100)]
+    )
+    try:
+        body = {
+            "portfolio_name": "bundle-port",
+            "providers": ["alpaca"],
+            "composition": {
+                "index": "large_cap",
+                "target_size": 10000,
+                "stock_exclusions": ["AAPL"],
+            },
+        }
+        response = test_client.post("/database/export_portfolio_database", json=body)
+        assert response.status_code == 200, response.text
+        assert response.json()["composition_included"] is True
+
+        db = exports.DuckDBDatastore(str(tmp_path / "bundle-port.db"))
+        try:
+            run = db.executor.execute_raw_sql
+            targets = dict(
+                run("SELECT ticker, target_value FROM target_holdings;").fetchall()
+            )
+            index_name = run("SELECT index_name FROM portfolio_composition;").fetchone()
+        finally:
+            db.close()
+        assert "AAPL" not in targets
+        assert sum(targets.values()) == pytest.approx(10000)
+        assert index_name == ("large_cap",)
+
+        bundle = test_client.get("/database/download_bundle/bundle-port")
+        assert bundle.status_code == 200
+        with zipfile.ZipFile(io.BytesIO(bundle.content)) as archive:
+            assert set(archive.namelist()) == {"bundle-port.db", "composition.json"}
+            document = json.loads(archive.read("composition.json"))
+        assert document["customizations"]["stock_exclusions"] == ["AAPL"]
+        assert len(document["targets"]) == len(targets)
     finally:
         active.provider_cache.clear()
         active.holding_cache.clear()

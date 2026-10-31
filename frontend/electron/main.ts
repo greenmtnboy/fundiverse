@@ -312,10 +312,13 @@ function createWindow() {
 ipcMain.handle(
   "save-file",
   async (_event, defaultName: string, data: ArrayBuffer) => {
+    const isZip = path.extname(defaultName).toLowerCase() === ".zip";
     const options = {
       defaultPath: path.join(app.getPath("downloads"), defaultName),
       filters: [
-        { name: "DuckDB Database", extensions: ["db", "duckdb"] },
+        isZip
+          ? { name: "Portfolio Bundle", extensions: ["zip"] }
+          : { name: "DuckDB Database", extensions: ["db", "duckdb"] },
         { name: "All Files", extensions: ["*"] },
       ],
     };
