@@ -54,6 +54,8 @@ class ActiveConfig:
     pending_auth_response: LoginResponse | None = None
     pending_schwab_response: SchwabAuthContext | None = None
     pending_etrade_response: ETradeAuthContext | None = None
+    # time.monotonic() when the pending flow's request token was issued
+    pending_etrade_started_at: float = 0.0
     pending_momoo_response: str | None = None
     auth_token: str | None = None
     validate: bool = False

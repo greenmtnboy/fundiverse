@@ -8,6 +8,7 @@ import dotenv
 dotenv.load_dotenv()
 import asyncio
 import multiprocessing
+import time
 import uuid
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -123,6 +124,11 @@ class SchwabExtraAuthenticationStepException(Exception):
     def __init__(self, response: SchwabAuthContext, *args):
         super().__init__(*args)
         self.response = response
+
+
+# E*TRADE request tokens die after five minutes, so stop handing out a pending
+# flow's URL while the user still has time to finish signing in with it
+ETRADE_REISSUE_WINDOW_SECONDS = 240
 
 
 class ETradeExtraAuthenticationStepException(Exception):
@@ -707,27 +713,50 @@ def _login_schwab(input: LoginRequest) -> BaseProvider:
     return provider
 
 
+def _pending_etrade_flow(input: LoginRequest, sandbox: bool) -> ETradeAuthContext | None:
+    """The in-flight flow, unless it was started for a different login."""
+    pending = IN_APP_CONFIG.pending_etrade_response
+    if pending and (pending.api_key, pending.api_secret, pending.sandbox) != (
+        input.key,
+        input.secret,
+        sandbox,
+    ):
+        IN_APP_CONFIG.pending_etrade_response = None
+        return None
+    return pending
+
+
 def _login_etrade(input: LoginRequest) -> BaseProvider:
     environ[ETradeProvider.API_KEY_ENV] = input.key
     environ[ETradeProvider.API_SECRET_ENV] = input.secret
     sandbox = input.sandbox_enabled
     environ[ETradeProvider.SANDBOX_ENV] = "true" if sandbox else "false"
-    pending = IN_APP_CONFIG.pending_etrade_response
+    pending = _pending_etrade_flow(input, sandbox)
+    pending_age = time.monotonic() - IN_APP_CONFIG.pending_etrade_started_at
     if pending and input.extra_factor:
-        # the user pasted the verification code from the oob page
-        etrade_complete_authorization(pending, str(input.extra_factor))
+        # the user pasted the verification code from the oob page; try it even
+        # past the reissue window, since only E*TRADE knows if it's still good
+        try:
+            etrade_complete_authorization(pending, str(input.extra_factor))
+        except Exception:
+            # a rejected request token won't work again, so the next attempt
+            # has to start over rather than reissue its URL
+            IN_APP_CONFIG.pending_etrade_response = None
+            raise
         IN_APP_CONFIG.pending_etrade_response = None
-    elif pending:
-        # a flow is in flight with no code supplied; the /public/etrade/callback
-        # endpoint may have finished it for us (registered-callback mode)
-        if not etrade_load_cached_token(sandbox):
-            raise ETradeExtraAuthenticationStepException(response=pending)
+    elif pending and etrade_load_cached_token(sandbox):
+        # the /public/etrade/callback endpoint finished the flow for us
+        # (registered-callback mode)
         IN_APP_CONFIG.pending_etrade_response = None
+    elif pending and pending_age < ETRADE_REISSUE_WINDOW_SECONDS:
+        raise ETradeExtraAuthenticationStepException(response=pending)
     else:
+        IN_APP_CONFIG.pending_etrade_response = None
         # reuses/renews a cached token when possible; otherwise hands back
         # an authorization URL for the user to visit
         context = etrade_create_login_context(input.key, input.secret, sandbox=sandbox)
         if context:
+            IN_APP_CONFIG.pending_etrade_started_at = time.monotonic()
             raise ETradeExtraAuthenticationStepException(response=context)
     provider = ETradeProvider(external_auth=True, sandbox=sandbox)
     IN_APP_CONFIG.pending_etrade_response = None
@@ -1599,6 +1628,7 @@ async def etrade_oauth_callback(oauth_verifier: str = "", oauth_token: str = "")
         etrade_complete_authorization(pending, oauth_verifier)
     except Exception as e:
         logger.exception("E*TRADE callback failed")
+        IN_APP_CONFIG.pending_etrade_response = None
         return _callback_page(
             "E*TRADE authorization failed.", str(e), status_code=400
         )
