@@ -98,6 +98,99 @@ def test_resubmit_without_verifier_reissues_url(etrade_env, test_client: TestCli
     assert not etrade_env["completed"]
 
 
+def _replace_next_context(etrade_env, **overrides) -> ETradeAuthContext:
+    """The context a new flow would get, told apart from the first by its URL."""
+    fresh = ETradeAuthContext(
+        **{
+            **_context().__dict__,
+            "authorization_url": f"{AUTH_URL}-fresh",
+            "flow": object(),
+            **overrides,
+        }
+    )
+    etrade_env["context"] = fresh
+    return fresh
+
+
+def test_resubmit_after_reissue_window_gets_new_token(etrade_env, test_client: TestClient):
+    test_client.post("/login", json=LOGIN_BODY)
+    main.IN_APP_CONFIG.pending_etrade_started_at -= main.ETRADE_REISSUE_WINDOW_SECONDS
+    fresh = _replace_next_context(etrade_env)
+
+    response = test_client.post("/login", json={**LOGIN_BODY, "wait_for_external_auth": True})
+
+    assert response.status_code == 303
+    assert response.json()["detail"] == fresh.authorization_url
+    assert main.IN_APP_CONFIG.pending_etrade_response is fresh
+
+
+def test_new_token_restarts_the_reissue_window(etrade_env, test_client: TestClient):
+    test_client.post("/login", json=LOGIN_BODY)
+    main.IN_APP_CONFIG.pending_etrade_started_at -= main.ETRADE_REISSUE_WINDOW_SECONDS
+    fresh = _replace_next_context(etrade_env)
+    test_client.post("/login", json=LOGIN_BODY)
+    _replace_next_context(etrade_env, authorization_url="unused")
+
+    response = test_client.post("/login", json=LOGIN_BODY)
+
+    assert response.json()["detail"] == fresh.authorization_url
+
+
+def test_code_past_reissue_window_is_still_tried(etrade_env, test_client: TestClient):
+    test_client.post("/login", json=LOGIN_BODY)
+    pending = main.IN_APP_CONFIG.pending_etrade_response
+    main.IN_APP_CONFIG.pending_etrade_started_at -= main.ETRADE_REISSUE_WINDOW_SECONDS
+
+    response = test_client.post("/login", json={**LOGIN_BODY, "extra_factor": "ABC12"})
+
+    assert response.status_code == 200
+    assert etrade_env["completed"] == [(pending, "ABC12")]
+
+
+def test_rejected_code_starts_over(etrade_env, test_client: TestClient, monkeypatch):
+    test_client.post("/login", json=LOGIN_BODY)
+
+    def reject(context, verifier):
+        raise ValueError("oauth_problem=token_expired")
+
+    monkeypatch.setattr(main, "etrade_complete_authorization", reject)
+    response = test_client.post("/login", json={**LOGIN_BODY, "extra_factor": "ABC12"})
+    assert response.status_code == 400
+    assert main.IN_APP_CONFIG.pending_etrade_response is None
+
+    fresh = _replace_next_context(etrade_env)
+    response = test_client.post("/login", json=LOGIN_BODY)
+    assert response.json()["detail"] == fresh.authorization_url
+
+
+def test_rejected_callback_starts_over(etrade_env, test_client: TestClient, monkeypatch):
+    test_client.post("/login", json=LOGIN_BODY)
+
+    def reject(context, verifier):
+        raise ValueError("oauth_problem=token_expired")
+
+    monkeypatch.setattr(main, "etrade_complete_authorization", reject)
+    response = test_client.get("/public/etrade/callback?oauth_verifier=ABC12")
+
+    assert response.status_code == 400
+    assert main.IN_APP_CONFIG.pending_etrade_response is None
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"key": "other"}, {"secret": "other"}, {"sandbox": ""}],
+    ids=["key", "secret", "sandbox"],
+)
+def test_changed_login_starts_new_flow(etrade_env, test_client: TestClient, change):
+    test_client.post("/login", json=LOGIN_BODY)
+    fresh = _replace_next_context(etrade_env)
+
+    response = test_client.post("/login", json={**LOGIN_BODY, **change})
+
+    assert response.status_code == 303
+    assert response.json()["detail"] == fresh.authorization_url
+
+
 def test_callback_endpoint_completes_pending_flow(etrade_env, test_client: TestClient):
     test_client.post("/login", json=LOGIN_BODY)
 
