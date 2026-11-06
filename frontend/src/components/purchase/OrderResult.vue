@@ -14,11 +14,20 @@
     <template v-slot:append v-if="element.message">
       <v-tooltip>
         <template v-slot:activator="{ props }">
-          <v-btn v-bind="props" icon density="compact">
+          <v-btn
+            v-bind="props"
+            icon
+            density="compact"
+            data-testid="btn-copy-order-message"
+            @click="copyMessage"
+          >
             <v-icon color="warning">mdi-exclamation</v-icon>
           </v-btn>
         </template>
         <span>{{ element.message }}</span>
+        <div class="font-weight-bold">
+          {{ copied ? "Copied" : "Click to copy" }}
+        </div>
       </v-tooltip>
     </template>
   </v-list-item>
@@ -27,11 +36,12 @@
 <script lang="ts">
 import CurrencyItem from "../generic/CurrencyItem.vue";
 import TickerDisplay from "../generic/TickerDisplay.vue";
+import { copyText } from "../../helpers/copyText";
 import { orderValue } from "../../helpers/orderValue";
 export default {
   name: "TailorComponentStockItem",
   data() {
-    return {};
+    return { copied: false };
   },
   components: { TickerDisplay, CurrencyItem },
   props: {
@@ -41,6 +51,12 @@ export default {
     },
   },
   computed: {},
-  methods: { orderValue },
+  methods: {
+    orderValue,
+    async copyMessage() {
+      await copyText(this.element.message);
+      this.copied = true;
+    },
+  },
 };
 </script>
