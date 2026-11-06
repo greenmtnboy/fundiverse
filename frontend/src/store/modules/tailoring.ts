@@ -118,6 +118,10 @@ const actions = {
     commit("excludeStock", data);
     commit("saveCustomizations");
   },
+  async excludeStocks({ commit }, data) {
+    commit("excludeStocks", data);
+    commit("saveCustomizations");
+  },
   async removeStockExclusion({ commit }, data) {
     commit("removeStockExclusion", data);
     commit("saveCustomizations");
@@ -204,6 +208,12 @@ const mutations = {
   excludeStock(state, data) {
     const customization = safeGetCustomization(state, data.portfolioName);
     customization.excludedTickers.add(data.ticker);
+  },
+  excludeStocks(state, data) {
+    const customization = safeGetCustomization(state, data.portfolioName);
+    data.tickers.forEach((ticker) => customization.excludedTickers.add(ticker));
+    // the target refresh watches this map's reference, not its contents
+    state.customizations = new Map(state.customizations);
   },
   setTargetPortfolio(state, data) {
     state.targetPortfolios.set(data.portfolioName, data.targetPortfolio);

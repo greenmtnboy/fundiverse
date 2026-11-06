@@ -42,6 +42,7 @@
                     Load Saved
                 </v-btn> -->
         <TailorStockPopup :portfolioName="portfolioName" />
+        <TailorExclusionUpload :portfolioName="portfolioName" />
         <TailorListPopup :portfolioName="portfolioName" />
         <v-btn
           min-width="132"
@@ -153,6 +154,7 @@
 import { mapActions, mapGetters } from "vuex";
 
 import TailorStockPopup from "./TailorStockPopup.vue";
+import TailorExclusionUpload from "./TailorExclusionUpload.vue";
 import TailorListPopup from "./TailorListPopup.vue";
 import TailorComponentListItem from "./TailorComponentListItem.vue";
 import TailorStockListItem from "./TailorStockListItem.vue";
@@ -162,6 +164,7 @@ export default {
   name: "TailorComponent",
   components: {
     TailorStockPopup,
+    TailorExclusionUpload,
     TailorListPopup,
     TailorComponentListItem,
     TailorStockListItem,
