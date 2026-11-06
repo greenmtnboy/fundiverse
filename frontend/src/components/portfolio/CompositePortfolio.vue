@@ -118,6 +118,8 @@
       <ConfirmPurchase :selectedIndex="selectedIndex" :targetSize="portfolio.target_size"
         :cash="portfolio.investable_cash" :providers="portfolio.keys" :portfolioName="portfolio.name"
         :disabled="portfolio.loading" />
+      <UploadOrders :portfolioName="portfolio.name" :providers="portfolio.keys"
+        :disabled="portfolio.loading || portfolio.keys.length === 0" />
       <v-btn :disabled="portfolio.keys.length === 0" @click="navigatePortfolio">
         Configure
       </v-btn>
@@ -145,6 +147,7 @@ import ProviderLoginPopup from "/src/components/portfolio/ProviderLoginPopup.vue
 import SubPortfolio from "./SubPortfolio.vue";
 import CurrencyItem from "../generic/CurrencyItem.vue";
 import ConfirmPurchase from "../purchase/ConfirmPurchase.vue";
+import UploadOrders from "../purchase/UploadOrders.vue";
 import ConfirmationButton from "../generic/ConfirmationButton.vue";
 import ExportDatabaseButton from "./ExportDatabaseButton.vue";
 import instance from "../../api/instance";
@@ -156,6 +159,7 @@ export default {
     ProviderLoginPopup,
     CurrencyItem,
     ConfirmPurchase,
+    UploadOrders,
     ConfirmationButton,
     ExportDatabaseButton,
   },
