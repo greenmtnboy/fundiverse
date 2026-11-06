@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from enum import Enum
 from logging import StreamHandler, getLogger
 from os import environ
@@ -435,6 +435,8 @@ class OrderItem(BaseModel):
     #: the quote the plan was sized with; whole-share orders carry only a qty,
     #: so this is what lets the client work out what they spent
     price: Money | None = None
+    #: for a sell, the gain realized at the holding's average cost
+    estimated_gain: Money | None = None
 
 
 class PurchaseOrderOutput(BaseModel):
@@ -509,6 +511,33 @@ class BuyRequestFinalMultiProvider(BaseModel):
     plan: PurchaseOrderOutput
     providers: list[ProviderType]
     require_all: bool = False
+    #: only the order upload sets this; planned purchases stay buy-only
+    allow_sells: bool = False
+
+
+class UploadedOrder(BaseModel):
+    ticker: str
+    side: OrderType
+    shares: float | None = Field(default=None, gt=0)
+    value: float | None = Field(default=None, gt=0)
+    #: where to place it; a sell without one is spread across the portfolio
+    broker: ProviderType | None = None
+
+
+class UploadedOrderPlanRequest(BaseModel):
+    orders: list[UploadedOrder]
+    providers: list[ProviderType]
+
+
+class RejectedUploadedOrder(BaseModel):
+    ticker: str
+    side: OrderType
+    broker: ProviderType | None = None
+    reason: str
+
+
+class UploadedOrderPlan(PurchaseOrderOutput):
+    rejected: list[RejectedUploadedOrder] = Field(default_factory=list)
 
 
 class BuyRequestFinalMultiProviderOutput(BaseModel):
@@ -1085,6 +1114,8 @@ async def stock_lists():
 
 
 DEFAULT_MIN_WEIGHT = 0.001
+# Robinhood quotes fractional shares to six places, the finest we need
+SELL_SHARE_INCREMENT = Decimal("0.000001")
 
 
 def index_to_processed_index(
@@ -1243,6 +1274,135 @@ def plan_composite_purchase(input: BuyRequest):
         raise HTTPException(500, f"Error planning composite purchase: {e}") from e
 
 
+def _held_position(
+    provider: ProviderType, ticker: str
+) -> RealPortfolioElement | None:
+    portfolio = IN_APP_CONFIG.holding_cache.get(provider)
+    if portfolio is None:
+        return None
+    return next((x for x in portfolio.holdings if x.ticker == ticker), None)
+
+
+def _sell_priority(holding: RealPortfolioElement) -> tuple[bool, Decimal]:
+    """Largest percentage loss first; a position with no basis reported goes
+    last, since selling it could realize anything."""
+    gain = holding.appreciation.decimal
+    return gain == 0, gain / holding.value.decimal if holding.value.decimal else Decimal(0)
+
+
+def _plan_uploaded_sell(
+    order: UploadedOrder,
+    providers: list[ProviderType],
+    claimed: dict[tuple[ProviderType, str], Decimal],
+) -> tuple[list[OrderItem], str | None]:
+    """Turn a sell into orders against what each provider holds.
+
+    claimed tracks shares taken by earlier rows, so a file that lists a
+    ticker twice can't plan to sell the same shares twice.
+    Returns the orders and, if the sell couldn't be filled, why not.
+    """
+    positions = []
+    for provider in [order.broker] if order.broker else providers:
+        holding = _held_position(provider, order.ticker)
+        if not (holding and IN_APP_CONFIG.is_authenticated(provider)):
+            continue
+        if holding.units > claimed[(provider, order.ticker)] and holding.value.decimal > 0:
+            positions.append((provider, holding))
+    if not positions:
+        where = order.broker.value if order.broker else "any logged in provider"
+        return [], f"No shares of {order.ticker} held at {where}."
+
+    positions.sort(key=lambda x: _sell_priority(x[1]))
+    if order.shares:
+        wanted = Decimal(str(order.shares))
+    elif order.value:
+        price = positions[0][1].value.decimal / positions[0][1].units
+        wanted = Decimal(str(order.value)) / price
+    else:
+        return [], "Give a share count or a value."
+
+    planned = []
+    for provider, holding in positions:
+        available = holding.units - claimed[(provider, order.ticker)]
+        take = min(wanted, available)
+        if not IN_APP_CONFIG.provider_cache[provider].SUPPORTS_FRACTIONAL_SHARES:
+            take = Decimal(int(take))
+        take = take.quantize(SELL_SHARE_INCREMENT, rounding=ROUND_DOWN)
+        if take <= 0:
+            continue
+        share = take / holding.units
+        planned.append(
+            OrderItem(
+                ticker=order.ticker,
+                order_type=OrderType.SELL,
+                value=None,
+                qty=float(take),
+                price=Money(value=holding.value.decimal / holding.units),
+                provider=provider,
+                status=OrderStatus.REQUESTED,
+                message=None,
+                estimated_gain=Money(value=holding.appreciation.decimal * share)
+                if holding.appreciation.decimal
+                else None,
+            )
+        )
+        claimed[(provider, order.ticker)] += take
+        wanted -= take
+        if wanted < SELL_SHARE_INCREMENT:
+            break
+    if not planned:
+        return [], f"Less than one whole share of {order.ticker} can be sold."
+    if wanted >= SELL_SHARE_INCREMENT:
+        return planned, f"{wanted.normalize():f} shares of {order.ticker} were not available."
+    return planned, None
+
+
+def _plan_uploaded_buy(order: UploadedOrder) -> tuple[list[OrderItem], str | None]:
+    if not order.broker:
+        return [], "A buy needs a broker."
+    if not IN_APP_CONFIG.is_authenticated(order.broker):
+        return [], f"Not logged in to {order.broker.value}."
+    if not (order.shares or order.value):
+        return [], "Give a share count or a value."
+    return [
+        OrderItem(
+            ticker=order.ticker,
+            order_type=OrderType.BUY,
+            value=Money(value=order.value) if order.value and not order.shares else None,
+            qty=order.shares,
+            provider=order.broker,
+            status=OrderStatus.REQUESTED,
+            message=None,
+        )
+    ], None
+
+
+@router.post("/plan_uploaded_orders")
+def plan_uploaded_orders(input: UploadedOrderPlanRequest) -> UploadedOrderPlan:
+    """Check uploaded orders against holdings. Nothing is placed until the
+    client sends this plan back with allow_sells set."""
+    orders: list[OrderItem] = []
+    rejected: list[RejectedUploadedOrder] = []
+    claimed: dict[tuple[ProviderType, str], Decimal] = defaultdict(Decimal)
+    for row in input.orders:
+        if row.side == OrderType.SELL:
+            planned, problem = _plan_uploaded_sell(row, input.providers, claimed)
+        else:
+            planned, problem = _plan_uploaded_buy(row)
+        orders += planned
+        if problem:
+            rejected.append(
+                RejectedUploadedOrder(
+                    ticker=row.ticker, side=row.side, broker=row.broker, reason=problem
+                )
+            )
+    return UploadedOrderPlan(
+        to_buy=orders,
+        order_providers=sorted({x.provider for x in orders}, key=lambda x: x.value),
+        rejected=rejected,
+    )
+
+
 @router.get("/force_terminate")
 async def force_terminate():
     raise ShutdownException("Terminating server")
@@ -1278,7 +1438,10 @@ def buy_index_from_plan(input: BuyRequestFinal):
 
 
 def place_orders(
-    orders: list[OrderItem], provider: BaseProvider, stale_providers: set[ProviderType]
+    orders: list[OrderItem],
+    provider: BaseProvider,
+    stale_providers: set[ProviderType],
+    allow_sells: bool = False,
 ):
     output = []
     for order in orders:
@@ -1288,11 +1451,20 @@ def place_orders(
             output.append(order)
             continue
         # purchasing is buy-only; selling must stay behind an explicit opt-in
+        held = None
         if order.order_type != OrderType.BUY:
-            order.status = OrderStatus.FAILED
-            order.message = "Sell orders are not enabled; order skipped."
-            output.append(order)
-            continue
+            if not allow_sells:
+                order.status = OrderStatus.FAILED
+                order.message = "Sell orders are not enabled; order skipped."
+                output.append(order)
+                continue
+            # a margin account would treat selling too much as opening a short
+            held = _held_position(order.provider, order.ticker)
+            if not order.qty or not held or Decimal(str(order.qty)) > held.units:
+                order.status = OrderStatus.FAILED
+                order.message = "Order is more than the shares held; order skipped."
+                output.append(order)
+                continue
         try:
             transformed_order = OrderElement(
                 ticker=order.ticker,
@@ -1304,6 +1476,9 @@ def place_orders(
             provider.handle_order_element(transformed_order)
             order.status = OrderStatus.PLACED
             output.append(order)
+            if held:
+                # until the next refresh, so resubmitting can't sell these again
+                held.units -= Decimal(str(order.qty))
         except OrderError as e:
             order.status = OrderStatus.FAILED
             order.message = e.message
@@ -1356,6 +1531,7 @@ def buy_index_from_plan_multi_provider(input: BuyRequestFinalMultiProvider):
                 orders,
                 IN_APP_CONFIG.provider_cache[key],
                 stale_providers,
+                input.allow_sells,
             )
             for key, orders in grouped.items()
         }
