@@ -437,6 +437,8 @@ class OrderItem(BaseModel):
     price: Money | None = None
     #: for a sell, the gain realized at the holding's average cost
     estimated_gain: Money | None = None
+    #: place at this price per share rather than at market
+    limit_price: Money | None = None
 
 
 class PurchaseOrderOutput(BaseModel):
@@ -520,6 +522,8 @@ class UploadedOrder(BaseModel):
     side: OrderType
     shares: float | None = Field(default=None, gt=0)
     value: float | None = Field(default=None, gt=0)
+    #: a per share limit, for symbols a provider can't quote
+    price: float | None = Field(default=None, gt=0)
     #: where to place it; a sell without one is spread across the portfolio
     broker: ProviderType | None = None
 
@@ -1337,13 +1341,16 @@ def _plan_uploaded_sell(
                 order_type=OrderType.SELL,
                 value=None,
                 qty=float(take),
-                price=Money(value=holding.value.decimal / holding.units),
+                price=Money(value=order.price)
+                if order.price
+                else Money(value=holding.value.decimal / holding.units),
                 provider=provider,
                 status=OrderStatus.REQUESTED,
                 message=None,
                 estimated_gain=Money(value=holding.appreciation.decimal * share)
                 if holding.appreciation.decimal
                 else None,
+                limit_price=Money(value=order.price) if order.price else None,
             )
         )
         claimed[(provider, order.ticker)] += take
@@ -1364,15 +1371,21 @@ def _plan_uploaded_buy(order: UploadedOrder) -> tuple[list[OrderItem], str | Non
         return [], f"Not logged in to {order.broker.value}."
     if not (order.shares or order.value):
         return [], "Give a share count or a value."
+    if order.price and not order.shares:
+        return [], "A price needs a share count."
+    if order.price and not IN_APP_CONFIG.provider_cache[order.broker].SUPPORTS_LIMIT_ORDERS:
+        return [], f"{order.broker.value} can't place orders at a given price."
     return [
         OrderItem(
             ticker=order.ticker,
             order_type=OrderType.BUY,
             value=Money(value=order.value) if order.value and not order.shares else None,
             qty=order.shares,
+            price=Money(value=order.price) if order.price else None,
             provider=order.broker,
             status=OrderStatus.REQUESTED,
             message=None,
+            limit_price=Money(value=order.price) if order.price else None,
         )
     ], None
 
@@ -1471,6 +1484,7 @@ def place_orders(
                 order_type=order.order_type,
                 value=order.value,
                 qty=order.qty,
+                limit_price=order.limit_price,
             )
             logger.info(f"Placing order for {order.ticker} with {order.provider}")
             provider.handle_order_element(transformed_order)
