@@ -3,6 +3,8 @@ export interface UploadedOrder {
   side: "BUY" | "SELL";
   shares?: number;
   value?: number;
+  /** per share limit; orders without one go at market */
+  price?: number;
   broker?: string;
 }
 
@@ -30,8 +32,9 @@ function amount(raw: string | undefined): number | undefined | null {
 }
 
 /** Read orders from a CSV with a header row: side, ticker, either shares or
- * value, and optionally broker. Other columns are ignored. These become real
- * orders, so a bad line rejects the file rather than being skipped. */
+ * value, and optionally broker and a per share price. Other columns are
+ * ignored. These become real orders, so a bad line rejects the file rather
+ * than being skipped. */
 export function parseOrderFile(text: string): ParsedOrders {
   const lines = text
     .replace(/^﻿/, "")
@@ -59,6 +62,7 @@ export function parseOrderFile(text: string): ParsedOrders {
     const ticker = cell("ticker")?.toUpperCase();
     const shares = amount(cell("shares"));
     const value = amount(cell("value"));
+    const price = amount(cell("price"));
     const broker = cell("broker")?.toLowerCase().replace(/[^a-z]/g, "");
 
     const problems: string[] = [];
@@ -73,6 +77,9 @@ export function parseOrderFile(text: string): ParsedOrders {
     } else if (!shares === !value) {
       problems.push("give either shares or value");
     }
+    if (price === null) {
+      problems.push("price must be a positive number");
+    }
     if (broker && !BROKERS.includes(broker)) {
       problems.push(`unknown broker ${cell("broker")}`);
     }
@@ -84,6 +91,7 @@ export function parseOrderFile(text: string): ParsedOrders {
       ticker: ticker!,
       side: side as UploadedOrder["side"],
       ...(shares ? { shares } : { value: value! }),
+      ...(price ? { price } : {}),
       ...(broker ? { broker } : {}),
     });
   }

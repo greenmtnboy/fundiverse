@@ -27,9 +27,9 @@
         <template v-else>
           <p class="pb-4">
             Choose a CSV with a header row: side, ticker, either shares or
-            value, and optionally broker. Sells without a broker draw on the
-            biggest percentage losers first. Nothing is placed until you
-            confirm below.
+            value, and optionally broker and a per share price, which makes it
+            a limit order. Sells without a broker draw on the biggest
+            percentage losers first. Nothing is placed until you confirm below.
           </p>
           <v-file-input
             v-model="file"
@@ -88,6 +88,7 @@
                   <th>Ticker</th>
                   <th>Broker</th>
                   <th class="text-right">Shares</th>
+                  <th class="text-right">Limit</th>
                   <th class="text-right">About</th>
                   <th class="text-right">Est. gain</th>
                 </tr>
@@ -101,6 +102,9 @@
                   <td>{{ order.ticker }}</td>
                   <td>{{ order.provider }}</td>
                   <td class="text-right">{{ order.qty ?? "" }}</td>
+                  <td class="text-right">
+                    {{ order.limit_price ? `$${order.limit_price.value}` : "Market" }}
+                  </td>
                   <td class="text-right">{{ dollars(estimate(order)) }}</td>
                   <td class="text-right">{{ gain(order) }}</td>
                 </tr>
@@ -201,19 +205,22 @@ export default {
       );
       const unknown = this.sells.length - known.length;
       const buys = this.plan.to_buy.length - this.sells.length;
+      const buyTotal = this.plan.to_buy
+        .filter((order) => order.order_type !== "SELL")
+        .reduce((sum, order) => sum + this.estimate(order), 0);
       return [
         `${this.sells.length} sells, about ${this.dollars(total)}`,
         `estimated gain ${this.dollars(gain)}`,
         unknown ? `${unknown} with no cost basis` : "",
-        buys ? `${buys} buys` : "",
+        buys ? `${buys} buys, about ${this.dollars(buyTotal)}` : "",
       ]
         .filter(Boolean)
         .join(", ");
     },
     confirmLabel() {
       return this.sells.length
-        ? `Place these as market orders, selling ${this.sells.length} real positions. This can't be undone.`
-        : "Place these as market orders. This can't be undone.";
+        ? `Place these orders, selling ${this.sells.length} real positions. This can't be undone.`
+        : "Place these orders. This can't be undone.";
     },
     placedCount() {
       return this.placedOrders.filter((order) => order.status === "placed")

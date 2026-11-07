@@ -179,3 +179,34 @@ def test_placement_refuses_more_than_held_whatever_the_plan_says(test_client, co
 
     assert [x["status"] for x in orders] == ["failed"]
     assert fake.orders == []
+
+
+def test_a_priced_buy_becomes_a_limit_order(test_client, config):  # noqa: F811
+    fake = seller(config, ProviderType.ALPACA, [])
+    fake.SUPPORTS_LIMIT_ORDERS = True
+    row = {"ticker": "RHHBY", "side": "BUY", "shares": 2, "price": 59.71, "broker": "alpaca"}
+
+    planned = plan(test_client, [row], ["alpaca"])
+    place(test_client, planned, ["alpaca"])
+
+    assert float(fake.orders[0].limit_price.value) == pytest.approx(59.71)
+    assert fake.orders[0].qty == 2
+
+
+def test_a_price_at_a_broker_without_limit_orders_is_rejected(test_client, config):  # noqa: F811
+    fake = seller(config, ProviderType.ALPACA, [])
+    fake.SUPPORTS_LIMIT_ORDERS = False
+    row = {"ticker": "NVS", "side": "BUY", "shares": 2, "price": 150, "broker": "alpaca"}
+
+    result = plan(test_client, [row], ["alpaca"])
+
+    assert result["to_buy"] == []
+    assert "can't place orders at a given price" in result["rejected"][0]["reason"]
+
+
+def test_a_price_needs_a_share_count(test_client, config):  # noqa: F811
+    fake = seller(config, ProviderType.ALPACA, [])
+    fake.SUPPORTS_LIMIT_ORDERS = True
+    row = {"ticker": "NVS", "side": "BUY", "value": 100, "price": 150, "broker": "alpaca"}
+
+    assert plan(test_client, [row], ["alpaca"])["to_buy"] == []
