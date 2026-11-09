@@ -7,6 +7,7 @@ interface Order {
   value?: Money | null;
   qty?: number | string | null;
   price?: Money | null;
+  estimated_fee?: Money | null;
 }
 
 /**
@@ -31,4 +32,13 @@ export function totalOrderValue(orders: Order[]): number {
     const money = orderValue(order);
     return money ? total + Number(money.value) : total;
   }, 0);
+}
+
+/** Commissions the brokers are expected to charge, such as for OTC orders. */
+export function totalOrderFees(orders: Order[]): number {
+  return orders.reduce(
+    (total, order) =>
+      order.estimated_fee ? total + Number(order.estimated_fee.value) : total,
+    0,
+  );
 }

@@ -91,6 +91,7 @@
                   <th class="text-right">Limit</th>
                   <th class="text-right">About</th>
                   <th class="text-right">Est. gain</th>
+                  <th class="text-right">Est. fee</th>
                 </tr>
               </thead>
               <tbody>
@@ -107,6 +108,12 @@
                   </td>
                   <td class="text-right">{{ dollars(estimate(order)) }}</td>
                   <td class="text-right">{{ gain(order) }}</td>
+                  <td
+                    class="text-right"
+                    :class="{ 'text-warning': order.estimated_fee }"
+                  >
+                    {{ order.estimated_fee ? `$${Number(order.estimated_fee.value).toFixed(2)}` : "" }}
+                  </td>
                 </tr>
               </tbody>
             </v-table>
@@ -155,7 +162,7 @@ import { mapActions } from "vuex";
 
 import instance from "/src/api/instance";
 import { parseOrderFile } from "/src/helpers/orderFile";
-import { orderValue } from "/src/helpers/orderValue";
+import { orderValue, totalOrderFees } from "/src/helpers/orderValue";
 import OrderResult from "./OrderResult.vue";
 
 export default {
@@ -208,11 +215,13 @@ export default {
       const buyTotal = this.plan.to_buy
         .filter((order) => order.order_type !== "SELL")
         .reduce((sum, order) => sum + this.estimate(order), 0);
+      const fees = totalOrderFees(this.plan.to_buy);
       return [
         `${this.sells.length} sells, about ${this.dollars(total)}`,
         `estimated gain ${this.dollars(gain)}`,
         unknown ? `${unknown} with no cost basis` : "",
         buys ? `${buys} buys, about ${this.dollars(buyTotal)}` : "",
+        fees ? `estimated fees $${fees.toFixed(2)}` : "",
       ]
         .filter(Boolean)
         .join(", ");

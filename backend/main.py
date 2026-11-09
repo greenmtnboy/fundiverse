@@ -439,6 +439,8 @@ class OrderItem(BaseModel):
     estimated_gain: Money | None = None
     #: place at this price per share rather than at market
     limit_price: Money | None = None
+    #: the commission the broker is expected to charge, such as for an OTC order
+    estimated_fee: Money | None = None
 
 
 class PurchaseOrderOutput(BaseModel):
@@ -1257,6 +1259,7 @@ def _plan_composite_purchase(input: BuyRequest):
                     provider=key,
                     status=OrderStatus.REQUESTED,
                     message=None,
+                    estimated_fee=_order_fee(key, order.ticker),
                 )
             )
     return PurchaseOrderOutput(
@@ -1276,6 +1279,15 @@ def plan_composite_purchase(input: BuyRequest):
         raise
     except Exception as e:
         raise HTTPException(500, f"Error planning composite purchase: {e}") from e
+
+
+def _order_fee(provider: ProviderType, ticker: str) -> Money | None:
+    """The commission an order is expected to cost, or None if nothing."""
+    instance = IN_APP_CONFIG.provider_cache.get(provider)
+    if instance is None or not hasattr(instance, "estimated_order_fee"):
+        return None
+    fee = instance.estimated_order_fee(ticker)
+    return fee if fee.decimal else None
 
 
 def _held_position(
@@ -1351,6 +1363,7 @@ def _plan_uploaded_sell(
                 if holding.appreciation.decimal
                 else None,
                 limit_price=Money(value=order.price) if order.price else None,
+                estimated_fee=_order_fee(provider, order.ticker),
             )
         )
         claimed[(provider, order.ticker)] += take
@@ -1386,6 +1399,7 @@ def _plan_uploaded_buy(order: UploadedOrder) -> tuple[list[OrderItem], str | Non
             status=OrderStatus.REQUESTED,
             message=None,
             limit_price=Money(value=order.price) if order.price else None,
+            estimated_fee=_order_fee(order.broker, order.ticker),
         )
     ], None
 
