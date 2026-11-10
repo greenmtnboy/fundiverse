@@ -106,6 +106,9 @@
               <template v-if="unpricedOrderCount > 0">
                 ({{ unpricedOrderCount }} unit orders have no price and aren't counted.)
               </template>
+              <div v-if="plannedFees > 0" data-testid="planned-fees">
+                Estimated broker fees: <b>${{ plannedFees.toFixed(2) }}</b>
+              </div>
             </v-alert>
             <template v-for="element in displayBatch" :key="element.ticker + element.provider">
               <v-list-item>
@@ -118,6 +121,9 @@
                 {{ element.provider }}
                 <span v-if="element.qty && orderValue(element)" class="text-medium-emphasis">
                   (~<CurrencyItem :value="orderValue(element)" />)
+                </span>
+                <span v-if="element.estimated_fee" class="text-warning">
+                  + ${{ Number(element.estimated_fee.value).toFixed(2) }} fee
                 </span>
                 <template v-slot:append>
                   <v-tooltip>
@@ -181,7 +187,7 @@ import OrderResult from "./OrderResult.vue";
 import CurrencyItem from "../generic/CurrencyItem.vue";
 import TickerDisplay from "../generic/TickerDisplay.vue";
 import debounce from "../../helpers/debounce";
-import { orderValue, totalOrderValue } from "../../helpers/orderValue";
+import { orderValue, totalOrderFees, totalOrderValue } from "../../helpers/orderValue";
 function roundToNearestTen(number) {
   return Math.floor(number / 10) * 10;
 }
@@ -294,6 +300,9 @@ export default {
     },
     plannedSpend() {
       return totalOrderValue(this.plan.to_buy);
+    },
+    plannedFees() {
+      return totalOrderFees(this.plan.to_buy);
     },
     unpricedOrderCount() {
       return this.plan.to_buy.filter((order) => !orderValue(order)).length;

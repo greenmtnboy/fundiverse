@@ -210,3 +210,21 @@ def test_a_price_needs_a_share_count(test_client, config):  # noqa: F811
     row = {"ticker": "NVS", "side": "BUY", "value": 100, "price": 150, "broker": "alpaca"}
 
     assert plan(test_client, [row], ["alpaca"])["to_buy"] == []
+
+
+def test_otc_order_shows_the_broker_fee(test_client, config):  # noqa: F811
+    fake = seller(config, ProviderType.ALPACA, [position("TCEHY", 10, 500), position("TSM", 10, 500)])
+    fake.OTC_ORDER_FEE = Decimal("6.95")
+
+    result = plan(
+        test_client,
+        [
+            {"ticker": "TCEHY", "side": "SELL", "shares": 1},
+            {"ticker": "TSM", "side": "SELL", "shares": 1},
+        ],
+        ["alpaca"],
+    )
+
+    fees = {x["ticker"]: x["estimated_fee"] for x in result["to_buy"]}
+    assert float(fees["TCEHY"]["value"]) == pytest.approx(6.95)
+    assert fees["TSM"] is None
