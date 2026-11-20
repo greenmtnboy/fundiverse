@@ -54,6 +54,7 @@ from py_portfolio_index import (
     WebullProvider,
     generate_composite_order_plan,
 )
+from py_portfolio_index.common import get_basic_stock_info
 from py_portfolio_index.datastores.duckdb_datastore import DuckDBDatastore
 from py_portfolio_index.enums import Currency, ProviderType
 from py_portfolio_index.exceptions import (
@@ -71,6 +72,7 @@ from py_portfolio_index.models import (
     ProfitModel,
     RealPortfolio,
     RealPortfolioElement,
+    StockInfo,
 )
 from py_portfolio_index.portfolio_providers.base_portfolio import BaseProvider
 from py_portfolio_index.portfolio_providers.helpers.etrade import (
@@ -1447,12 +1449,42 @@ async def terminate():
     raise ShutdownException("Terminating server")
 
 
+def _quote_for_tooltip(ticker: str) -> tuple[float | None, ProviderType | None]:
+    """The current price from the best quoter logged in, as plans rank them.
+
+    A quoter that can't price the ticker (an OTC ADR outside Alpaca's feed, say)
+    hands it to the next one; a ticker nobody prices has no price."""
+    quoters = sorted(
+        IN_APP_CONFIG.provider_cache.items(),
+        key=lambda item: -item[1].QUOTE_PRIORITY,
+    )
+    for provider_type, provider in quoters:
+        try:
+            price = provider.get_instrument_price(ticker)
+        # brokers fail quotes in their own ways; any of them means try the next
+        except Exception as e:  # noqa: BLE001
+            logger.info(f"{provider_type.value} could not quote {ticker}: {e}")
+            continue
+        if price:
+            return float(price), provider_type
+    return None, None
+
+
 @router.get("/stock_info/{ticker}")
-async def stock_info(ticker: str):
+def stock_info(ticker: str):
+    """Name, exchange, sector and description for a ticker tooltip, with the
+    current price when a logged in provider can quote it."""
     provider = get_provider_safe()
-    if not provider:
-        return HTTPException(401, "No logged in provider specified")
-    return provider.get_stock_info(ticker)
+    try:
+        info = provider.get_stock_info(ticker)
+    except Exception as e:  # noqa: BLE001
+        # a provider without instrument lookup still has the bundled details
+        logger.info(f"{provider.PROVIDER} has no details for {ticker}: {e}")
+        info = get_basic_stock_info(ticker, fail_on_missing=False) or StockInfo(
+            ticker=ticker
+        )
+    price, price_provider = _quote_for_tooltip(ticker)
+    return {**jsonable_encoder(info), "price": price, "price_provider": price_provider}
 
 
 @router.post("/buy_index_from_plan")
