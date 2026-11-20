@@ -6,6 +6,7 @@ anything until every provider in the portfolio is reachable.
 
 import pytest
 from fastapi.testclient import TestClient
+from py_portfolio_index.datastores.duckdb_datastore import unlisted_symbol_id
 from py_portfolio_index.enums import ProviderType
 from py_portfolio_index.exceptions import ConfigurationError
 from test_partial_auth import FakeProvider, holding
@@ -113,8 +114,8 @@ def test_export_closes_the_database_on_failure(test_client, export_env):
 def test_repeat_export_with_unknown_ticker(
     test_client: TestClient, tmp_path, monkeypatch, provider: ProviderType
 ):
-    """Unrecognized tickers pool into one '???' row per provider; exporting
-    twice must replace that row rather than collide on the primary key, and
+    """A ticker outside the bundled stock list gets its own row; exporting
+    twice must replace it rather than collide on the primary key, and
     positions sold between exports must not linger."""
     monkeypatch.setattr(
         exports, "get_database_path", lambda name: tmp_path / f"{name}.db"
@@ -144,7 +145,7 @@ def test_repeat_export_with_unknown_ticker(
             ).fetchall()
         finally:
             db.close()
-        assert rows == [(-1, 75.0)]
+        assert rows == [(unlisted_symbol_id("NOTAREALTICKERX"), 75.0)]
     finally:
         active.provider_cache.clear()
         active.holding_cache.clear()
