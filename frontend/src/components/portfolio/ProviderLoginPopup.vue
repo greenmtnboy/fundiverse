@@ -94,7 +94,6 @@ export default {
       secret: "",
       factor: "",
       externalLoginURL: "",
-      quoteProvider: "",
       saveCredentials: false,
       showPass: false,
       showFactor: false,
@@ -249,7 +248,6 @@ export default {
           values[keys[i].key] = saved_key_value.value;
           if (keys[i].key == 'quote_provider' && saved_key_value.value !== null) {
             this.showQuoteProvider = true;
-            this.quoteProvider = saved_key_value.value;
           }
         } else {
           values[keys[i].key] = null;
@@ -314,8 +312,9 @@ export default {
       if (this.externalLoginURL) {
         command = { ...command, wait_for_external_auth: true }
       }
-      if (this.quoteProvider) {
-        command = { ...command, quote_provider: this.quoteProvider }
+      // the dropdown's value, not the one saved before it was changed
+      if (!this.showQuoteProvider || !command.quote_provider) {
+        delete command.quote_provider;
       }
 
       this.externalLoginURL = "";
@@ -326,7 +325,7 @@ export default {
 
           if (this.saveCredentials) {
             let keys = this.providerLoginKeys;
-            if (this.quoteProvider) {
+            if (command.quote_provider) {
               keys = keys.concat({ key: "quote_provider", label: "Quote Provider" });
             }
             for (let i = 0; i < keys.length; i++) {

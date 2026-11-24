@@ -845,15 +845,36 @@ def login(input: LoginRequest) -> bool:
         raise HTTPException(404, "Selected provider not supported yet")
     # only reached when the handshake succeeded; a provider that needs another
     # step raises out of here rather than returning
-    IN_APP_CONFIG.provider_cache[input.provider] = provider_login(input)
+    provider = provider_login(input)
+    # Moomoo holds the quote provider it was given at login; after that provider
+    # signs in again, the old instance may have an expired token
+    for other in IN_APP_CONFIG.provider_cache.values():
+        quoter = getattr(other, "_quote_provider", None)
+        if quoter is not None and quoter.PROVIDER == input.provider:
+            other._quote_provider = provider
+    IN_APP_CONFIG.provider_cache[input.provider] = provider
     IN_APP_CONFIG.logged_in = input.provider.value
     return True
+
+
+def _use_quote_provider(provider: BaseProvider, quote_type: ProviderType | None) -> None:
+    """Point a logged in provider that borrows quotes (Moomoo) at the one now
+    chosen, without signing it in again."""
+    if not quote_type or getattr(provider, "_quote_provider", None) is None:
+        return
+    quoter = IN_APP_CONFIG.provider_cache.get(quote_type)
+    if quoter is None:
+        raise HTTPException(400, f"Quote provider {quote_type.value} is not logged in")
+    provider._quote_provider = quoter
 
 
 @router.post("/login")
 def login_handler(input: LoginRequest):
     # early exit if we have already logged in
     if not input.force and input.provider in IN_APP_CONFIG.provider_cache:
+        _use_quote_provider(
+            IN_APP_CONFIG.provider_cache[input.provider], input.quote_provider
+        )
         return True
     try:
         return login(input)
@@ -1498,6 +1519,8 @@ def place_orders(
                 order_type=order.order_type,
                 value=order.value,
                 qty=order.qty,
+                # the planned quote, for a broker that can't get one now
+                price=order.price,
                 limit_price=order.limit_price,
             )
             logger.info(f"Placing order for {order.ticker} with {order.provider}")
